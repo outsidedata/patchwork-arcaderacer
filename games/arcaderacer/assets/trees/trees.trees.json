@@ -1,0 +1,16 @@
+{
+  "trees": {
+    "fir": { "species": "spruce", "height": 1 },
+    "cedar": { "species": "spruce-mid", "height": 1 },
+    "zelkova": { "species": "zelkova", "height": 1,
+      "lods": [{ "resolution": 1, "levels": 1, "keep": 8 }, { "levels": 1, "keep": 24 }, {}] }
+  },
+  "lods": [
+    { "name": "near", "resolution": 1, "keep": 2 },
+    { "name": "mid", "resolution": 1, "levels": 1, "keep": 4 },
+    { "name": "far", "crown": { "bands": 4, "sides": 8, "taper": 0.35 } }
+  ],
+  "colours": { "bark": "#705a45", "leaf": "#457b45" },
+  "textures": { "leaf": 1024, "normal": 512 },
+  "node": "{tree}_{lod}"
+}

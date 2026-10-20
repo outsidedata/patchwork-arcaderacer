@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terrain Warp</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #9cc3e6; }
+  canvas { display: block; }
+  #hud { position: fixed; left: 10px; top: 8px; color: #fff; font: 12px/1.4 ui-monospace, Menlo, monospace; white-space: pre; text-shadow: 0 1px 2px #000a; pointer-events: none; }
+  #json { position: fixed; left: 10px; bottom: 10px; max-height: 60vh; overflow: auto; margin: 0; padding: 10px; background: #000c; color: #dfe; font: 11px/1.35 ui-monospace, Menlo, monospace; border-radius: 6px; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "../../node_modules/three/build/three.module.js",
+  "three/addons/": "../../node_modules/three/examples/jsm/",
+  "lil-gui": "../../node_modules/lil-gui/dist/lil-gui.esm.js"
+} }
+</script>
+</head>
+<body>
+<div id="hud"></div>
+<pre id="json" hidden></pre>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

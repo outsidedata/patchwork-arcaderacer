@@ -1,0 +1,122 @@
+{
+  "name": "TOKYO BAYSIDE",
+  "music": "jungle-31586",
+  "track": {
+    "points": 11,
+    "radius": [220, 360],
+    "wander": 0.5,
+    "hills": { "height": 2, "waves": 2 },
+    "width": 18,
+    "shoulder": 2.5,
+    "step": 2,
+    "smooth": 6,
+    "tightest": 0.024,
+    "steepest": 0.13,
+    "bank": { "gain": 12, "most": 0.1 },
+    "straight": 120,
+    "gap": 34,
+    "checkpoints": 4,
+    "grid": { "gap": 9, "lane": 4 },
+    "features": [
+      { "kind": "bridge", "length": 420, "ramp": 230, "rise": 18 }
+    ]
+  },
+  "road": {
+    "asphalt": "#3c3e44",
+    "line": "#f2f0e8",
+    "kerb": ["#e0e0e0", "#2a2a2a"],
+    "kerbWidth": 1.0,
+    "kerbLength": 3,
+    "kerbCurve": 0.008,
+    "lineWidth": 0.22,
+    "dash": [8, 8],
+    "verge": "#6c6e72",
+    "finish": { "squares": 9, "depth": 2 },
+    "surface": {
+      "maps": { "colour": "asphalt.colour", "normal": "asphalt.normal", "roughness": "asphalt.roughness" },
+      "tint": 0.85, "size": [2.5, 17], "turn": 0.7, "mix": 0.25, "fade": [25, 200], "normal": [1, 0.3], "roughness": 1.15,
+      "paint": { "grain": 0.35, "normal": 0.7, "roughness": 0.6 },
+      "wear": { "width": 2.6, "darken": 0.12, "smooth": 0.12 }
+    }
+  },
+  "land": {
+    "size": 4200, "cell": 24,
+    "hills": { "height": 3, "scale": 600, "octaves": 2 },
+    "skirt": 6, "under": 0.3, "blend": 40, "rim": 400, "clearance": 5,
+    "water": { "level": -4, "floor": -16, "reach": 380 }
+  },
+  "things": [
+    { "name": "zelkova", "count": 700, "clear": 4, "size": [6, 11] }
+  ],
+  "blocks": { "cell": 46, "fill": [0.5, 0.82], "clear": 8, "height": [10, 85], "middle": 2.4, "chance": 0.88 },
+  "along": [
+    { "name": "lamp", "every": 36, "out": 0.6, "sides": [-1, 1] },
+    { "name": "sign", "every": 150, "out": 2, "sides": [1], "straight": 0.003 }
+  ],
+  "landmarks": [
+    { "name": "lattice", "angle": 0.62, "distance": 520, "clear": 40, "height": 333, "base": 90 },
+    { "name": "fuji", "angle": 0.85, "distance": 9000, "clear": 0, "height": 2600, "width": 9000 }
+  ],
+  "light": {
+    "sun": { "dir": [-0.4, 0.37, 0.35], "colour": "#fff6e8", "intensity": 2.6, "shadow": 2048, "reach": 100 },
+    "sky": { "colour": "#bcd6f2", "ground": "#8a8378", "intensity": 1.6 },
+    "air": {
+      "away": "#bfd2e4", "toward": "#f2e6d0", "spread": 3,
+      "halo": { "colour": "#fff3dc", "strength": 0.4, "sharp": 28 },
+      "layers": [{ "density": 0.00022, "height": 1600, "base": 0 }, { "density": 0.0015, "height": 30, "base": 0 }],
+      "tunnel": { "colour": "#2a2a2c", "density": 0.02, "reach": 120, "fade": 30 },
+      "disc": { "size": 0.6, "edge": 0.35, "colour": "#fff6e8", "strength": 20 },
+      "shafts": { "strength": 0.32, "colour": "#fff0d8", "samples": 48, "length": 0.85, "decay": 0.975, "sharp": 12, "facing": [-0.1, 0.45], "scale": 0.5 }
+    },
+    "dome": { "top": "#3e7ed4", "curve": 0.55, "radius": 11000 },
+    "lit": false
+  },
+  "look": {
+    "smoke": "#e4e4e6",
+    "ground": { "colours": ["#77787a", "#6e7072", "#808083", "#727a6c"], "plain": "#6f7173", "scale": 40,
+      "surface": {
+        "flat": { "colour": "concrete.colour", "normal": "concrete.normal", "roughness": "concrete.roughness", "tint": 0.8 },
+        "steep": { "colour": "lawn.colour", "normal": "lawn.normal", "roughness": "lawn.roughness", "tint": 0.1 },
+        "size": [3, 21], "turn": 0.9, "mix": 0.3, "fade": [25, 220], "normal": [1, 0.3], "roughness": 1, "slope": [0.9, 0.7], "sharp": 4
+      } },
+    "skirt": "#7a7b7e",
+    "walls": { "barrier": "#d8dadc", "height": 1.0, "retain": 6, "retaining": "#a3a5a8", "rail": "#e8e8ea", "railHeight": 1.2,
+      "surface": {
+        "flat": { "colour": "concrete.colour", "normal": "concrete.normal", "roughness": "concrete.roughness", "tint": 0.85 },
+        "steep": { "colour": "concrete.colour", "normal": "concrete.normal", "roughness": "concrete.roughness", "tint": 0.85 },
+        "size": [2, 13], "turn": 0.9, "mix": 0.3, "fade": [20, 160], "normal": [1, 0.3], "roughness": 1, "slope": [0.9, 0.7], "sharp": 4
+      } },
+    "tunnel": { "height": 7, "colour": "#b0b2b4", "ceiling": "#7a7c7e", "lights": "#fff0d0", "every": 12, "portal": "#c4c6c8", "glow": 3 },
+    "elevated": { "deck": 2.6, "colour": "#e6e8ea", "piers": 34, "pier": 2.4 },
+    "water": { "colour": "#2f6f8f", "opacity": 0.92 },
+    "bridge": { "colour": "#f4f5f6", "towers": [0.22, 0.78], "tower": 92, "leg": 3.2, "out": 3, "cable": 0.55, "sag": 6, "hangers": 12, "beams": 3 },
+    "blocks": {
+      "colours": ["#d9d9d6", "#b9bec4", "#8f9aa6", "#c8c1b4", "#e8e6e0", "#7f8c99", "#a9b6c2", "#c9b8a0", "#9aa3a8"],
+      "frames": ["#2c3338", "#3a4248", "#5b636a", "#22282e"],
+      "styles": [0.4, 0.35, 0.25],
+      "windows": { "floor": 3.6, "width": 2.2, "glass": "#2e3c4a", "curtain": "#3d5a72", "lit": "#ffe7b0", "litChance": 0.0, "frame": 0.22 },
+      "reflect": [0.12, 0.9],
+      "podium": { "over": 24, "chance": 0.55, "floors": [1, 4], "inset": 0.1, "style": 2 },
+      "setback": { "above": 30, "chance": 0.75, "tiers": [1, 3], "shaft": [0.55, 0.75], "inset": [0.08, 0.18] },
+      "cornice": { "height": 0.8, "rise": 0.9, "out": 0.35, "shade": 0.72 },
+      "plant": { "colour": "#8d9296", "units": [1, 5], "size": [2, 6], "height": 2.4, "mast": 0.18, "mastOver": 40, "mastHeight": [8, 22] },
+      "round": { "over": 45, "chance": 0.16, "sides": 14 },
+      "crown": { "chance": 0.45, "height": [0.06, 0.14], "spire": 0.5 },
+      "piers": { "size": 1.1 },
+      "neon": { "colours": ["#ff2a8c", "#2af0ff", "#ffd400", "#ff5a1f", "#7cff4a"], "chance": 0.45, "glow": 2.2, "size": [3, 10] },
+      "roof": "#5e6266"
+    },
+    "things": {
+      "zelkova": { "model": "trees", "lods": [{ "node": "zelkova_near", "within": 160 }, { "node": "zelkova_mid", "within": 450 }, { "node": "zelkova_far" }],
+        "leaves": ["#ffffff", "#eef4e6", "#e2ecdc"], "girth": [0.85, 1.15], "sink": 0.2 }
+    },
+    "along": {
+      "lamp": { "height": 9, "colour": "#9ea4ab", "head": "#fff5dc", "glow": 0.6 },
+      "sign": { "size": [10, 3.4], "lift": 6, "frame": "#6d7378", "face": "#1f7a3a", "edge": "#f2f2ee", "border": 0.18, "glow": 0.4 }
+    },
+    "landmarks": {
+      "lattice": { "red": "#e0402a", "white": "#f2f2f0", "bands": 9, "deck": [0.45, 0.75], "legs": 4 },
+      "fuji": { "colour": "#5f6f88", "snow": "#f6f8fb", "snowline": 0.62, "sides": 28 }
+    }
+  }
+}

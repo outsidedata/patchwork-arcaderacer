@@ -1,0 +1,661 @@
+{
+  "world": {
+    "defs": "arcaderacer",
+    "loader": {
+      "assets": {
+        "arcaderacer": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/arcaderacer.json",
+          "preload": true
+        },
+        "fx": {
+          "type": "sheet",
+          "url": "/games/arcaderacer/assets/fx/fx.json",
+          "preload": true
+        },
+        "effects": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/fx/effects.json",
+          "preload": true
+        },
+        "supercar": {
+          "type": "model",
+          "url": "/games/arcaderacer/assets/supercar/supercar.glb",
+          "preload": true
+        },
+        "trees": {
+          "type": "model",
+          "url": "/games/arcaderacer/assets/trees/trees.glb"
+        },
+        "forest": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/courses/forest.json",
+          "preload": true
+        },
+        "jungle-60896": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/music/jungle-60896.json",
+          "preload": true
+        },
+        "jungle-31586": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/music/jungle-31586.json",
+          "preload": true
+        },
+        "jungle-8411": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/music/jungle-8411.json",
+          "preload": true
+        },
+        "tokyo": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/courses/tokyo.json",
+          "preload": true
+        },
+        "paris": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/courses/paris.json",
+          "preload": true
+        },
+        "haussmann": {
+          "type": "model",
+          "url": "/games/arcaderacer/assets/paris/haussmann.glb"
+        },
+        "haussmann_medium": {
+          "type": "model",
+          "url": "/games/arcaderacer/assets/paris/haussmann_medium.glb"
+        },
+        "eiffel": {
+          "type": "model",
+          "url": "/games/arcaderacer/assets/paris/eiffel.glb"
+        },
+        "lamp": {
+          "type": "model",
+          "url": "/games/arcaderacer/assets/paris/lamp.glb"
+        },
+        "forest-floor.colour": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/forest-floor-color-1024.webp",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "forest-floor.normal": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/forest-floor-normal-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "forest-floor.roughness": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/forest-floor-roughness-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "mossy-rock.colour": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/mossy-rock-color-1024.webp",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "mossy-rock.normal": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/mossy-rock-normal-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "mossy-rock.roughness": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/mossy-rock-roughness-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "concrete.colour": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/concrete-color-1024.webp",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "concrete.normal": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/concrete-normal-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "concrete.roughness": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/concrete-roughness-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "lawn.colour": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/lawn-color-1024.webp",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "lawn.normal": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/lawn-normal-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "lawn.roughness": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/lawn-roughness-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "cobbles.colour": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/cobbles-color-1024.webp",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "cobbles.normal": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/cobbles-normal-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "cobbles.roughness": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/cobbles-roughness-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "grimy-concrete.colour": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/grimy-concrete-color-1024.webp",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "grimy-concrete.normal": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/grimy-concrete-normal-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "grimy-concrete.roughness": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/grimy-concrete-roughness-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "asphalt.colour": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/asphalt-color-1024.webp",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "asphalt.normal": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/asphalt-normal-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "asphalt.roughness": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/asphalt-roughness-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "asphalt-dark.colour": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/asphalt-dark-color-1024.webp",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "asphalt-dark.normal": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/asphalt-dark-normal-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "asphalt-dark.roughness": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/asphalt-dark-roughness-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        }
+      }
+    },
+    "shipped": {
+      "plugins": [
+        "drive",
+        "fx",
+        "dash",
+        "land",
+        "air",
+        "match"
+      ]
+    },
+    "cull3d": {
+      "cell": 50,
+      "tile": 500
+    },
+    "player": {
+      "deadzone": 0.3
+    },
+    "particle3d": {
+      "effects": "effects"
+    },
+    "dither3d": {
+      "on": true,
+      "bits": 5,
+      "matrix": [
+        -4,
+        0,
+        -3,
+        1,
+        2,
+        -2,
+        3,
+        -1,
+        -3,
+        1,
+        -4,
+        0,
+        3,
+        -1,
+        2,
+        -2
+      ],
+      "ratio": 0.375
+    },
+    "ui": {
+      "panels": {
+        "hud": {
+          "anchor": "top-left",
+          "size": [
+            1280,
+            720
+          ]
+        },
+        "title": {
+          "anchor": "center",
+          "size": [
+            1280,
+            720
+          ],
+          "modal": true
+        },
+        "watch": {
+          "anchor": "top-left",
+          "size": [
+            1280,
+            720
+          ]
+        },
+        "results": {
+          "anchor": "center",
+          "size": [
+            1280,
+            720
+          ],
+          "modal": true
+        },
+        "cutscene.top": {
+          "anchor": "top",
+          "size": [1280, 96],
+          "layer": 2
+        },
+        "cutscene.bottom": {
+          "anchor": "bottom",
+          "size": [1280, 96],
+          "layer": 2
+        },
+        "cutscene.veil": {
+          "anchor": "center",
+          "size": [1280, 720],
+          "layer": 3
+        },
+        "curtain": {
+          "anchor": "center",
+          "size": [1280, 720],
+          "layer": 4
+        }
+      },
+      "keys": {
+        "up": "ArrowUp",
+        "down": "ArrowDown",
+        "left": "ArrowLeft",
+        "right": "ArrowRight",
+        "press": [
+          "Enter"
+        ],
+        "back": "Escape"
+      },
+      "styles": {
+        "big": {
+          "fontFamily": "Arial Black, Arial, sans-serif",
+          "fontSize": 54,
+          "fontStyle": "italic",
+          "padding": 16,
+          "fontWeight": "900",
+          "fill": 16769280,
+          "stroke": {
+            "color": 1118481,
+            "width": 6,
+            "join": "round"
+          }
+        },
+        "small": {
+          "fontFamily": "Arial, sans-serif",
+          "fontSize": 22,
+          "fontStyle": "italic",
+          "padding": 16,
+          "fontWeight": "700",
+          "fill": 16777215,
+          "stroke": {
+            "color": 1118481,
+            "width": 4,
+            "join": "round"
+          }
+        },
+        "speed": {
+          "fontFamily": "Arial Black, Arial, sans-serif",
+          "fontSize": 64,
+          "fontStyle": "italic",
+          "padding": 16,
+          "fontWeight": "900",
+          "fill": 16777215,
+          "stroke": {
+            "color": 1118481,
+            "width": 6,
+            "join": "round"
+          }
+        },
+        "count": {
+          "fontFamily": "Arial Black, Arial, sans-serif",
+          "fontSize": 150,
+          "fontStyle": "italic",
+          "padding": 16,
+          "fontWeight": "900",
+          "fill": 16769280,
+          "stroke": {
+            "color": 1118481,
+            "width": 10,
+            "join": "round"
+          }
+        },
+        "banner": {
+          "fontFamily": "Arial Black, Arial, sans-serif",
+          "fontSize": 40,
+          "fontStyle": "italic",
+          "padding": 16,
+          "fontWeight": "900",
+          "fill": 4122111,
+          "stroke": {
+            "color": 1118481,
+            "width": 6,
+            "join": "round"
+          }
+        },
+        "result": {
+          "fontFamily": "Courier New, monospace",
+          "fontSize": 26,
+          "fontWeight": "700",
+          "fill": 16777215,
+          "stroke": {
+            "color": 1118481,
+            "width": 4,
+            "join": "round"
+          }
+        },
+        "resultMine": {
+          "fontFamily": "Courier New, monospace",
+          "fontSize": 26,
+          "fontWeight": "700",
+          "fill": 16769280,
+          "stroke": {
+            "color": 1118481,
+            "width": 4,
+            "join": "round"
+          }
+        },
+        "bar": {
+          "size": [
+            220,
+            14
+          ],
+          "edge": 2,
+          "frame": {
+            "color": 1118481
+          },
+          "track": {
+            "color": 3355443
+          },
+          "fill": {
+            "color": 4122111
+          },
+          "boosting": {
+            "color": 16737792
+          }
+        },
+        "tagline": {
+          "fontFamily": "Arial, sans-serif",
+          "fontSize": 24,
+          "fontStyle": "italic",
+          "padding": 12,
+          "fontWeight": "700",
+          "fill": 15658734,
+          "stroke": {
+            "color": 1118481,
+            "width": 4,
+            "join": "round"
+          }
+        },
+        "word": {
+          "size": [1, 1],
+          "fill": { "color": 0, "alpha": 0 },
+          "focus": { "color": 0, "alpha": 0 },
+          "text": {}
+        },
+        "cutscene.bars": { "color": 0 },
+        "cutscene.veil": { "color": 0 },
+        "curtain.cover": { "color": 0 },
+        "hint": {
+          "fontFamily": "Arial, sans-serif",
+          "fontSize": 18,
+          "fontStyle": "italic",
+          "padding": 8,
+          "fill": 16777215,
+          "stroke": {
+            "color": 1118481,
+            "width": 4,
+            "join": "round"
+          }
+        },
+        "course": {
+          "size": [
+            360,
+            64
+          ],
+          "radius": 8,
+          "fill": {
+            "color": 2236962
+          },
+          "focus": {
+            "color": 13644066
+          },
+          "text": {
+            "fontFamily": "Arial Black, Arial, sans-serif",
+            "fontSize": 26,
+            "fontStyle": "italic",
+            "fontWeight": "900",
+            "padding": 8,
+            "fill": 16777215
+          }
+        }
+      }
+    }
+  },
+  "prefabs": {
+    "engine": {
+      "dt": 0.016666666666666666,
+      "width": 1280,
+      "height": 720
+    },
+    "scenemanager": {
+      "scenes": {
+        "title": {
+          "file": "title.scene.json",
+          "suspend": true
+        },
+        "forest": {
+          "file": "forest.scene.json",
+          "suspend": false
+        },
+        "tokyo": {
+          "file": "tokyo.scene.json",
+          "suspend": false
+        },
+        "paris": {
+          "file": "paris.scene.json",
+          "suspend": false
+        }
+      },
+      "dt": 0.016666666666666666,
+      "entry": "title",
+      "port": 9111
+    },
+    "loader": {},
+    "player": {
+      "seat": 0,
+      "conn": -1,
+      "held": null,
+      "watch": null
+    },
+    "car": {
+      "grid": 0,
+      "steer": 0,
+      "throttle": 0,
+      "brake": 0,
+      "handbrake": 0,
+      "pos": [
+        0,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "pitch": 0,
+      "roll": 0,
+      "vel": [
+        0,
+        0
+      ],
+      "spin": 0,
+      "wheel": 0,
+      "drift": 0,
+      "slip": 0,
+      "slide": 0,
+      "clean": false,
+      "boost": 0,
+      "held": 0,
+      "scrape": 1000,
+      "seg": -1,
+      "s": 0,
+      "dist": 0,
+      "far": 0,
+      "cam": 0,
+      "speed": 0,
+      "lap": 0,
+      "lapAt": 0,
+      "last": -1,
+      "best": -1,
+      "split": 0,
+      "splitAt": -1,
+      "done": -1
+    },
+    "start": {
+      "slot": 0,
+      "grid": 0
+    },
+    "circuit": {},
+    "scenery": {},
+    "rival": {
+      "name": "",
+      "direct": null,
+      "grid": 0,
+      "steer": 0,
+      "throttle": 0,
+      "brake": 0,
+      "handbrake": 0,
+      "pos": [
+        0,
+        0,
+        0
+      ],
+      "yaw": 0,
+      "pitch": 0,
+      "roll": 0,
+      "vel": [
+        0,
+        0
+      ],
+      "spin": 0,
+      "wheel": 0,
+      "drift": 0,
+      "slip": 0,
+      "slide": 0,
+      "clean": false,
+      "boost": 0,
+      "held": 0,
+      "scrape": 1000,
+      "seg": -1,
+      "s": 0,
+      "dist": 0,
+      "far": 0,
+      "cam": 0,
+      "speed": 0,
+      "lap": 0,
+      "lapAt": 0,
+      "last": -1,
+      "best": -1,
+      "split": 0,
+      "splitAt": -1,
+      "done": -1
+    },
+    "race": {
+      "phase": "grid",
+      "waited": 0,
+      "count": 0,
+      "clock": 0,
+      "order": []
+    },
+    "match": {
+      "scene": "",
+      "match": "lobby",
+      "course": "",
+      "leader": -1,
+      "message": "",
+      "roster": [],
+      "asks": []
+    }
+  },
+  "actors": [
+    {
+      "is": "scenemanager"
+    }
+  ],
+  "plugins": [
+    "scenemanager"
+  ],
+  "seats": 1
+}

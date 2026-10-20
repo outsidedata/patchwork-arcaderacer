@@ -1,0 +1,14 @@
+{
+  "folder": "surfaces",
+  "sizes": [1024],
+  "sets": {
+    "forest-floor": { "set": "Ground037_4K-JPG", "maps": ["color", "normal", "roughness"] },
+    "mossy-rock": { "set": "Rock013_4K-JPG", "maps": ["color", "normal", "roughness"] },
+    "concrete": { "set": "Concrete034_4K-JPG", "maps": ["color", "normal", "roughness"] },
+    "lawn": { "set": "Grass004_4K-JPG", "maps": ["color", "normal", "roughness"] },
+    "cobbles": { "set": "cobblestone_floor_05_4K-JPG", "maps": ["color", "normal", "roughness"] },
+    "grimy-concrete": { "set": "Concrete035_4K-JPG", "maps": ["color", "normal", "roughness"] },
+    "asphalt": { "set": "Asphalt015_4K-JPG", "maps": ["color", "normal", "roughness"] },
+    "asphalt-dark": { "set": "Asphalt010_4K-JPG", "maps": ["color", "normal", "roughness"] }
+  }
+}

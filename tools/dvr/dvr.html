@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>dvr</title>
+    <style>
+      html, body { margin: 0; background: #000; overflow: hidden }
+      #stage { position: absolute; left: 0; top: 0 }
+      #stage canvas { position: absolute; left: 0; top: 0 }
+      #rec { position: fixed; right: 8px; bottom: 8px; font: 13px monospace; color: #eee; background: #000c; padding: 6px 8px; display: none; white-space: pre }
+      #rec button { font: inherit; margin-left: 8px }
+    </style>
+    <script>
+      // Render mode owns the clock before any of the game's code runs: `performance.now` and
+      // `Date.now` read the film's time, which moves only when the driver asks for the next frame, and
+      // `requestAnimationFrame` hands its callbacks that time once per frame, from `dvr.frame`. The
+      // real ones are kept on `__real` for the dvr itself.
+      ;(() => {
+        const q = new URLSearchParams(location.search)
+        if (q.has('record')) return
+        const real = { now: performance.now.bind(performance), date: Date.now, raf: requestAnimationFrame.bind(window), caf: cancelAnimationFrame.bind(window) }
+        const clock = { ms: 0, epoch: 1767225600000 }
+        const queued = new Map()
+        let id = 0
+        Object.defineProperty(performance, 'now', { value: () => clock.ms, configurable: true, writable: true })
+        Date.now = () => clock.epoch + clock.ms
+        window.requestAnimationFrame = f => { queued.set(++id, f); return id }
+        window.cancelAnimationFrame = k => { queued.delete(k) }
+        window.__real = real
+        window.__clock = {
+          set(ms) { clock.ms = ms },
+          get ms() { return clock.ms },
+          // Every callback asked for before this frame, handed the film's time.
+          flush() { const fs = [...queued.values()]; queued.clear(); for (const f of fs) f(clock.ms) },
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div id="rec"></div>
+    <script type="module" src="./dvr.page.ts"></script>
+  </body>
+</html>

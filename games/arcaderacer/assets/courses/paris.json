@@ -1,0 +1,108 @@
+{
+  "name": "PARIS DUSK",
+  "music": "jungle-8411",
+  "track": {
+    "points": 13,
+    "radius": [200, 330],
+    "wander": 0.55,
+    "hills": { "height": 4, "waves": 2 },
+    "width": 15,
+    "shoulder": 2,
+    "step": 2,
+    "smooth": 6,
+    "tightest": 0.024,
+    "steepest": 0.13,
+    "bank": { "gain": 10, "most": 0.08 },
+    "straight": 110,
+    "gap": 30,
+    "checkpoints": 4,
+    "grid": { "gap": 9, "lane": 3.4 },
+    "features": [
+      { "kind": "underground", "length": 240, "ramp": 120, "at": 0.3, "depth": 9 },
+      { "kind": "underground", "length": 200, "ramp": 120, "at": 0.74, "depth": 9 }
+    ]
+  },
+  "road": {
+    "asphalt": "#2a2b2e",
+    "line": "#e8e6df",
+    "kerb": ["#d9d6cf", "#5a5853"],
+    "kerbWidth": 0.9,
+    "kerbLength": 3,
+    "kerbCurve": 0.008,
+    "lineWidth": 0.2,
+    "dash": [5, 7],
+    "verge": "#4a4844",
+    "finish": { "squares": 8, "depth": 2 },
+    "surface": {
+      "maps": { "colour": "asphalt-dark.colour", "normal": "asphalt-dark.normal", "roughness": "asphalt-dark.roughness" },
+      "tint": 1, "size": [2.5, 17], "turn": 0.7, "mix": 0.25, "fade": [25, 200], "normal": [1, 0.3], "roughness": 1,
+      "paint": { "grain": 0.35, "normal": 0.7, "roughness": 0.5 },
+      "wear": { "width": 2.2, "darken": 0.1, "smooth": 0.15 },
+      "wet": { "darken": 0.25, "roughness": 0.55, "puddles": { "size": 7, "cover": 0.3, "edge": 0.06, "darken": 0.15, "roughness": 0.04 } }
+    }
+  },
+  "land": {
+    "size": 4000, "cell": 22,
+    "hills": { "height": 3, "scale": 600, "octaves": 2 },
+    "skirt": 5, "under": 0.3, "blend": 40, "rim": 400, "clearance": 5
+  },
+  "blocks": { "cell": 52, "fill": [0.72, 0.9], "clear": 24, "height": [18, 24], "middle": 1, "chance": 0.96, "shrink": [0.9, 0.8, 0.7, 0.6, 0.5], "least": 31 },
+  "frontage": { "setback": 2, "depth": 13, "runs": [32, 110], "street": 12, "step": 2 },
+  "along": [
+    { "name": "lamp", "every": 24, "out": 0.8, "sides": [-1, 1] }
+  ],
+  "landmarks": [
+    { "name": "tower", "angle": 0.3, "distance": 700, "clear": 90, "turn": 0.07 }
+  ],
+  "light": {
+    "sun": { "dir": [0.55, 0.09, -0.83], "colour": "#ff9a5c", "intensity": 1.5, "shadow": 2048, "reach": 90 },
+    "sky": { "colour": "#8794c4", "ground": "#4a382c", "intensity": 1.4 },
+    "air": {
+      "away": "#3c4672", "toward": "#ff9a60", "spread": 2.2,
+      "halo": { "colour": "#ffb478", "strength": 0.6, "sharp": 10 },
+      "layers": [{ "density": 0.0006, "height": 600, "base": 0 }, { "density": 0.0012, "height": 25, "base": 0 }],
+      "tunnel": { "colour": "#0c0a08", "density": 0.01, "reach": 80, "fade": 20 },
+      "disc": { "size": 0.7, "edge": 0.3, "colour": "#ffb070", "strength": 14 },
+      "shafts": { "strength": 0.28, "colour": "#ffb880", "samples": 48, "length": 0.85, "decay": 0.975, "sharp": 10, "facing": [-0.1, 0.45], "scale": 0.5 },
+      "haze": { "strength": 0.00012, "lights": 6, "spots": 1, "steps": 14 }
+    },
+    "dome": { "top": "#1c2654", "curve": 0.5, "radius": 6000,
+      "stars": { "count": 500, "size": [1, 2.6], "bright": 7, "colours": ["#cfdcff", "#ffffff", "#fff4dc"], "twinkle": 0.2, "low": 0.6 },
+      "moon": { "dir": [-0.5, 0.22, 0.84], "colour": "#f2ece0", "size": 0.018, "halo": { "colour": "#9aa4c4", "strength": 0.2, "sharp": 90 } },
+      "glow": { "colour": "#5a3a22", "strength": 0.2, "height": 0.08 } },
+    "lit": true,
+    "headlight": { "colour": "#fff2d8", "intensity": 900, "distance": 120, "angle": 0.5, "penumbra": 0.5, "at": [0, 0.75, 2.2], "aim": [0, 0.2, 25] }
+  },
+  "look": {
+    "smoke": "#6d6a68",
+    "ground": { "colours": ["#3a3733", "#413c36", "#36383a", "#3e3a33"], "plain": "#2e2b27", "scale": 30,
+      "surface": {
+        "flat": { "colour": "cobbles.colour", "normal": "cobbles.normal", "roughness": "cobbles.roughness", "tint": 0.6 },
+        "steep": { "colour": "grimy-concrete.colour", "normal": "grimy-concrete.normal", "roughness": "grimy-concrete.roughness", "tint": 0.5 },
+        "size": [1.8, 14], "turn": 0.9, "mix": 0.25, "fade": [18, 160], "normal": [1.2, 0.3], "roughness": 0.85, "slope": [0.85, 0.65], "sharp": 4
+      } },
+    "skirt": "#3a3733",
+    "walls": { "barrier": "#b3aa98", "height": 1.0, "retain": 12, "retaining": "#a39a86", "rail": "#2a2f2b", "railHeight": 1.1,
+      "surface": {
+        "flat": { "colour": "grimy-concrete.colour", "normal": "grimy-concrete.normal", "roughness": "grimy-concrete.roughness", "tint": 0.85 },
+        "steep": { "colour": "grimy-concrete.colour", "normal": "grimy-concrete.normal", "roughness": "grimy-concrete.roughness", "tint": 0.85 },
+        "size": [2, 13], "turn": 0.9, "mix": 0.3, "fade": [20, 160], "normal": [1, 0.3], "roughness": 1, "slope": [0.9, 0.7], "sharp": 4
+      } },
+    "tunnel": { "height": 6.5, "colour": "#d8d2c2", "ceiling": "#3a3936", "lights": "#ffb347", "every": 9, "portal": "#a39a86", "glow": 2.5, "light": { "intensity": 25, "distance": 14, "decay": 1.6 } },
+    "elevated": { "deck": 2.2, "colour": "#6a6c70", "piers": 30, "pier": 2 },
+    "blocks": {
+      "model": "haussmann_medium",
+      "lots": ["lot3a", "lot4a", "lot4b", "lot5a", "lot5b", "lot6a"],
+      "corners": ["corner_a", "corner_a", "corner_a", "corner_b"],
+      "lods": [{ "level": "near", "within": 110, "cast": true }, { "level": "mid", "within": 360 }, { "level": "far", "within": 2600 }],
+      "fit": [0.84, 1.18],
+      "tints": ["#ffffff", "#f6f1e8", "#efe9de", "#fbf5ea", "#e8e3da", "#f3eee6", "#ded8cc"]
+    },
+    "along": {
+      "lamp": { "model": "lamp", "node": "lamp", "height": 4.22, "head": "#ffcf8a", "light": { "intensity": 40, "distance": 30, "decay": 1.6 } }
+    },
+    "landmarks": {
+      "tower": { "model": "eiffel", "node": "eiffel" }
+    }
+  }
+}

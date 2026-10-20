@@ -1,0 +1,7 @@
+node_modules
+dist
+.DS_Store
+addons/simulator/runs
+tools/dvr/out
+__pycache__
+.env

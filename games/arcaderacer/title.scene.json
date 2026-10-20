@@ -1,0 +1,181 @@
+{
+  "world": {
+    "seed": 23,
+    "course": "tokyo",
+    "loader": {
+      "assets": {
+        "arcaderacer": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/arcaderacer.json",
+          "preload": true
+        },
+        "tokyo": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/courses/tokyo.json",
+          "preload": true
+        },
+        "intro": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/intro.json",
+          "preload": true
+        },
+        "fx": {
+          "type": "sheet",
+          "url": "/games/arcaderacer/assets/fx/fx.json",
+          "preload": true
+        },
+        "effects": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/fx/effects.json",
+          "preload": true
+        },
+        "supercar": {
+          "type": "model",
+          "url": "/games/arcaderacer/assets/supercar/supercar.glb",
+          "preload": true
+        },
+        "title": {
+          "type": "model",
+          "url": "/games/arcaderacer/assets/title/title.glb",
+          "preload": true
+        },
+        "concrete.colour": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/concrete-color-1024.webp",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "concrete.normal": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/concrete-normal-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "concrete.roughness": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/concrete-roughness-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "lawn.colour": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/lawn-color-1024.webp",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "lawn.normal": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/lawn-normal-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "lawn.roughness": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/lawn-roughness-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "asphalt.colour": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/asphalt-color-1024.webp",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "asphalt.normal": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/asphalt-normal-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        },
+        "asphalt.roughness": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/surfaces/asphalt-roughness-1024.webp",
+          "space": "linear",
+          "wrap": "repeat",
+          "anisotropy": 8
+        }
+      }
+    },
+    "cutscene": {
+      "script": "intro",
+      "kinds": ["rival"],
+      "settle": 0.5,
+      "tremor": [
+        [1, 41],
+        [0.8, 53],
+        [0.5, 37]
+      ]
+    },
+    "shipped": {
+      "plugins": ["drive", "fx", "land", "air", "match"]
+    }
+  },
+  "plugins": [
+    "loader",
+    "scenemanager",
+    "particle3d",
+    "dither3d",
+    "render3d",
+    "cull3d",
+    "cutscene",
+    "ui",
+    "shipped"
+  ],
+  "prefabs": {
+    "scenemanager": {
+      "out": {}
+    },
+    "titlecard": {},
+    "cutscene": {},
+    "curtain": {
+      "t": 0,
+      "started": false
+    },
+    "render3d": {
+      "camera": {
+        "fov": 62,
+        "near": 0.3,
+        "far": 12000,
+        "at": [
+          0,
+          40,
+          -60
+        ],
+        "look": [
+          0,
+          0,
+          0
+        ]
+      },
+      "pixelRatio": 3,
+      "tone": "none",
+      "exposure": 1,
+      "shadows": "soft",
+      "background": "#bcd6f2"
+    }
+  },
+  "actors": [
+    { "is": "scenemanager" },
+    { "is": "loader" },
+    { "is": "circuit" },
+    { "is": "scenery" },
+    { "is": "race" },
+    { "is": "match" },
+    { "is": "curtain" },
+    { "is": "titlecard" },
+    { "is": "cutscene" },
+    { "is": "rival", "grid": 0, "name": "rival1" },
+    { "is": "rival", "grid": 1, "name": "rival2" },
+    { "is": "rival", "grid": 2, "name": "rival3" },
+    { "is": "rival", "grid": 3, "name": "rival4" },
+    { "is": "rival", "grid": 4, "name": "rival5" },
+    { "is": "rival", "grid": 5, "name": "rival6" },
+    { "is": "rival", "grid": 6, "name": "rival7" },
+    { "is": "rival", "grid": 7, "name": "rival8" }
+  ]
+}

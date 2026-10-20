@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Asset workshop</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "/three/build/three.module.js",
+    "three/addons/": "/three/examples/jsm/",
+    "#engine/": "/engine/",
+    "#plugins/": "/plugins/",
+    "#addons/": "/addons/",
+    "fflate": "/npm/fflate/esm/browser.js",
+    "fzstd": "/npm/fzstd/esm/index.mjs",
+    "box3d.js/inline": "/npm/box3d.js/dist/box3d.inline.mjs"
+  }
+}
+</script>
+<style>
+:root { --bg: #16171a; --panel: #1e2024; --line: #2c2f35; --text: #d6d8dc; --dim: #8a8f98; --accent: #e0a33a; --ok: #5bbf7a; --pin: #e0573a }
+* { box-sizing: border-box }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 -apple-system, system-ui, sans-serif }
+.app { display: grid; grid-template-columns: 240px 1fr 300px; grid-template-rows: 40px 1fr; height: 100vh }
+header { grid-column: 1 / 4; display: flex; align-items: center; gap: 6px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--line) }
+header b { color: var(--accent); margin-right: 6px }
+button, select, input { font: inherit; font-size: 12px; color: var(--text) }
+button { padding: 4px 10px; border: 1px solid var(--line); border-radius: 4px; background: #25282d; cursor: pointer }
+button.on { background: var(--accent); color: #111; border-color: var(--accent) }
+button:disabled { opacity: .4; cursor: default }
+select, input { background: #15161a; border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px }
+.sp { flex: 1 }
+#reloaded { color: var(--ok); font-size: 12px; opacity: 0; transition: opacity .4s }
+#reloaded.show { opacity: 1 }
+aside { background: var(--panel); border-right: 1px solid var(--line); overflow: auto }
+aside.right { border-right: 0; border-left: 1px solid var(--line) }
+h3 { margin: 0; padding: 10px 12px 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); display: flex; align-items: center }
+h3 button { margin-left: auto; padding: 1px 6px; font-size: 11px; text-transform: none; letter-spacing: 0 }
+.item { padding: 6px 12px; cursor: pointer }
+.item.sel { background: #2a2d33; box-shadow: inset 2px 0 var(--accent) }
+.item .top { display: flex; justify-content: space-between; align-items: center }
+.item .on-bodies { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px }
+.item .on-bodies button { padding: 1px 6px; font-size: 11px }
+.item .on-bodies button.holds { border-color: #4a6a52 }
+.item .drift { color: var(--pin); font-size: 11px }
+.count { background: var(--pin); color: #fff; border-radius: 9px; padding: 0 6px; font-size: 11px }
+.count.zero { background: #3a3d44 }
+#bring { display: none; padding: 8px 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #1a1c20 }
+#bring .row { display: flex; gap: 6px; align-items: center; margin: 4px 0 }
+#bring select { flex: 1; min-width: 0 }
+#bring .msg { font-size: 11px; color: var(--dim); white-space: pre-wrap }
+main { position: relative; overflow: hidden }
+main canvas { display: block }
+#hud { position: absolute; top: 10px; left: 10px; font: 11px ui-monospace, monospace; color: var(--dim); background: #000a; padding: 6px 8px; border-radius: 4px; pointer-events: none; white-space: pre; z-index: 2 }
+#error { position: absolute; top: 10px; right: 10px; max-width: 50%; font: 11px ui-monospace, monospace; color: #fff; background: #7a2a1d; padding: 6px 8px; border-radius: 4px; white-space: pre-wrap; display: none; z-index: 3 }
+.label { font: 11px ui-monospace, monospace; color: var(--ok); text-shadow: 0 1px 2px #000; pointer-events: none }
+.pin { width: 20px; height: 20px; border-radius: 50%; background: var(--pin); color: #fff; font-size: 11px; display: grid; place-items: center; box-shadow: 0 0 0 2px #0008; cursor: pointer }
+.pin.fixed { background: var(--ok) }
+#ask { position: absolute; display: none; background: var(--panel); border: 1px solid var(--accent); border-radius: 6px; padding: 8px; width: 240px; z-index: 5 }
+#ask textarea { width: 100%; height: 56px; background: #15161a; color: var(--text); border: 1px solid var(--line); border-radius: 4px; font: inherit; resize: vertical }
+#ask .meta { font-size: 11px; color: var(--dim); margin: 4px 0 }
+#ask .row { display: flex; justify-content: flex-end; gap: 6px }
+#fit { position: absolute; left: 10px; bottom: 10px; display: none; background: #000c; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; width: 350px; z-index: 4 }
+#fit .top { margin-bottom: 4px } #fit .who { color: var(--dim); font-size: 12px; margin-left: 6px }
+#fit .row { display: flex; gap: 6px; align-items: center; margin: 6px 0 }
+#fit .row select { flex: 1; min-width: 0 }
+#fit #time, #fit #steer { flex: 1; accent-color: var(--accent); padding: 0; border: 0; background: none }
+#fit #steer-at { font: 11px ui-monospace, monospace; color: var(--dim); width: 56px; text-align: right }
+#fit #clock { font: 11px ui-monospace, monospace; color: var(--dim); width: 56px; text-align: right }
+#fit .picker { position: relative; flex: 1; min-width: 0 }
+#fit #clip-search { width: 100% }
+#fit #clip-list { position: absolute; left: -84px; right: 0; bottom: calc(100% + 4px); max-height: 320px; overflow: auto; background: #15161a; border: 1px solid var(--accent); border-radius: 4px; z-index: 6 }
+#fit #clip-list .pick { display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px; cursor: pointer; font-size: 12px }
+#fit #clip-list .pick > span:first-child { white-space: nowrap; flex: none }
+#fit #clip-list .pick .from { color: var(--dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0 }
+#fit #clip-list .pick.lit { background: #2a2d33 }
+#fit #clip-list .pick.now { color: var(--accent) }
+#fit #clip-list .none { padding: 6px 8px; color: var(--dim); font-size: 12px }
+#fit .lab { flex: 0 0 72px; color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .05em }
+#fit .btns { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0 }
+#fit #targets { max-height: 96px; overflow: auto }
+#fit #targets button { padding: 3px 8px }
+#fit .add input { flex: 1; min-width: 0 }
+#fit #turn { width: 64px; font: 12px ui-monospace, monospace }
+#fit .unit, #fit #held { font-size: 11px; color: var(--dim) }
+#fit .pole { display: grid; grid-template-columns: 110px 1fr 1fr 1fr; gap: 4px; align-items: center; margin: 4px 0; font-size: 12px; color: var(--dim) }
+#fit .pole input { width: 100%; padding: 3px 4px; font: 12px ui-monospace, monospace }
+#fit .nums input:disabled { opacity: .35 }
+.item .kind { color: var(--dim); font-size: 11px }
+#fit .nums { display: grid; grid-template-columns: 36px 1fr 1fr 1fr 14px; gap: 4px; align-items: center; font-size: 12px; color: var(--dim) }
+#fit .nums input { width: 100%; padding: 3px 4px; font: 12px ui-monospace, monospace }
+#fit .reach { font: 11px ui-monospace, monospace; color: var(--dim) }
+#fit .reach .far { color: var(--pin) }
+#fit .state { font-size: 11px; color: var(--dim) }
+.card { margin: 6px 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: #23262b; cursor: pointer }
+.card:hover { border-color: #444851 }
+.card .head { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; font-size: 11px; color: var(--dim) }
+.card .status { color: var(--pin) }
+.card .status.fixed { color: var(--ok) }
+.card .reply { margin-top: 6px; padding: 4px 6px; border-left: 2px solid var(--accent); color: var(--dim); font-size: 12px }
+.card button { margin-top: 6px; font-size: 11px; padding: 2px 8px }
+.empty { padding: 8px 12px; color: var(--dim) }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <b>Asset workshop</b>
+    <select id="game"></select>
+    <span id="views"></span>
+    <span class="sp"></span>
+    <button id="wire">Wireframe</button>
+    <button id="bounds" class="on">Bounds</button>
+    <button id="empties" class="on">Empties</button>
+    <span id="reloaded"></span>
+  </header>
+  <aside>
+    <h3>Models <button id="bring-open" title="Bring a model from another game into this one">Bring…</button></h3>
+    <div id="bring">
+      <div class="row"><span>from</span><select data-k="from"></select></div>
+      <div class="row"><span>model</span><select data-k="key"></select></div>
+      <div class="row"><span>held by</span><select data-k="body"></select></div>
+      <div class="row"><span>fit like</span><select data-k="like"></select></div>
+      <div class="row"><span class="sp"></span><button data-act="cancel">Cancel</button><button data-act="go" class="on">Bring</button></div>
+      <div class="msg"></div>
+    </div>
+    <div id="models"></div>
+    <h3>Bodies</h3>
+    <div id="bodies"></div>
+  </aside>
+  <main id="view">
+    <div id="hud"></div>
+    <div id="error"></div>
+    <div id="ask">
+      <textarea placeholder="What is wrong here?"></textarea>
+      <div class="meta"></div>
+      <div class="row"><button data-act="cancel">Cancel</button><button data-act="save" class="on">Add note</button></div>
+    </div>
+    <div id="fit">
+      <div class="top"><b>Fit</b> <span class="who"></span></div>
+      <div class="row">
+        <button data-act="ik">IK</button>
+        <span class="sp"></span>
+        <button data-act="take" title="Set the mount points from this pose: grip and support where the hands are, the anchor where the stock is">Take from this pose</button>
+      </div>
+      <div class="row" id="acts-row" title="The machine alone, or in one of its interactions"><span class="lab">interaction</span><div class="btns" id="acts"></div></div>
+      <div class="row" id="steps-row" title="The interaction's steps, each tuned alone"><span class="lab">step</span><div class="btns" id="steps"></div></div>
+      <div class="row" id="clip-row"><span class="lab">clip</span><div class="picker"><input id="clip-search" placeholder="search clips" autocomplete="off" spellcheck="false"><div id="clip-list"></div></div></div>
+      <div class="row" id="time-row"><button data-act="pause">Pause</button><input id="time" type="range" min="0" max="1" step="0.001" value="0"><span id="clock">0.00 s</span></div>
+      <div class="step">
+        <div class="row"><span class="lab">facing</span><input id="turn" type="number" step="1" title="Degrees the body faces from its point's way, left positive"><span class="unit">°</span><span class="sp"></span><span id="held"></span></div>
+        <div id="poles"></div>
+      </div>
+      <div class="row" id="steer-row" title="The car row's steer, -1 to 1, left positive: the steering wheel turns by it times the look's lock, and the points on it with it. Not saved: the game's driver sets it."><span class="lab">steer</span><input id="steer" type="range" min="-1" max="1" step="0.01" value="0"><span id="steer-at">0.00</span></div>
+      <div class="reach"></div>
+      <div class="row" id="targets-row"><span class="lab" id="targets-label">point</span><div class="btns" id="targets"></div></div>
+      <div class="row add" title="A node hangs from the node chosen above (or the model, when none is); a model with no nodes takes an empty"><input data-add placeholder="new node or empty"><button data-act="add">Add</button></div>
+      <div class="row" id="modes"><span class="lab"></span><button data-mode="translate" class="on">Move</button><button data-mode="rotate">Rotate</button></div>
+      <div class="nums">
+        <span>at</span><input data-k="at.0" type="number" step="0.001"><input data-k="at.1" type="number" step="0.001"><input data-k="at.2" type="number" step="0.001"><span>m</span>
+        <span>turn</span><input data-k="turn.0" type="number" step="0.5"><input data-k="turn.1" type="number" step="0.5"><input data-k="turn.2" type="number" step="0.5"><span>°</span>
+      </div>
+      <div class="row"><span class="state"></span><span class="sp"></span><button data-act="revert">Revert</button><button data-act="save">Save to game</button></div>
+    </div>
+  </main>
+  <aside class="right"><h3>Notes</h3><div id="notes"></div></aside>
+</div>
+<script type="module" src="/workshop.ts"></script>
+</body>
+</html>

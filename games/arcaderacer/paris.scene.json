@@ -1,0 +1,100 @@
+{
+  "world": {
+    "predict": { "epsilon": 0.000001, "cutoff": 60, "halflife": 100, "snap": 15, "below": 0.0001 },
+    "seed": 37,
+    "course": "paris",
+    "audiodaw": { "lookAhead": 0.5, "latencyHint": 0.2 },
+    "lights3d": {
+      "grid": [
+        16,
+        9
+      ],
+      "slices": 24
+    }
+  },
+  "plugins": [
+    "loader",
+    "scenemanager",
+    "player",
+    "audiodaw",
+    "particle3d",
+    "lights3d",
+    "dither3d",
+    "render3d",
+    "cull3d",
+    "ui",
+    "shipped",
+    "stats"
+  ],
+  "seats": 8,
+  "prefabs": {
+    "scenemanager": {
+      "out": {}
+    },
+    "music": {},
+    "render3d": {
+      "camera": {
+        "fov": 62,
+        "near": 0.3,
+        "far": 12000,
+        "at": [
+          0,
+          40,
+          -60
+        ],
+        "look": [
+          0,
+          0,
+          0
+        ]
+      },
+      "pixelRatio": 3,
+      "tone": "none",
+      "exposure": 1.3,
+      "shadows": "soft",
+      "background": "#3c4672",
+      "bloom": {
+        "strength": 0.01,
+        "radius": 0.2,
+        "threshold": 1
+      }
+    }
+  },
+  "actors": [
+    {
+      "is": "scenemanager"
+    },
+    {
+      "is": "loader"
+    },
+    {
+      "is": "circuit"
+    },
+    {
+      "is": "scenery"
+    },
+    {
+      "is": "music"
+    },
+    {
+      "is": "race"
+    },
+    { "is": "match" },
+    { "is": "start", "slot": 0, "grid": 0 },
+    { "is": "start", "slot": 1, "grid": 1 },
+    { "is": "start", "slot": 2, "grid": 2 },
+    { "is": "start", "slot": 3, "grid": 3 },
+    { "is": "start", "slot": 4, "grid": 4 },
+    { "is": "start", "slot": 5, "grid": 5 },
+    { "is": "start", "slot": 6, "grid": 6 },
+    { "is": "start", "slot": 7, "grid": 7 },
+    { "is": "rival", "grid": 0 },
+    { "is": "rival", "grid": 1 },
+    { "is": "rival", "grid": 2 },
+    { "is": "rival", "grid": 3 },
+    { "is": "rival", "grid": 4 },
+    { "is": "rival", "grid": 5 },
+    { "is": "rival", "grid": 6 },
+    { "is": "rival", "grid": 7 }
+  ]
+}

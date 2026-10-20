@@ -1,0 +1,324 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>arcaderacer dev</title>
+    <style>
+      body { margin: 0; background: #0b0b0e; display: grid; place-items: center; height: 100vh }
+      canvas { grid-area: 1 / 1 }
+      #readout { position: fixed; left: 8px; bottom: 8px; color: #e8e8e8; font: 13px monospace; white-space: pre; background: #000a; padding: 6px 8px }
+    </style>
+  </head>
+  <body>
+    <div id="readout"></div>
+    <script type="module">
+      // The testbed against the server, `node --experimental-strip-types games/arcaderacer/arcaderacer.server.ts`:
+      // one seat a tab, so two tabs (in two windows: Chrome pauses a tab that is not in front) are the
+      // two players on a course. The page dials the server over a socket of its own and runs the course
+      // ahead (addons/predict). Between the page and its socket stands this seat's network (`Net` in
+      // addons/loopback), both ways, which the `network` folder of the panel sets live, from a preset or
+      // by hand, kept in this browser between loads.
+      //   ?watch=<g>   the camera rides behind the rival on grid place g (it claims render3d's camera,
+      //                so the seat's chase camera stands aside) and the readout is that rival's.
+      //   ?fly=<s>     the camera stands over the circuit `s` metres along it, 40 m up, looking down the
+      //                road: to look at a course's features.
+      //   ?nodither    the courses start with dither3d off, drawn at render3d's own pixel ratio.
+      //   ?cpu         the cpu driver starts on (below).
+      //   ?tab         no server: the game's manager truth in this tab, stepped on the page's clock as
+      //                arcaderacer.server.ts steps it, the page joined to it over a loopback with this
+      //                seat's network between them, so the cpu driver and the readout play in one tab.
+      // The readout shows the watched car's speed, drift, slip, boost and where it is on the circuit, how
+      // the page runs ahead, and the draw calls and triangles of the last frame, the shadow maps' and
+      // every pass's with the scene's, and the copies cull3d handed the GPU (`window.drawn` holds them
+      // for a driver). At the top left, three's stats panel (the stats plugin).
+      // At the top right, three's lil-gui: the network; the cpu driver, which drives this seat's car
+      // once the race goes, by the drive plugin's `pilot` with the rival's `ai` on the seat's grid
+      // place, through the player as keys would (its `player` row passes them on to the car it holds), so the server takes its presses as this seat's, and
+      // let go hands the car back with every control at 0; the renderer's tone mapping, exposure, pixel
+      // ratio and shadows; dither3d on or off, its bits and its ratio; the AO's numbers, where a scene
+      // has AO; the bloom's; every pass of the composer on or off; and every object in the scene shown
+      // or hidden, listed again by `refresh`. The render3d folders are made again for each course's
+      // client, and when render3d makes its composer again, with the folders open that were open.
+      import { boot } from '#engine/engine.ts'
+      import { link, load, manager } from '#addons/scenemanager/scenemanager.addon.ts'
+      import { match } from './addons/match/match.addon.ts'
+      import { loopback } from '#addons/loopback/loopback.addon.ts'
+      import { dial } from '#addons/socket/socket.addon.ts'
+      import { predict } from '#addons/predict/predict.addon.ts'
+      import GUI from 'lil-gui'
+      import { def } from '#plugins/loader/loader.sim.ts'
+      import { sample, trackOf } from './plugins/track/track.sim.ts'
+      import { CONTROLS, pilot } from './plugins/drive/drive.sim.ts'
+      import { sim } from './arcaderacer.sim.ts'
+      import file from './arcaderacer.scene.json'
+      import { holding, possessed } from '#plugins/player/player.plugin.ts'
+
+      // Every error the page throws or writes, the last five, shown under the readout, so a course that
+      // will not draw says why on the page.
+      const errors = []
+      const caught = e => {
+        errors.push(String(e?.message ?? e))
+        if (errors.length > 5) errors.shift()
+      }
+      addEventListener('error', e => caught(e.error ?? e.message))
+      addEventListener('unhandledrejection', e => caught(e.reason))
+      const written = console.error.bind(console)
+      console.error = (...a) => { caught(a.map(x => x?.message ?? x).join(' ')); written(...a) }
+
+      const query = new URLSearchParams(location.search)
+      const watch = query.get('watch') === null ? undefined : Number(query.get('watch'))
+      const fly = query.get('fly') === null ? undefined : Number(query.get('fly'))
+      if (query.get('nodither') !== null) file.world.dither3d.on = false
+      const cpu = { on: query.get('cpu') !== null, was: false }
+
+      // This seat's network, both ways, kept in this browser between loads.
+      const leg = () => ({ delay: 0, jitter: 0, tail: false, loss: 0, burst: 0, reorder: 0, dup: 0 })
+      const presets = {
+        clean: leg(),
+        LAN: { ...leg(), delay: 5, jitter: 4, burst: 0.05 },
+        'bad wifi': { ...leg(), delay: 40, jitter: 40, tail: true, loss: 0.01, burst: 0.2 },
+        mobile: { ...leg(), delay: 90, jitter: 80, tail: true, loss: 0.03, burst: 0.3, reorder: 0.02 },
+        awful: { ...leg(), delay: 150, jitter: 150, tail: true, loss: 0.08, burst: 0.4, reorder: 0.05, dup: 0.02 },
+      }
+      const net = { up: leg(), down: leg(), seed: Math.floor(Math.random() * 1e9) }
+      const store = 'arcaderacer.dev.net'
+      try {
+        const saved = JSON.parse(localStorage.getItem(store) ?? 'null')
+        if (saved) { Object.assign(net.up, saved.up); Object.assign(net.down, saved.down) }
+      } catch {}
+      const keepNet = () => { try { localStorage.setItem(store, JSON.stringify({ up: net.up, down: net.down })) } catch {} }
+
+      const time = { now: () => performance.now(), after: (ms, f) => { setTimeout(f, Math.max(0, ms)) } }
+      const url = `ws://${location.hostname}:${file.prefabs.scenemanager.port}`
+      const socket = send => {
+        const w = dial(url)(send)
+        return { take: up => w.send(up), close: () => w.close() }
+      }
+      // The truth in this tab with `?tab`, as index.html boots it; the server's otherwise, over the
+      // socket.
+      const truth = query.get('tab') === null ? undefined : boot(file, sim)
+      if (truth) await load(truth, import.meta.url)
+      window.truth = truth
+      const page = predict(link(loopback(truth ? match(manager(truth)) : socket, time, net)), file, import.meta.url, (me, scene) => {
+        for (const c of document.querySelectorAll('canvas')) c.remove()
+        for (const surface of [me.plugins.render3d ?? me.plugins.render2d, me.plugins.ui]) {
+          if (!surface) continue
+          const canvas = document.createElement('canvas')
+          canvas.width = scene.prefabs.engine.width
+          canvas.height = scene.prefabs.engine.height
+          document.body.appendChild(canvas)
+          surface.mount(canvas)
+        }
+        me.plugins.stats?.mount(document.body)
+      })
+
+      // the page, for a driver to reach its plugins and camera
+      window.page = page
+      const readout = document.getElementById('readout')
+      const owner = 'dev.html'
+
+      // The panel: the network and the cpu driver, made once, and render3d's folders, made again
+      // whenever its renderer or composer is not the one they were made on, with the folders open that
+      // were open.
+      const gui = new GUI({ title: 'arcaderacer dev' })
+      // Keys typed into the panel reach neither this page's keys nor the car's.
+      for (const type of ['keydown', 'keyup']) gui.domElement.addEventListener(type, e => e.stopPropagation())
+      const network = gui.addFolder('network')
+      const setNet = p => {
+        Object.assign(net.up, p)
+        Object.assign(net.down, p)
+        gui.controllersRecursive().forEach(c => c.updateDisplay())
+        keepNet()
+      }
+      const pick = network.addFolder('presets')
+      for (const [name, p] of Object.entries(presets)) pick.add({ [name]: () => setNet(p) }, name)
+      for (const way of ['down', 'up']) {
+        const w = network.addFolder(`${way} (server ${way === 'down' ? '→ page' : '← page'})`)
+        w.add(net[way], 'delay', 0, 400, 1).name('delay ms').onChange(keepNet)
+        w.add(net[way], 'jitter', 0, 300, 1).name('jitter ms').onChange(keepNet)
+        w.add(net[way], 'tail').name('long tail').onChange(keepNet)
+        w.add(net[way], 'loss', 0, 0.5, 0.005).onChange(keepNet)
+        w.add(net[way], 'burst', 0, 0.9, 0.01).onChange(keepNet)
+        w.add(net[way], 'reorder', 0, 0.5, 0.01).onChange(keepNet)
+        w.add(net[way], 'dup', 0, 0.5, 0.01).onChange(keepNet)
+        w.close()
+      }
+      gui.addFolder('driver').add(cpu, 'on').name('cpu driver')
+
+      let looks = [], built
+      const opened = new Set(['renderer', 'dither3d'])
+      function panel(r3, plugins) {
+        const r = r3.renderer, composer = r3.composer
+        if (!r || (built?.r === r && built?.composer === composer)) return
+        if (looks.length) {
+          opened.clear()
+          for (const f of looks) if (!f._closed) opened.add(f._title)
+        }
+        for (const f of looks) f.destroy()
+        looks = []
+        built = { r, composer }
+        const T = r3.THREE
+        const folder = name => {
+          const f = gui.addFolder(name)
+          if (!opened.has(name)) f.close()
+          looks.push(f)
+          return f
+        }
+
+        const view = folder('renderer')
+        view.add(r, 'toneMapping', { neutral: T.NeutralToneMapping, none: T.NoToneMapping }).name('tone')
+        view.add(r, 'toneMappingExposure', 0, 4, 0.01).name('exposure')
+        // The ratio drawn now, dither3d's while it is on; set here, render3d's `ratio`, smoothed.
+        view.add({ get ratio() { return r.getPixelRatio() }, set ratio(v) { r3.ratio(v) } }, 'ratio', 0.125, 3, 0.125).name('pixel ratio').listen()
+        view.add(r.shadowMap, 'enabled').name('shadows').onChange(() => r3.scene.traverse(o => {
+          for (const m of [o.material ?? []].flat()) m.needsUpdate = true
+        }))
+
+        const dither = plugins.dither3d
+        if (dither) {
+          const f = folder('dither3d')
+          f.add(dither, 'on')
+          f.add(dither, 'bits', 1, 8, 1)
+          f.add({ get ratio() { return dither.ratio ?? 0 }, set ratio(v) { dither.ratio = v > 0 ? v : undefined } }, 'ratio', 0, 1, 0.125).name('ratio (0: render3d\'s)')
+        }
+
+        // The passes found by what they hold: this page's import of three's GTAOPass and UnrealBloomPass is
+        // another module than render3d's, so `instanceof` never matches.
+        const ao = composer?.passes.find(p => 'gtaoMaterial' in p)
+        if (ao) {
+          const u = ao.gtaoMaterial.uniforms, d = ao.gtaoMaterial.defines
+          const a = {
+            radius: u.radius.value, distanceExponent: u.distanceExponent.value, thickness: u.thickness.value,
+            distanceFallOff: u.distanceFallOff.value, scale: u.scale.value, samples: d.SAMPLES, screenSpaceRadius: d.SCREEN_SPACE_RADIUS === 1,
+          }
+          const pu = ao.pdMaterial.uniforms
+          const pd = {
+            lumaPhi: pu.lumaPhi.value, depthPhi: pu.depthPhi.value, normalPhi: pu.normalPhi.value, radius: pu.radius.value,
+            radiusExponent: ao.pdRadiusExponent, rings: ao.pdRings, samples: ao.pdSamples,
+          }
+          const f = folder('ao')
+          f.add(ao, 'enabled')
+          const O = ao.constructor.OUTPUT
+          f.add(ao, 'output', { default: O.Default, diffuse: O.Diffuse, 'ao only': O.AO, 'ao denoised': O.Denoise, depth: O.Depth })
+          f.add(ao, 'blendIntensity', 0, 1, 0.01).name('intensity')
+          const on = () => ao.updateGtaoMaterial(a)
+          f.add(a, 'radius', 0.01, 4, 0.01).onChange(on)
+          f.add(a, 'distanceExponent', 1, 4, 0.01).onChange(on)
+          f.add(a, 'thickness', 0.01, 10, 0.01).onChange(on)
+          f.add(a, 'distanceFallOff', 0, 1, 0.01).onChange(on)
+          f.add(a, 'scale', 0.01, 2, 0.01).onChange(on)
+          f.add(a, 'samples', 2, 32, 1).onChange(on)
+          f.add(a, 'screenSpaceRadius').onChange(on)
+          const g = folder('ao denoise')
+          const pon = () => ao.updatePdMaterial(pd)
+          g.add(pd, 'lumaPhi', 0, 20, 0.01).onChange(pon)
+          g.add(pd, 'depthPhi', 0.01, 20, 0.01).onChange(pon)
+          g.add(pd, 'normalPhi', 0.01, 20, 0.01).onChange(pon)
+          g.add(pd, 'radius', 0, 32, 1).onChange(pon)
+          g.add(pd, 'radiusExponent', 0.1, 4, 0.1).onChange(pon)
+          g.add(pd, 'rings', 1, 16, 0.125).onChange(pon)
+          g.add(pd, 'samples', 2, 32, 1).onChange(pon)
+        }
+
+        const bloom = composer?.passes.find(p => 'bloomTintColors' in p)
+        if (bloom) {
+          const f = folder('bloom')
+          f.add(bloom, 'enabled')
+          f.add(bloom, 'strength', 0, 3, 0.01)
+          f.add(bloom, 'radius', 0, 1, 0.01)
+          f.add(bloom, 'threshold', 0, 2, 0.01)
+        }
+
+        if (composer) {
+          const f = folder('passes')
+          composer.passes.forEach((p, i) => f.add(p, 'enabled').name(`${i} ${p.constructor.name}`).listen())
+        }
+
+        const objects = folder('objects')
+        const list = () => {
+          for (const c of [...objects.controllers]) c.destroy()
+          objects.add({ refresh: list }, 'refresh')
+          r3.scene.children.forEach((o, i) => objects.add(o, 'visible').name(`${i} ${o.name || o.type}`))
+        }
+        list()
+      }
+
+      // The truth in this tab, stepped on the page's clock as the server steps its own.
+      const dt = file.prefabs.engine.dt
+      let last = performance.now(), owed = 0
+      const loop = async now => {
+        if (truth) {
+          owed += Math.min((now - last) / 1000, 0.25)
+          last = now
+          while (owed >= dt) { truth.step(dt); owed -= dt }
+        }
+        const plugins = page.client?.plugins, rows = plugins?.wire.rows ?? []
+        const r3 = plugins?.render3d
+        const me = possessed(rows), car = holding(rows)
+        const watched = watch === undefined ? car : rows.find(r => r.kind === 'rival' && r.data.grid === watch)
+        if (fly !== undefined && r3?.camera && r3.claim(owner)) {
+          const t = trackOf(plugins.wire)
+          const c = sample(t, fly), ahead = sample(t, fly + 80)
+          r3.camera.position.set(c.x - Math.sin(c.yaw) * 30, c.y + 40, c.z - Math.cos(c.yaw) * 30)
+          r3.camera.up.set(0, 1, 0)
+          r3.camera.lookAt(ahead.x, ahead.y, ahead.z)
+        } else if (watch !== undefined && r3?.camera && watched && r3.claim(owner)) {
+          const { pos, cam } = watched.data
+          r3.camera.position.set(pos[0] - Math.sin(cam) * 8, pos[1] + 3, pos[2] - Math.cos(cam) * 8)
+          r3.camera.up.set(0, 1, 0)
+          r3.camera.lookAt(pos[0] + Math.sin(cam) * 4, pos[1] + 1, pos[2] + Math.cos(cam) * 4)
+        }
+        // The cpu driver: each control of the seat's car pressed where it is off the pilot's; let go,
+        // every control back to 0.
+        if (plugins?.player && car) {
+          const phase = rows.find(r => r.kind === 'race')?.data.phase
+          if (cpu.on && car.data.seg >= 0 && phase !== 'grid' && phase !== 'count') {
+            const start = rows.find(r => r.kind === 'start' && r.data.slot === me.data.seat)
+            const wants = pilot(plugins.wire, car, def(plugins.wire, 'rival').ai, start.data.grid)
+            for (const name of Object.keys(CONTROLS)) if (Math.abs(wants[name] - car.data[name]) > 0.01) plugins.player[name](wants[name])
+            cpu.was = true
+          } else if (!cpu.on && cpu.was) {
+            for (const name of Object.keys(CONTROLS)) plugins.player[name](0)
+            cpu.was = false
+          }
+        }
+        // What the frame cost the GPU: three's counts kept over every render of the frame (the shadow
+        // maps, the composer's passes), not only its last.
+        if (r3?.renderer) {
+          r3.renderer.info.autoReset = false
+          r3.renderer.info.reset()
+        }
+        // A frame that throws is shown, and the next frame goes on.
+        try {
+          page.input()
+          await page.frame(now)
+        } catch (e) { caught(e) }
+        const d = watched?.data, s = page.stats, { up, down } = net
+        readout.textContent = [
+          `${page.name ?? '…'}  seat ${me?.data.seat ?? '?'}`,
+          ...(d ? [`${watched.kind} ${watch ?? ''}  ${(d.speed * 3.6).toFixed(0)} km/h  drift ${d.drift} slip ${d.slip.toFixed(2)} slide ${d.slide.toFixed(2)}  boost ${d.boost.toFixed(2)}  lap ${d.lap}  s ${d.s.toFixed(0)}  scrape ${Math.min(d.scrape, 99).toFixed(2)}`] : []),
+          `down ${down.delay}+${down.jitter}${down.tail ? ' tail' : ''} ms loss ${down.loss}   up ${up.delay}+${up.jitter}${up.tail ? ' tail' : ''} ms loss ${up.loss}`,
+          `${s.predicting ? 'predicting' : 'not predicting'}  step ${s.n}  ${s.behind} behind the server`,
+          `corrections ${s.corrections}  drifts ${s.drifts}  packets checked ${s.checked}`,
+          `other seat's presses taken ${s.taken}, too late ${s.missed}  steps gone back ${s.back}`,
+          `snapshots loaded at ${s.loads.slice(-6).join(', ')}`,
+          ...(s.differed ? [`last differed at ${s.differed.n}: ${s.differed.rows.map(r => r.kind + ' ' + r.id).join(', ')}`] : []),
+          ...(s.drifted ? [`last drifted at ${s.drifted.n} by ${s.drifted.by.toExponential(2)}: ${s.drifted.rows.map(r => r.kind + ' ' + r.id).join(', ')}`] : []),
+          ...errors,
+        ].join('\n')
+        // The client the frame drew with, which may be another course's, or the title's with no render3d.
+        const drew = page.client?.plugins.render3d
+        if (drew?.renderer && drew === r3) {
+          const info = drew.renderer.info.render
+          const copies = page.client.plugins.cull3d?.drawn
+          window.drawn = { calls: info.calls, triangles: info.triangles, copies }
+          readout.textContent += `\n${info.calls} draws  ${(info.triangles / 1e6).toFixed(2)}M triangles a frame` + (copies === undefined ? '' : `  ${copies} copies in view`)
+        }
+        if (drew) panel(drew, page.client.plugins)
+        else if (looks.length) { for (const f of looks) f.destroy(); looks = []; built = undefined }
+        requestAnimationFrame(loop)
+      }
+      requestAnimationFrame(loop)
+    </script>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+{
+ "mcpServers": {
+  "editor": {
+   "type": "http",
+   "url": "http://localhost:5173/api/mcp"
+  }
+ }
+}
