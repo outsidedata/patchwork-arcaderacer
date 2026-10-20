@@ -4,7 +4,7 @@
 // catalogue urls are written for the host's path, and nothing of the tests, the server or the
 // testbed is in it.
 import { afterAll, expect, test, vi } from 'vitest'
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -69,6 +69,17 @@ test('under a path of the host, a catalogue url names the file at that path, and
   expect(Object.values(written)[0].url).toBe(`/fresh/${url.slice('/games/fresh/'.length)}`)
   for (const f of ['fresh.sim.test.js', 'dev.html', 'client.html', 'fresh.server.js', 'assets/make.js', 'assets/make.ts']) expect(existsSync(at('sub', f)), f).toBe(false)
   expect(existsSync(at('sub', 'core/engine/engine.test.js'))).toBe(false)
+})
+
+test('in a repo whose games/ holds the game alone, the game\'s README becomes the repo\'s; with another game there, the repo keeps its own', async () => {
+  writeFileSync(path.join(root, 'games/fresh/README.md'), '# fresh\n')
+  await produceStaticSite({ root, game: 'fresh', out: 'site', base: '/' })
+  expect(readFileSync(path.join(root, 'README.md'), 'utf8')).toBe('# fresh\n')
+  mkdirSync(path.join(root, 'games/other'))
+  writeFileSync(path.join(root, 'games/fresh/README.md'), '# fresh, again\n')
+  await produceStaticSite({ root, game: 'fresh', out: 'site', base: '/' })
+  expect(readFileSync(path.join(root, 'README.md'), 'utf8')).toBe('# fresh\n')
+  rmSync(path.join(root, 'games/other'), { recursive: true })
 })
 
 test('a game that is not there, a base that is not a path and an out that is the repo are refused', async () => {

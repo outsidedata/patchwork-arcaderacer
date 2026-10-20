@@ -1,7 +1,7 @@
 // Names every file of a game that git would commit and that is raw, which `committing-a-game` keeps
 // out: `node .claude/skills/committing-a-game/scripts/raw.mjs games/<game>`, from the root.
 // It reads the files git would commit in that folder, tracked and untracked but not ignored, so a
-// game's `.gitignore` (its cc0 maps) is honoured, and names:
+// game's `.gitignore` is honoured, and names:
 //   a glb not packed by gltfpack: its `asset.generator` is not gltfpack's, so it is a plain export
 //   a model or scene source: .fbx .blend .blend1 .obj .gltf .dae .3ds .max .ma .mb .usd .usda .usdc .usdz
 //   an archive: .zip .7z .rar .tar .gz .tgz

@@ -18,6 +18,10 @@
 // chunks of its own, so `three` and `three/addons/…` are one three. A `.json` file imported is a
 // `.json.js` module beside it that exports it. No import map resolves anything: a worker has none.
 //
+// In a game's own repo, whose `games/` holds that game alone, the game's `README.md` is copied over the
+// repo's `README.md`, so the repo's page on GitHub shows the game's README and not the engine's. A
+// repo whose `games/` holds other games too, core's own, keeps its README.
+//
 // A catalogue url is a path from the repo's root (`/games/<game>/assets/…`), so in each of the game's
 // `.json` files a string that is a path from the repo's root to a file of the site is written as
 // that file's path on the host: `--base` and its path in the site.
@@ -223,6 +227,11 @@ export async function produceStaticSite({ root, game, out, base }: Site): Promis
       logLevel: 'silent',
     })
   }
+
+  // The game's own repo shows the game's README.
+  const games = readdirSync(path.join(root, 'games')).filter(n => statSync(path.join(root, 'games', n)).isDirectory())
+  const readme = path.join(root, home, 'README.md')
+  if (games.length === 1 && existsSync(readme)) copyFileSync(readme, path.join(root, 'README.md'))
 
   return { files: [...written, ...walk(outDir, `${CORE}/vendor`, () => false)].sort() }
 }

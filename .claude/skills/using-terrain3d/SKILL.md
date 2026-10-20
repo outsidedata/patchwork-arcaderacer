@@ -505,7 +505,6 @@ Each names its culprit:
 
 | Mistake | Fix |
 |---|---|
-| A field with `bands`, `grain` or `detail` | Those are gone. The look is `ground` |
 | A 3D actor left at y = 0, under the land | Only solids and walker stand a row on the land themselves, through their mods. Any other actor's `actors` entry has the land's height at its x, z written into `pos[1]` (`auditing-a-game`) |
 | A plugin field `ground: 'terrain3d'` then `plugins[ground]` | A `land` or `ground` mod named in `world.<p>.mods` |
 | `terrain3d` listed after `render3d` or after skydome3d | Before both. Listed after render3d it lags a frame silently |

@@ -13,7 +13,7 @@
 //   supercar/supercar.glb              supercar.py builds the car and saves its scene; export_glb.py
 //                                      exports the car from it, in a Blender of its own
 // The courses' ground and road, `surfaces/<set>-<map>-1024.webp`, are cut by the bake itself from the
-// cc0-textures sets `cc0-textures.json` names, before this runs, and never committed. The effects'
+// cc0-textures sets `cc0-textures.json` names, before this runs, and committed with the game. The effects'
 // sheet (`fx/fx.mjs`) and the songs (`music/jungle.song.ts`) read nothing from the library and are
 // written by their own scripts.
 import path from 'node:path'
