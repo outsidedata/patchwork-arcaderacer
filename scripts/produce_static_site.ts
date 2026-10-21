@@ -31,7 +31,7 @@
 // which is a script that makes its art and data and that the game never reads, every `.md`, `.py`,
 // `.pyc` and `.mjs`, every file or folder whose name starts with a dot, what Vite's `server.fs.deny`
 // keeps out, and a `.ts` file that imports a package that is not one of `dependencies`, a tool of the
-// tests or of node. A file of the site that imports a file the site does not hold stops the build,
+// tests or of node, and every `.ts` file that imports such a tool, at any remove. A file of the site that imports a file the site does not hold stops the build,
 // naming both, and so does a game whose folder holds a `core`.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
@@ -121,6 +121,24 @@ export async function produceStaticSite({ root, game, out, base }: Site): Promis
     if (m.imports.some(i => i.n !== undefined && bare(i.n) && !dependencies.has(packageOf(i.n)))) tools.push(rel)
     else modules.push(m)
   }
+  // The file of the repo a name a file imports is, by the bundler's resolution: the name as written,
+  // its `.ts` file, or its folder's `index.ts`; undefined for a package or node's own.
+  const resolved = (spec: string, from: string): string | undefined => {
+    if (bare(spec) || spec.startsWith('node:')) return undefined
+    const alias = aliases.find(([a]) => spec.startsWith(a))
+    const written = alias ? path.posix.join(alias[1], spec.slice(alias[0].length)) : path.posix.join(path.posix.dirname(from), spec)
+    return [written, `${written}.ts`, `${written}/index.ts`].find(f => files.includes(f)) ?? written
+  }
+  // A file that imports a tool is a tool too: it runs where that tool runs, and never in a page.
+  for (let moved = true; moved;) {
+    moved = false
+    for (const m of [...modules]) {
+      if (!m.imports.some(i => i.n !== undefined && tools.includes(resolved(i.n, m.rel) ?? ''))) continue
+      tools.push(m.rel)
+      modules.splice(modules.indexOf(m), 1)
+      moved = true
+    }
+  }
   const copied = files.filter(f => !f.endsWith('.ts'))
 
   // The page's module scripts, compiled as a module at `games/<game>/index.html`.
@@ -141,10 +159,7 @@ export async function produceStaticSite({ root, game, out, base }: Site): Promis
       vendored.add(spec)
       return `${CORE}/vendor/${spec}.js`
     }
-    const alias = aliases.find(([a]) => spec.startsWith(a))
-    const written = alias ? path.posix.join(alias[1], spec.slice(alias[0].length)) : path.posix.join(path.posix.dirname(from), spec)
-    // A name with no extension is its `.ts` file, or its folder's `index.ts`, as the bundler resolves it.
-    const at = [written, `${written}.ts`, `${written}/index.ts`].find(f => held.has(f.replace(/\.ts$/, '.js')) || tools.includes(f)) ?? written
+    const at = resolved(spec, from)!
     if (at.endsWith('.ts')) {
       const js = at.replace(/\.ts$/, '.js')
       if (!held.has(js)) throw new Error(`${from} imports ${spec}, and the site holds no ${at}${tools.includes(at) ? ': it imports a package outside dependencies' : ''}`)

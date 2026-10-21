@@ -20,6 +20,9 @@ await newGame('fresh', root)
 writeFileSync(path.join(root, 'games/fresh/fresh.sim.test.ts'), 'export {}\n')
 writeFileSync(path.join(root, 'games/fresh/dev.html'), '<!doctype html>\n')
 writeFileSync(path.join(root, 'games/fresh/assets/make.ts'), "import { readFileSync } from 'node:fs'\nexport const made = readFileSync\n")
+mkdirSync(path.join(root, 'games/fresh/lab'))
+writeFileSync(path.join(root, 'games/fresh/lab/raw.ts'), "import { AudioContext } from 'node-web-audio-api'\nexport const made = AudioContext\n")
+writeFileSync(path.join(root, 'games/fresh/lab/run.ts'), "import { made } from './raw'\nexport const ran = made\n")
 
 const at = (out: string, f: string) => path.join(root, out, f)
 
@@ -60,14 +63,14 @@ test('three and its addons are one three in the site\'s vendor', async () => {
   expect(new FullScreenQuad()._mesh).toBeInstanceOf(three.Mesh)
 })
 
-test('under a path of the host, a catalogue url names the file at that path, and the tests, the server, the testbed and the art\'s scripts are left out', async () => {
+test('under a path of the host, a catalogue url names the file at that path, and the tests, the server, the testbed, the art\'s scripts and a node tool and what imports it are left out', async () => {
   const catalogue = JSON.parse(readFileSync(path.join(root, 'games/fresh/main.scene.json'), 'utf8')).world.loader.assets as Record<string, { url: string }>
   const url = Object.values(catalogue)[0].url
   expect(url.startsWith('/games/fresh/')).toBe(true)
   await produceStaticSite({ root, game: 'fresh', out: 'sub', base: '/fresh/' })
   const written = JSON.parse(readFileSync(at('sub', 'main.scene.json'), 'utf8')).world.loader.assets as Record<string, { url: string }>
   expect(Object.values(written)[0].url).toBe(`/fresh/${url.slice('/games/fresh/'.length)}`)
-  for (const f of ['fresh.sim.test.js', 'dev.html', 'client.html', 'fresh.server.js', 'assets/make.js', 'assets/make.ts']) expect(existsSync(at('sub', f)), f).toBe(false)
+  for (const f of ['fresh.sim.test.js', 'dev.html', 'client.html', 'fresh.server.js', 'assets/make.js', 'assets/make.ts', 'lab/raw.js', 'lab/run.js']) expect(existsSync(at('sub', f)), f).toBe(false)
   expect(existsSync(at('sub', 'core/engine/engine.test.js'))).toBe(false)
 })
 
