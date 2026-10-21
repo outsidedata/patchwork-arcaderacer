@@ -14,14 +14,14 @@
 // The names `world.shipped.plugins` lists are also how a mod of a game's plugin is found, in the
 // game's folder beside it (`addons/scenemanager`'s mods): a game's plugin reaches another plugin,
 // and is reached, through a mod as a top-level one is; `listed` there is the order they tick in.
-import type { Plugins } from '#engine/browser.ts'
+import { imported, type Plugins } from '#engine/browser.ts'
 
 export function shipped() {
   let made: any[] | undefined
 
   async function load(plugins: Plugins) {
     const names: string[] = plugins.wire.scene.world?.shipped?.plugins ?? []
-    const mods = await Promise.all(names.map(n => import(/* @vite-ignore */ new URL(`plugins/${n}/${n}.plugin.ts`, plugins.wire.home).href)))
+    const mods = await Promise.all(names.map(n => imported(new URL(`plugins/${n}/${n}.plugin.ts`, plugins.wire.home).href)))
     made = names.map((n, i) => {
       if (n in plugins) throw new Error(`shipped plugin ${n} has the name of a plugin the scene already names`)
       if (!(n in mods[i])) throw new Error(`plugins/${n}/${n}.plugin.ts does not export ${n}`)

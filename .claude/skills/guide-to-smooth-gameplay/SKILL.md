@@ -70,8 +70,12 @@ the same way, off the same count.
 ## The rules that keep it smooth
 
 - **Turns are set whole**, as a quaternion: `quaternion.setFromAxisAngle`, `quaternion.fromArray`.
-  Never one Euler angle alone (`rotation.y = yaw`): past 90° three hands back a mirrored set of angles,
-  and the blend turns the long way round every frame (`writing-the-look`, A kind's look).
+  Never `.rotation` (`rotation.y = yaw`, `rotation.set(...)`), anywhere, on any object or the camera.
+  A `.rotation` set judders. This is certain, not a maybe: doom's enemy sprites (sprite3d's
+  `rotation.y`) and its camera (`rotation.set(0, yaw, 0)`) wiggled, and setting the quaternion instead
+  fixed it completely (2026-10-21). When something wiggles, find every `.rotation` set and replace it
+  with the quaternion. That is the fix; don't probe, measure or doubt it first (`writing-the-look`, A
+  kind's look).
 - **Motion is a law solved exactly over `dt`**, so it moves the same at every step rate
   (`tuning-feel`, step 1). The three `dt`s (`prefabs.engine.dt` in the manager, `prefabs.scenemanager.dt`
   beside it, each child's `prefabs.engine.dt`) change together.
@@ -94,7 +98,7 @@ the same way, off the same count.
 | The camera slides across the level for a frame on a teleport or respawn | not flagged | `userData.teleport` on the frame it is put there |
 | It still slides for part of the step | the flag set and lowered in the same `tick`, before render3d drew | lower it on a later frame |
 | A thing that jumps every step (a lamp pool) streaks | blended | leave its flag up |
-| A turn spins the long way | one Euler angle set alone | the whole quaternion |
+| A turn spins the long way, or a sprite, camera or mesh wiggles | `.rotation` set (`rotation.y = …`, `rotation.set(…)`) | the whole quaternion, `quaternion.setFromAxisAngle`: this is the cause, every time |
 | A look's own smoothing lags and wobbles | a second blend over render3d's | write the object from the row as it is |
 | The flag on a group, and a child still slides | the child moved itself | flag the child |
 | A jump missed on some frames | a one-step boolean on the row | a count |

@@ -1,6 +1,6 @@
 ---
 name: starting-a-game
-description: Use when starting a new game in core or a clone of it, from `yarn new-game <name>` or the editor's File → New Game to the first thing of its own playing. Triggers on "make a new game", "new game", "start a game", "set up a game folder", "what is this file in my game for" (`<game>.scene.json`, `<scene>.scene.json`, `<scene>.sim.ts`, `start.sim.ts`, `player.sim.ts`, `assets/<game>.json`, `index.html`, `client.html`, `<game>.server.ts`), folding the `body` the template writes into the seat's `player` row and writing `client.html` again with `predict` and the scene's `world.predict`, the press test `<game>.predict.test.ts`, where a new game's first numbers go, giving a scene a seed, adding the game's first kind of its own, writing a `dev.html` testbed, opening the game with `yarn editor <game>`, playing it in one tab, and running it on node against its server with `client.html`.
+description: Use when starting a new game in core or a clone of it, from `yarn new-game <name>` or the editor's File → New Game to the first thing of its own playing. Triggers on "make a new game", "new game", "start a game", "set up a game folder", "what is this file in my game for" (`<game>.scene.json`, `<scene>.scene.json`, `<scene>.sim.ts`, `start.sim.ts`, `player.sim.ts`, `assets/<game>.json`, `index.html`, `client.html`, `<game>.server.ts`), folding the `body` the template writes into the seat's `player` row and writing `client.html` again with `predict` and the scene's `world.predict`, the press test `<game>.predict.test.ts`, where a new game's first numbers go, giving a scene a seed, adding the game's first kind of its own, its first texture or model (`assets/cc0-textures.json`, `assets/<game>.bake.ts`, `yarn bake <game>`, never a fetch script of its own or jpgs in `assets/`), writing a `dev.html` testbed, opening the game with `yarn editor <game>`, playing it in one tab, and running it on node against its server with `client.html`.
 ---
 
 # Starting a game
@@ -335,6 +335,30 @@ gets `pos` in its prefab before the Actors panel lists it. The entry Place write
 and nothing else; every other field the row needs comes from the prefab or is written into the entry
 by hand.
 
+## Its first art, and its bake
+
+The first texture or model a game draws comes in the way it will ship, from the start: there is no
+"for now" file that is fixed at the commit. The rule is `bringing-in-art` (Where a file and its entry
+go) and the check is `committing-a-game`; what a new game sets up for it is:
+
+- **Textures from cc0-textures.com** (a ground, a wall, a floor) are named in
+  `games/<game>/assets/cc0-textures.json`, `{ folder, sizes, sets: { <name>: { set, maps } } }`, each
+  `set` a name in the library's list (`textures/cc0-textures.json` in `PATCHWORK_LIBRARY`), each map
+  `color`, `normal` or `roughness` (the header of `scripts/cc0.ts`). `yarn bake <game>` downloads the
+  set into the library once and cuts each map to `assets/<folder>/<name>-<map>-<size>.webp`, which the
+  scene's catalogue names and the game commits. A set not in the library's list is swapped for one
+  that is. The game never fetches a set itself: no script of its own that downloads a zip and writes
+  jpgs or pngs into `assets/`, and no full-size map copied in.
+- **A model a script builds** (a Blender script of the game's, in `assets/<model>/`) is run by the
+  game's `assets/<game>.bake.ts`: `blender` into the bake's `scratch`, then `pack` into the glb the
+  catalogue names, so the game commits the script and the packed glb, never Blender's raw export
+  (`scripts/bake.ts`, its header).
+- **Art a script draws from nothing** (a sprite sheet, a sound from a recipe) is that script, kept
+  beside what it writes, and what it writes; it reads nothing from the library.
+
+`yarn bake <game>` then `node .claude/skills/committing-a-game/scripts/raw.mjs games/<game>` says
+there is no raw file before the game is committed the first time.
+
 ## The pages
 
 Every game has the same two pages, line for line but the files they import (prime directive, The
@@ -543,6 +567,10 @@ plays; the server keeps stepping.
   nothing is run ahead, whatever row the thing is on.
 - `games/games.test.ts` failing on the generated `body.sim.ts`: its `move` calls `Math.hypot`, which
   a rule never does. The fold writes `math.hypot`.
+- A game given a fetch script of its own that downloads cc0-textures sets and writes full-size jpgs
+  into `assets/`: megabytes of raw pictures in the game's repo, which `raw.mjs` names, and sets the
+  library never holds. The sets are named in `assets/cc0-textures.json` and the bake cuts them to
+  `.webp` (Its first art, and its bake).
 
 ## Proof
 

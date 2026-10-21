@@ -85,6 +85,8 @@ export function sprite3d() {
       if (order.indexOf('render3d') < order.indexOf('sprite3d'))
         throw new Error('sprite3d is listed after render3d, which would draw every sprite before it is turned')
       const { THREE, camera } = plugins.render3d
+      // A sprite's turn is set whole, about y, so render3d blends it between the steps the short way.
+      const up = new THREE.Vector3(0, 1, 0)
       const here = new Set<number>()
       for (const row of plugins.wire.rows) {
         const spec = table.kinds[row.kind]
@@ -116,7 +118,7 @@ export function sprite3d() {
         mesh.material = material(plugins, table, page)
         mesh.visible = true
         mesh.position.fromArray(d.pos)
-        mesh.rotation.y = Math.atan2(camera.position.x - d.pos[0], camera.position.z - d.pos[2])
+        mesh.quaternion.setFromAxisAngle(up, Math.atan2(camera.position.x - d.pos[0], camera.position.z - d.pos[2]))
         // PlaneGeometry holds its corners top-left, top-right, bottom-left, bottom-right.
         const [tx, ty, tw, th] = f.trim, [ax, ay] = f.anchor, ppm = table.ppm
         const left = (tx - ax) / ppm, right = (tx + tw - ax) / ppm, top = (ay - ty) / ppm, bottom = (ay - ty - th) / ppm

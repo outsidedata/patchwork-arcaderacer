@@ -98,7 +98,7 @@
 // `removeEventListener`, `style` and `remove`. Two links are two seats, and the view's `client` is
 // the one client it holds.
 import { boot, type Arg, type Msg, type Packet, type Row, type Scene, type Sim, type Snapshot, type Truth } from '#engine/engine.ts'
-import { client, type Client } from '#engine/browser.ts'
+import { client, imported, type Client } from '#engine/browser.ts'
 import { free, join, leave, possessed } from '#addons/player/player.addon.ts'
 import { predicts, rewind, type Rewind, type Written } from '#addons/rewind/rewind.addon.ts'
 import type { Accept, Time, Wire } from '#addons/loopback/loopback.addon.ts'
@@ -211,7 +211,7 @@ async function loadMods(world: Record<string, any>) {
     for (const [name, entry] of Object.entries((fixed?.mods ?? {}) as Record<string, string | string[]>)) {
       for (const a of names(entry)) {
         const url = modUrl(world, a, p)
-        if (!mods.has(url)) mods.set(url, await import(/* @vite-ignore */ url))
+        if (!mods.has(url)) mods.set(url, await imported(url))
         if (typeof mods.get(url)![name] !== 'function') throw new Error(`${url} does not export ${name}`)
       }
     }
@@ -324,7 +324,7 @@ async function halves(name: string, e: Entry, base: string): Promise<{ scene: Sc
     throw new Error(`scene ${name} names an enter that is not a kind and an act`)
   if (!e.file.endsWith('.scene.json')) throw new Error(`scene ${name} names ${e.file}, not a .scene.json`)
   const file = e.file.replace(/\.scene\.json$/, '.sim.ts')
-  const mod = await import(/* @vite-ignore */ new URL(file, base).href)
+  const mod = await imported(new URL(file, base).href)
   if (!('sim' in mod)) throw new Error(`${file} exports no sim`)
   if (!('scene' in mod)) throw new Error(`${file} exports no scene`)
   return { scene: mod.scene as Scene, sim: mod.sim as Sim }

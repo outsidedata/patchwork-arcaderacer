@@ -2,11 +2,17 @@
 // packets from the one plugin with a mounted `pipe`, and gives each row a `<kind>.client.ts`
 // next to the page (setup, tick, remove). No client file, no actor, and no request for one: the
 // client starts by reading which kinds have a look (`looked`, below), and imports a row's file only
-// when its kind is one of them. Each row's file is imported as
-// `<kind>.client.ts?row=<id>&client=<c>`, `c` this client's own number, so every row of every client
-// runs a module of its own: what an actor keeps at the top of its file, the mesh it drew, is that
-// row's, and two clients in one tab (two seats, the editor's views) never share one. `actor(id)` is
-// the module this client runs for row `id`.
+// when its kind is one of them. A kind's file is imported once, as `<kind>.client.ts?instance`, the
+// file made to hand out a fresh copy of itself (`scripts/instance.ts`), and each row is set up on a
+// copy of its own, `instance()`: what an actor keeps at the top of its file, the mesh it drew, is
+// that row's, and two clients in one tab (two seats, the editor's views) never share one.
+// `actor(id)` is the copy this client runs for row `id`.
+//
+// The bundle. Every module a page loads while it runs, a plugin, a scene's sim, a mod, a drawing
+// file, is loaded through `imported(url)`. A page the dev server or the static site built into a
+// bundle (`scripts/bundle.ts`) holds each of them in it, and `imported` takes it from there, so no
+// request goes out for its code; anywhere else, in a test or a page served file by file, the url
+// itself is imported.
 // The file exports a function of the plugin's own name and this calls it once, so the renderer,
 // the pipe, the actors and the keys belong to this client alone and go when it closes: a page makes
 // a new client each time the seat moves to another scene, and that one starts with none of them.
@@ -41,20 +47,42 @@ export type Actor = {
 }
 export type Client = Awaited<ReturnType<typeof client>>
 
-// How many clients this realm has made, the number each takes for its actors' modules.
-let made = 0
+// The modules of the bundle this page was built into, by the path and query of the url each is
+// loaded by: handed over by the bundle's own file before the page's script runs
+// (`scripts/bundle.ts`), and none in a page that is no bundle.
+const bundled = (): Record<string, any> => (globalThis as Record<symbol, Record<string, any> | undefined>)[Symbol.for('core.bundle')] ?? {}
+
+// The module at `url`: the bundle's when the page is a bundle holding it, else the url's.
+export function imported(url: string): Promise<any> {
+  const u = new URL(url)
+  const had = bundled()[u.pathname + u.search]
+  return had ? Promise.resolve(had) : import(/* @vite-ignore */ url)
+}
+
+// A drawing file as the page imports it: a maker of fresh copies of itself.
+type Instanced = { instance(): Promise<Actor> }
+
+// The drawing file of `kind` beside the page at `home`, or undefined when it does not load.
+export function drawing(kind: string, home: string): Promise<Instanced | undefined> {
+  return imported(new URL(`${kind}.client.ts?instance`, home).href).catch(() => undefined)
+}
 
 // The kinds that have a look among the names of a folder's files: each `<kind>.client.ts`.
 export function looks(names: string[]): string[] {
   return names.filter(n => /^[^.]+\.client\.ts$/.test(n)).map(n => n.slice(0, -'.client.ts'.length)).sort()
 }
 
-// The kinds that have a look beside the page at `home`. A page on disk, in node or a test, has its
-// folder read. A page over http reads `looks.json` beside it, a list of those kinds, which the dev
-// server makes from the folder each time it is asked (`vite.config.ts`) and the static site's build
-// writes (`scripts/produce_static_site.ts`).
+// The kinds that have a look beside the page at `home`. A bundle holds every one, and names them. A
+// page on disk, in node or a test, has its folder read. A page over http that is no bundle reads
+// `looks.json` beside it, a list of those kinds, which the dev server makes from the folder each time
+// it is asked (`vite.config.ts`).
 async function looked(home: string): Promise<Set<string>> {
   const folder = new URL('.', home)
+  const all = Object.keys(bundled())
+  if (all.length) {
+    const at = /^(.*\/)([^/]+)\.client\.ts\?instance$/
+    return new Set(all.flatMap(k => (at.exec(k)?.[1] === folder.pathname ? [at.exec(k)![2]] : [])))
+  }
   if (folder.protocol === 'file:') return new Set(looks(process.getBuiltinModule('node:fs').readdirSync(folder) as string[]))
   const res = await fetch(new URL('looks.json', folder))
   if (!res.ok) throw new Error(`${res.url} answered ${res.status}: it lists the kinds with a look`)
@@ -63,8 +91,8 @@ async function looked(home: string): Promise<Set<string>> {
 
 export async function client(scene: Scene, home: string) {
   if (!scene.plugins) throw new Error('scene names no plugins')
-  const number = ++made
   const lookable = await looked(home)
+  const files = new Map<string, Promise<Instanced | undefined>>()
   let seq = 0
   const order: any[] = []
   const pipe = (): Pipe => {
@@ -75,7 +103,7 @@ export async function client(scene: Scene, home: string) {
   const wire: Wire = { n: 0, ack: 0, rows: [], home, scene, send: (id, action, ...args) => { const s = ++seq; return pipe().send({ seq: s, n: wire.n, id, action, args }) ? s : 0 } }
   const plugins: Plugins = { wire }
   for (const name of scene.plugins) {
-    const mod = await import(`../plugins/${name}/${name}.plugin.ts`)
+    const mod = await imported(new URL(`../plugins/${name}/${name}.plugin.ts`, import.meta.url).href)
     if (!(name in mod)) throw new Error(`${name}.plugin.ts does not export ${name}`)
     const made = mod[name]()
     plugins[name] = made
@@ -109,9 +137,12 @@ export async function client(scene: Scene, home: string) {
           const row = pkt.rows.find(r => r.id === id)
           if (!row) throw new Error(`truth says row ${id} was born but did not send it`)
           if (!lookable.has(row.kind)) continue
-          const actor: Actor | undefined = await import(/* @vite-ignore */ new URL(`${row.kind}.client.ts?row=${id}&client=${number}`, home).href).catch(() => undefined)
+          if (!files.has(row.kind)) files.set(row.kind, drawing(row.kind, home))
+          const file = await files.get(row.kind)
           if (closed) return
-          if (!actor) continue
+          if (!file) continue
+          const actor = await file.instance()
+          if (closed) return
           actor.setup(row, plugins)
           actors.set(id, actor)
         }

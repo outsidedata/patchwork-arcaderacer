@@ -1,6 +1,6 @@
 ---
 name: know-your-limitations
-description: Use in core, or any clone of it, on every job, and above all before telling Bill something "can't" be done, "won't work", "isn't fine enough", "needs more than a settings change", or costs too much; before doing arithmetic on resolution, fidelity, cells, pixels, memory or speed; before turning a specific instruction into a different plan; and whenever Bill says "stop arguing", "just do it", "do what I said", "stop getting in my way" or "you wasted my time". Claude's judgement on these is unreliable, and arguing with Bill about them wastes his time.
+description: Use in core, or any clone of it, on every job, and above all before taking a screenshot to check judder, wiggle, smoothing or any other motion, before telling Bill something "can't" be done, "won't work", "isn't fine enough", "needs more than a settings change", or costs too much; before doing arithmetic on resolution, fidelity, cells, pixels, memory or speed; before turning a specific instruction into a different plan; and whenever Bill says "stop arguing", "just do it", "do what I said", "stop getting in my way" or "you wasted my time". Claude's judgement on these is unreliable, and arguing with Bill about them wastes his time.
 ---
 
 # Know your limitations
@@ -22,6 +22,11 @@ it stops acting as if it were good at those things.
 - **Knowing when something is simple.** When Bill says "this should be a simple settings change",
   it is. Claude turns it into a five-part plan with new collision shapes, new mods and new plugin
   changes. That is the failure.
+- **Seeing motion.** A screenshot is one frame. Judder, wiggle, wobble, stutter, sliding, popping and
+  anything else about how a thing moves from frame to frame can't be seen in one, or in several taken
+  seconds apart. Never take screenshots to check or prove a fix to smoothing, judder or animation.
+  Measure it across consecutive frames in the page (render3d's `drifted` and `drew`), or make the fix
+  and let Bill watch it at the display's rate.
 - **Following the literal instruction.** Bill says do X, Y and Z. Claude does Z, then Y, then B, C, D
   and E instead of X, because it thinks they add up to X. They don't. Do X, Y and Z.
 

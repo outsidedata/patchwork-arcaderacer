@@ -1,7 +1,7 @@
 // The browser side. A frame takes the packets, then ticks the plugins, then each row's actor with
 // that row, then the plugins' afterTick, so an actor always draws the row the frame just took.
-// An actor is `<kind>.client.ts` in the page's folder, and `frame()` calls its setup, tick and
-// remove.
+// An actor is `<kind>.client.ts` in the page's folder, imported once a kind, and `frame()` calls the
+// setup, tick and remove of each row's own copy of it.
 //
 // The first test writes its scene here: two `faller` rows falling at different rates, and the
 // faller's actor, written into a folder of its own, which is the page's folder the client loads it
@@ -98,6 +98,37 @@ test('a page over http reads the kinds with a look from looks.json beside it', a
   vi.unstubAllGlobals()
   expect(asked).toEqual(['http://looks.test/games/fall/looks.json'])
   me.close()
+})
+
+// A page built into a bundle hands over every module it holds by the url each is loaded by
+// (`scripts/bundle.ts`): the client reads the kinds with a look off it and takes each row's copy from
+// the drawing file it holds, asking the network for neither.
+test('a page that is a bundle takes its looks from the bundle, a copy of its own for each row', async () => {
+  const made: number[] = []
+  const BUNDLE = Symbol.for('core.bundle')
+  ;(globalThis as Record<symbol, unknown>)[BUNDLE] = {
+    '/games/fall/faller.client.ts?instance': {
+      async instance() {
+        let id = 0
+        return { setup(row: { id: number }) { id = row.id; made.push(id) }, tick() {}, remove() { made.splice(made.indexOf(id), 1) } }
+      },
+    },
+  }
+  vi.stubGlobal('fetch', async () => { throw new Error('a bundle asks for nothing') })
+  const truth = boot(scene, sim)
+  const me = await client(scene, 'http://bundle.test/games/fall/index.html')
+  const seat = truth.open()
+  me.plugins.scenemanager.mount({ send: (up: { msg: Msg }) => truth.inbox(seat, up.msg), hear() {}, close() {}, store: {} }, 'fall', seat)
+  truth.onStep(() => me.plugins.scenemanager.hand(truth.packet(seat)))
+  truth.step(DT)
+  await me.frame()
+  vi.unstubAllGlobals()
+  delete (globalThis as Record<symbol, unknown>)[BUNDLE]
+  const ids = me.rows.filter(r => r.kind === 'faller').map(r => r.id)
+  expect(made).toEqual(ids)
+  expect(me.actor(ids[0])).not.toBe(me.actor(ids[1]))
+  me.close()
+  expect(made).toEqual([])
 })
 
 // Input before the steps: `input` runs each plugin's `input`, handed `plugins`, once the client has

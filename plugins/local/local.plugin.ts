@@ -11,13 +11,14 @@
 // from the next.
 // One of these per client, so the table is this scene's: a local actor a menu makes is not in the
 // game's table and stops being ticked the moment the menu's client stops framing.
-// Every spawn imports a module instance of its own, as every truth row does, and a browser keeps
-// every module a page has imported until the page is reloaded, so the top-level variables of a
-// removed local actor are kept with it.
+// Every spawn is set up on a copy of its own of the file, `instance()`, as every truth row is, and
+// the file itself is imported once a name (`drawing`, `engine/browser.ts`), so a thousand sparks
+// fetch it once, and a removed actor's copy goes with it.
 import type { Row } from '#engine/engine.ts'
-import type { Actor, Plugins } from '#engine/browser.ts'
+import { drawing, type Actor, type Plugins } from '#engine/browser.ts'
 
 export function local() {
+  const files = new Map<string, ReturnType<typeof drawing>>()
   let live: { actor: Actor; row: Row }[] = []
   let asked: Row[] = []
   let n = 0
@@ -46,8 +47,12 @@ export function local() {
         if (!(row.kind in prefabs)) throw new Error(`no prefab for ${row.kind}`)
         row.data = { ...structuredClone(prefabs[row.kind]), ...row.data }
       }
-      const actors: Actor[] = await Promise.all(now.map(row =>
-        import(/* @vite-ignore */ new URL(`${row.kind}.client.ts?local=${row.id}`, p.wire.home).href)))
+      const actors: Actor[] = await Promise.all(now.map(async row => {
+        if (!files.has(row.kind)) files.set(row.kind, drawing(row.kind, p.wire.home))
+        const file = await files.get(row.kind)
+        if (!file) throw new Error(`${row.kind}.client.ts did not load`)
+        return file.instance()
+      }))
       if (closed) return
       now.forEach((row, i) => {
         actors[i].setup(row, p)
