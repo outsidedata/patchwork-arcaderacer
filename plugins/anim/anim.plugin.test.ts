@@ -14,7 +14,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js'
 import type { Row, Scene } from '#engine/engine.ts'
 import { written } from '#plugins/loader/loader.sim.ts'
 import { render3d } from '#plugins/render3d/render3d.plugin.ts'
-import type { Measure, Numbers, Rig } from './anim.sim.ts'
+import { posed, type Measure, type Numbers, type Rig } from './anim.sim.ts'
 import { anim } from './anim.plugin.ts'
 
 afterEach(() => { vi.restoreAllMocks() })
@@ -27,11 +27,12 @@ class Reader {
   onloadend = () => {}
   readAsArrayBuffer(b: Blob) { void b.arrayBuffer().then(r => { this.result = r; this.onloadend() }) }
 }
+// The glb's bytes, as exported, and the model three's loader reads from them.
 async function glbOf(scene: THREE.Object3D, animations: THREE.AnimationClip[]) {
   vi.stubGlobal('FileReader', Reader)
   try {
     const bytes = await new GLTFExporter().parseAsync(scene, { binary: true, animations }) as ArrayBuffer
-    return await new GLTFLoader().parseAsync(bytes, '')
+    return { bytes: new Uint8Array(bytes), gltf: await new GLTFLoader().parseAsync(bytes, '') }
   } finally {
     vi.unstubAllGlobals()
   }
@@ -175,11 +176,13 @@ const RIG: Rig = {
   show: { a: ['sword', 'shield'], b: ['sword'] },
 }
 const READS = { pos: 'pos', yaw: 'yaw', vel: 'vel', grounded: 'grounded', limp: 'limp' }
-const ANIM: Numbers = { still: 0.05, shift: 0.75, leap: 0.5, landFall: 7.5, moves: 0.05, turns: 30, kinds: { hero: { rig: 'rig', model: 'paladin', fade: 0.2, reads: READS } } }
+const ANIM: Numbers = { still: 0.05, shift: 0.75, leap: 0.5, landFall: 7.5, moves: 0.05, turns: 30, kinds: { hero: { rig: 'rig', model: 'paladin', glb: 'bytes', fade: 0.2, reads: READS } } }
 
-let gltf: Awaited<ReturnType<typeof glbOf>>
+// The model three's loader reads, and the glb's bytes it read it from, which the server poses by.
+let gltf: Awaited<ReturnType<typeof glbOf>>['gltf']
+let bytes: Uint8Array
 beforeAll(async () => {
-  gltf = await glbOf(body(), Object.entries(KEYS).map(([name, [dur, keys]]) => clip(name, dur, keys)))
+  ;({ gltf, bytes } = await glbOf(body(), Object.entries(KEYS).map(([name, [dur, keys]]) => clip(name, dur, keys))))
 })
 
 // ---------------------------------------------------------------- the page
@@ -203,7 +206,12 @@ let files = 0
 function page(o: { rig?: Rig; numbers?: Numbers; rows?: Record<string, unknown>[]; landed?: boolean; waiting?: string[]; plugins?: string[] } = {}) {
   const url = `test/anim-plugin/${++files}.json`
   written(url, JSON.stringify(o.rig ?? RIG))
-  const scene = { plugins: o.plugins, world: { anim: structuredClone(o.numbers ?? ANIM), loader: { assets: { rig: { type: 'json', url, preload: true }, paladin: { type: 'model', url: 'paladin.glb' } } } }, prefabs: { loader: {} } } as unknown as Scene
+  written('test/anim-plugin/paladin.glb', bytes)
+  const scene = {
+    plugins: o.plugins,
+    world: { anim: structuredClone(o.numbers ?? ANIM), loader: { assets: { rig: { type: 'json', url, preload: true }, paladin: { type: 'model', url: 'paladin.glb' }, bytes: { type: 'binary', url: 'test/anim-plugin/paladin.glb', preload: true } } } },
+    prefabs: { loader: {} },
+  } as unknown as Scene
   const rows: Row[] = (o.rows ?? [{}]).map((data, i) => ({ id: 2 + i, kind: 'hero', data: { pos: [0, 0, 0], yaw: 0, ...data } }))
   const asked: string[] = []
   const models: THREE.Object3D[] = []
@@ -412,6 +420,29 @@ test('each clip\'s share of the hips is where that clip draws them, so a crossfa
   Object.assign(p.row().data, { clip: 'turn', clipT: 0.6, blend: 0.5, from: 'twitch', fromT: 0.3 })
   p.frame()
   same(bone(p.me.model(2)!, 'Hips').quaternion, (key('twitch', 'mixamorigHips.quaternion', 0.3) as THREE.Quaternion).slerp(HIPS_REST, 0.5))
+})
+
+// The server reads the same glb's bytes this half's model was read from (`kinds.hero.glb`).
+test('the server poses every bone off the glb where this half draws it: a crossfade, two gestures sharing the upper body, a turn\'s hips unspun, a carried one-shot\'s and a loop\'s hips pinned', () => {
+  const cases: [string, Record<string, unknown>][] = [
+    ['a crossfade', { clip: 'strike', clipT: 0.2, blend: 0.3, from: 'wave', fromT: 0.6 }],
+    ['two gestures', { clip: 'idle', clipT: 0.5, upper: 'strike', upperT: 0.3, upperW: 0.4, was: 'wave', wasT: 0.7, wasW: 0.3 }],
+    ['a turn', { clip: 'turn', clipT: 0.6, blend: 0.5, from: 'twitch', fromT: 0.3 }],
+    ['a carried one-shot from a loop', { clip: 'dash', clipT: 0.5, blend: 0.25, from: 'walk', fromT: 0.2 }],
+    ['a mirrored loop', { clip: 'strafeRight', clipT: 0.3 }],
+  ]
+  for (const [what, data] of cases) {
+    const p = page({ rows: [data] })
+    p.frame()
+    const m = p.me.model(2)!
+    m.updateMatrixWorld(true)
+    const server = posed(p.plugins.wire, p.row())
+    for (const [name, matrix] of server) {
+      const drawn = bone(m, name).getWorldPosition(new THREE.Vector3())
+      const at = new THREE.Vector3().setFromMatrixPosition(matrix)
+      expect(at.distanceTo(drawn), `${what}: ${name}`).toBeLessThan(1e-6)
+    }
+  }
 })
 
 test('a mirrored clip swaps its Left and Right tracks, negates x positions and the quaternions\' y and z', () => {

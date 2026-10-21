@@ -26,6 +26,14 @@
 // `.json` files a string that is a path from the repo's root to a file of the site is written as
 // that file's path on the host: `--base` and its path in the site.
 //
+// The page is written with the loading screen, `scripts/loading.html` beside this script, just inside
+// its `<body>`, so the host's first bytes draw it while the game's modules load; the game's first
+// canvas to show takes it off the page.
+//
+// Beside the page, `looks.json` lists the kinds with a look the site holds, each `<kind>.client.ts`
+// of the game's folder, which a page's client reads before it imports any row's look
+// (`engine/browser.ts`), so no row asks the host for a look that is not there.
+//
 // Left out: every test (`.test.ts`, `.test.tsx`, `.harness.ts`), every `.tsx`, every `.route.ts`, the
 // game's `<game>.server.ts`, `dev.html` and `client.html`, every `.ts` file in the game's `assets/`,
 // which is a script that makes its art and data and that the game never reads, every `.md`, `.py`,
@@ -39,6 +47,7 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { build, transform } from 'esbuild'
 import { init, parse } from 'es-module-lexer'
+import { looks } from '#engine/browser.ts'
 
 export type Site = { root: string; game: string; out: string; base: string }
 
@@ -143,6 +152,9 @@ export async function produceStaticSite({ root, game, out, base }: Site): Promis
 
   // The page's module scripts, compiled as a module at `games/<game>/index.html`.
   const page = readFileSync(path.join(root, home, 'index.html'), 'utf8')
+  const BODY = /<body\b[^>]*>/
+  if (!BODY.test(page)) throw new Error(`${home}/index.html has no <body>, where the loading screen goes`)
+  const loading = readFileSync(new URL('./loading.html', import.meta.url), 'utf8')
   const SCRIPT = /(<script\b[^>]*\btype=["']module["'][^>]*>)([\s\S]*?)(<\/script>)/g
   const pageModules = await Promise.all([...page.matchAll(SCRIPT)].map(s => compile(`${home}/index.html`, s[2], 'js')))
 
@@ -204,8 +216,9 @@ export async function produceStaticSite({ root, game, out, base }: Site): Promis
   }
 
   for (const m of modules) write(inSite(m.rel.replace(/\.ts$/, '.js')), rewrite(m))
+  write('looks.json', JSON.stringify(looks(modules.filter(m => path.posix.dirname(m.rel) === home).map(m => path.posix.basename(m.rel)))) + '\n')
   let n = 0
-  write('index.html', page.replace(SCRIPT, (_, open, _code, close) => `${open}\n${rewrite(pageModules[n++])}${close}`))
+  write('index.html', page.replace(SCRIPT, (_, open, _code, close) => `${open}\n${rewrite(pageModules[n++])}${close}`).replace(BODY, body => `${body}\n${loading}`))
 
   // A string of a `.json` file that is a path from the repo's root to a file of the site, written as
   // that file's path on the host.

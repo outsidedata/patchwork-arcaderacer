@@ -8,7 +8,7 @@
 // from. The engine takes packets from whatever pipe a plugin has mounted and does not care how it
 // works, so the test's pipe is its own: every step's packet is handed to the scenemanager plugin,
 // and every message it sends goes straight into the truth's inbox.
-import { afterAll, expect, test } from 'vitest'
+import { afterAll, expect, test, vi } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join as path } from 'node:path'
@@ -67,6 +67,36 @@ test('each actor draws the row of the packet taken in the same frame', async () 
   // The two fall at different rates, so a box drawn from the other's row would be off.
   const [a, b] = me.rows.filter(r => r.kind === 'faller')
   expect(a.data.y).not.toBe(b.data.y)
+  me.close()
+})
+
+// A row's look is imported only when its kind is one the client found with a look as it started: a
+// look written into the folder after that is never asked for, and a page over http reads which kinds
+// have one from `looks.json` beside it, once.
+test('a kind with no look when the client starts is never asked for its look', async () => {
+  const dusty: Scene = { ...scene, prefabs: { ...scene.prefabs, dust: {} } }
+  const truth = boot(dusty, { ...sim, dust: {} })
+  const me = await client(dusty, pathToFileURL(home + '/').href)
+  writeFileSync(path(home, 'dust.client.ts'), 'export function setup() {}\nexport function tick() {}\nexport function remove() {}\n')
+  const seat = truth.open()
+  me.plugins.scenemanager.mount({ send: (up: { msg: Msg }) => truth.inbox(seat, up.msg), hear() {}, close() {}, store: {} }, 'fall', seat)
+  truth.onStep(() => me.plugins.scenemanager.hand(truth.packet(seat)))
+  truth.spawn('dust', {})
+  truth.step(DT)
+  await me.frame()
+  const dust = me.rows.find(r => r.kind === 'dust')!
+  expect(me.actor(dust.id)).toBeUndefined()
+  expect(me.rows.filter(r => r.kind === 'faller').every(r => me.actor(r.id))).toBe(true)
+  me.close()
+  rmSync(path(home, 'dust.client.ts'))
+})
+
+test('a page over http reads the kinds with a look from looks.json beside it', async () => {
+  const asked: string[] = []
+  vi.stubGlobal('fetch', async (url: URL) => { asked.push(url.href); return new Response('[]') })
+  const me = await client(scene, 'http://looks.test/games/fall/index.html')
+  vi.unstubAllGlobals()
+  expect(asked).toEqual(['http://looks.test/games/fall/looks.json'])
   me.close()
 })
 

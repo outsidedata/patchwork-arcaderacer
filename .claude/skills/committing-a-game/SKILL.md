@@ -1,6 +1,6 @@
 ---
 name: committing-a-game
-description: Use in core, or any clone of it, before every commit of a game's files, and whenever a game is moved into `games/`, added to the games repo (`outsidedata/patchwork-games`), or its art is committed. A game commits its source and its baked art, never the raw parts its bake reads from the library (`PATCHWORK_LIBRARY`). It covers which files go in and which stay out, `yarn bake <game>` and the game's `<game>.bake.ts`, its cc0 maps, the games repo's own `.gitignore` that lists each game, and `scripts/raw.mjs` beside this file, which names every raw file a game would commit. Triggers on "commit the game", "add the game to games", "move the game into games/", "join the games repo", "raw assets", "baked", "re-bake", "don't commit the source", a .fbx, .blend, .jpg or an unpacked .glb in a game's `assets/`, and `git add` of `games/<game>/assets`.
+description: Use in core, or any clone of it, before every commit of a game's files, and whenever a game is moved or lifted into `games/`, added to the games repo (`outsidedata/patchwork-games`), or its art is committed. A game commits its source and its baked art, never the raw parts its bake reads from the library (`PATCHWORK_LIBRARY`). It covers which files go in and which stay out, the game's `README.md`, written when it has none, `yarn bake <game>` and the game's `<game>.bake.ts`, its cc0 maps, the games repo's own `.gitignore` that lists each game, and `scripts/raw.mjs` beside this file, which names every raw file a game would commit. Triggers on "commit the game", "lift the game", "add the game to games", "move the game into games/", "join the games repo", "raw assets", "baked", "re-bake", "don't commit the source", a .fbx, .blend, .jpg or an unpacked .glb in a game's `assets/`, and `git add` of `games/<game>/assets`.
 ---
 
 # Committing a game
@@ -26,6 +26,23 @@ from there. One file of art is never committed both as its source and as its bak
 The rule for art, and the bake's tools (`blender`, `pack`, `webp`, `scratch`, `library`,
 `texture`), are `bringing-in-art` (Where a file and its entry go) and the header of
 `scripts/bake.ts`. This skill is the check made at the commit.
+
+## The README
+
+Every game commits a `README.md` in its folder, `games/<game>/README.md`. A game moved or lifted
+into `games/` without one has it written before its first commit here. It says, in plain words:
+
+- what the game is, and what a player does in it;
+- its controls;
+- **Playing it**: the commands that play it, `yarn vite` then `/games/<game>/index.html`, and its
+  server, `node --experimental-strip-types games/<game>/<game>.server.ts`, then
+  `/games/<game>/client.html`;
+- **Remaking the art**: `yarn bake <game>`, or the game's own scripts that draw its art and what
+  each writes, and what of the library each reads;
+- **Credit**, when art or sound is someone else's: what it is, who made it, and where it came from.
+
+Each line is read off the game's own files: its scene, its looks and their headers, its scripts.
+`publishing-a-game` copies it over the repo's README in a repo that holds that game alone.
 
 ## Where the game is committed
 
@@ -76,7 +93,8 @@ run is a step missing from the bake, and the step is written.
    in full, in one message, before the commit.
 4. Every file the scene's catalogue names is on disk after the bake, and the game's tests pass: each
    `yarn vitest run <file>` of the game.
-5. `git -C games status --short <game>` (or `git status --short games/<game>` in your own repo): the
+5. `games/<game>/README.md` is there and says what The README asks; it is written when it is not.
+6. `git -C games status --short <game>` (or `git status --short games/<game>` in your own repo): the
    files to commit are the game's source and the files the bake wrote, and nothing the bake did not.
 
 ## What goes wrong

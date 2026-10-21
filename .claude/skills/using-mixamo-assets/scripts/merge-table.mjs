@@ -1,5 +1,6 @@
 // Writes a measured anim table (anim.export.py's <table.json>) into a rig file, the bodies' measured
-// bones (its <table.ends.json> beside it) into the rig's `ends`, each body's over the one it had, and
+// bones (its <table.ends.json> beside it) into the rig's `ends` and their blades' grips (its
+// <table.grips.json>) into the rig's `grips`, each body's over the one it had, and
 // any `<body>=<fbx>` given into its `bodies`, in the rig's own layout: one-space indent, every array of
 // plain values on one line.
 //   node merge-table.mjs <rig.json> <table.json> <out rig.json> [<body>=<fbx> ...]
@@ -14,6 +15,8 @@ for (const b of bodies) {
 rig.table = JSON.parse(readFileSync(tablePath, 'utf8'))
 const endsPath = tablePath.replace(/\.json$/, '') + '.ends.json'
 if (existsSync(endsPath)) rig.ends = { ...rig.ends, ...JSON.parse(readFileSync(endsPath, 'utf8')) }
+const gripsPath = tablePath.replace(/\.json$/, '') + '.grips.json'
+if (existsSync(gripsPath)) rig.grips = { ...rig.grips, ...JSON.parse(readFileSync(gripsPath, 'utf8')) }
 
 const flat = a => a.every(x => x === null || typeof x !== 'object')
 function fmt(v, ind) {

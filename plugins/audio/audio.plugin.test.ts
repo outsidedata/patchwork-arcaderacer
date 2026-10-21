@@ -96,6 +96,11 @@ class Ctx {
   createGain() { return new Gain() }
   createPanner() { return new Panner() }
   createStereoPanner() { return new Stereo() }
+  // A file's bytes are its name, as the test's loader hands them beside a gun's manifest.
+  decodeAudioData(bytes: ArrayBuffer) {
+    const name = new TextDecoder().decode(bytes)
+    return Promise.resolve({ name, duration: SECONDS[name] ?? 1 })
+  }
   resume() { this.resumed++; this.run(); return Promise.resolve() }
   close() { this.state = 'closed'; return Promise.resolve() }
   // The gain every sound goes through last: the volume.
@@ -133,14 +138,16 @@ const TABLE = {
 const SOUNDS = ['ding1', 'ding2', 'ding3', 'far', 'saw', 'thud', 'rain', 'wind', 'a', 'b']
 
 // Each step the bell raises what the test queued on it: a cue at its `at`, from itself, or with no
-// place. It walks one metre along x a step while `walk` is set.
+// place; or a round, from itself, `t` seconds into the step. It walks one metre along x a step while
+// `walk` is set.
 const bell: Kind = {
   tick(me, _dt, w) {
     const d = me.data
-    for (const [cue, how, at] of d.queue) {
+    for (const [cue, how, at, t] of d.queue) {
       if (how === 'at') sound(w, cue, at)
       if (how === 'from') sound(w, cue, undefined, me.id)
       if (how === 'bare') sound(w, cue)
+      if (how === 'round') sound(w, cue, undefined, me.id, t)
     }
     d.queue = []
     if (d.walk) d.pos = [d.pos[0] + 1, d.pos[1], d.pos[2]]
@@ -160,7 +167,7 @@ const rig = (table: Record<string, unknown> = TABLE) => {
   }
   const truth = boot(scene, { audio: ledger, bell, sky })
   const bells = truth.rows.filter(r => r.kind === 'bell')
-  const ring = (i: number, cue: string, how = 'at', at: number[] = [0, 0, 0]) => bells[i].data.queue.push([cue, how, at])
+  const ring = (i: number, cue: string, how = 'at', at: number[] = [0, 0, 0], t?: number) => bells[i].data.queue.push([cue, how, at, t])
   const step = (k = 1) => { for (let i = 0; i < k; i++) truth.step(DT) }
   return { truth, bells, ring, step }
 }
@@ -842,4 +849,155 @@ test('a loop repeats its region, and a named loop the region it gives the sound 
     a: [true, 1.5, 30, []],
     b: [true, 0, 0, []],
   })
+})
+
+// A gun's manifest, as the library writes it, and how long each of its files plays.
+const GUN = {
+  mix: { near: 4, far: 400, choke: ['tail'], stems: { crack: [1, 0], body: [1, 0.5], tail: [0.5, 1] } },
+  variants: [{ crack: 'c1', body: 'b1', tail: 't1' }, { crack: 'c2', body: 'b2', tail: 't2' }],
+}
+const SECONDS: Record<string, number> = { c1: 0.05, c2: 0.05, b1: 0.3, b2: 0.3, t1: 2, t2: 2 }
+const ARMED = {
+  ...TABLE,
+  cues: { ...TABLE.cues, bang: { gun: 'bang-gun', gain: 0.7, range: 300 } },
+  held: { hum: { kind: 'bell', field: 'on', sound: 'hum', over: [0, 1], gain: [0, 0.6], rate: [0.5, 1], range: 200 } },
+}
+// A page whose loader hands the gun's manifest when asked, and each file beside it as its name's bytes.
+const armed = (truth: Truth) => {
+  const p = page(truth, { table: ARMED, landed: [...SOUNDS, 'hum'] })
+  p.plugins.loader.load = (name: string) => (name === 'bang-gun' ? Promise.resolve(structuredClone(GUN)) : new Promise(() => {}))
+  p.plugins.loader.beside = (_name: string, file: string) => Promise.resolve(new TextEncoder().encode(file).buffer)
+  return p
+}
+const landing = () => new Promise(r => setTimeout(r, 0))
+// A stem's gain `d` metres off, by the mix: its near gain to its far one, eased over the distance's
+// logarithm.
+const stemAt = (ends: number[], d: number) => {
+  const s = Math.min(1, Math.max(0, Math.log(Math.max(d, GUN.mix.near) / GUN.mix.near) / Math.log(GUN.mix.far / GUN.mix.near)))
+  return ends[0] + (ends[1] - ends[0]) * s * s * (3 - 2 * s)
+}
+
+test('a gun\'s round plays every stem of one variant, each as loud as the mix makes its distance from the listener, through the cue\'s gain and a panner on its row; one raised before the gun has landed is let go', async () => {
+  const { ring, step, truth } = rig(ARMED)
+  const p = armed(truth)
+  step()
+  p.frame()
+  ring(0, 'bang', 'round', [0, 0, 0], 0)
+  step()
+  p.frame()
+  expect(sounds(p.ctx)).toEqual([])
+  await landing()
+  for (const [i, k] of [[0, 1], [1, 2], [0, 3]]) {
+    ring(i, 'bang', 'round', [0, 0, 0], 0)
+    step()
+    p.frame()
+    const round = sounds(p.ctx).slice(-3)
+    expect(round.length, `round ${k}`).toBe(3)
+    // Every stem of one variant: one of each, all of the same variant.
+    expect(round.map(s => s.name[0]).sort()).toEqual(['b', 'c', 't'])
+    expect(new Set(round.map(s => s.name[1])).size).toBe(1)
+    const d = Math.hypot(...(truth.rows.filter(r => r.kind === 'bell')[i].data.pos as number[]))
+    for (const s of round) {
+      const stem = { c: 'crack', b: 'body', t: 'tail' }[s.name[0]] as keyof typeof GUN.mix.stems
+      expect(s.gain.gain.value).toBeCloseTo(stemAt(GUN.mix.stems[stem], d), 9)
+      expect((chain(s)[2] as Gain).gain.value).toBe(0.7)
+      expect(s.panner!.maxDistance).toBe(300)
+      expect(s.startedAt).toEqual(truth.rows.filter(r => r.kind === 'bell')[i].data.pos)
+    }
+  }
+})
+
+test('the stems a gun\'s mix chokes are faded out as the next round from the same row starts, and a round from another row chokes none of them', async () => {
+  const { ring, step, truth } = rig(ARMED)
+  const p = armed(truth)
+  step()
+  p.frame()
+  await landing()
+  ring(0, 'bang', 'round', [0, 0, 0], 0)
+  step()
+  p.frame()
+  const tail = sounds(p.ctx).find(s => s.name.startsWith('t'))!
+  ring(1, 'bang', 'round', [0, 0, 0], 0)
+  step()
+  p.frame()
+  expect(tail.gain.gain.events).toEqual([])
+  ring(0, 'bang', 'round', [0, 0, 0], 0.004)
+  step()
+  p.frame()
+  const next = sounds(p.ctx).at(-1)!.started![0]
+  expect(tail.gain.gain.events).toEqual([['target', 0, next, 0.012]])
+  // The crack and the body, which the mix does not choke, ring on.
+  for (const s of sounds(p.ctx).slice(0, 3).filter(s => !s.name.startsWith('t'))) expect(s.gain.gain.events).toEqual([])
+})
+
+test('a round with t starts that far into its step, the steps placed a step apart on the context\'s clock two steps ahead of the frame first seen; a step whose time has long passed places them again', async () => {
+  const { ring, step, truth } = rig(ARMED)
+  const p = armed(truth)
+  step()
+  p.frame()
+  await landing()
+  for (const t of [0, 0.004, 0.008]) ring(0, 'bang', 'round', [0, 0, 0], t)
+  step()
+  p.frame()
+  ring(0, 'bang', 'round', [0, 0, 0], 0.002)
+  step()
+  // The packets bunch: two steps reach the page in one frame, and the clock has moved on by less than a step.
+  ring(0, 'bang', 'round', [0, 0, 0], 0.006)
+  step()
+  p.ctx.currentTime += DT / 2
+  p.frame()
+  const starts = (n: number) => sounds(p.ctx).filter(s => s.name.startsWith('c')).slice(n).map(s => s.started![0])
+  const base = 3 + 2 * DT
+  expect(starts(0)).toEqual([base, base + 0.004, base + 0.008, base + DT + 0.002, base + 2 * DT + 0.006])
+  // A step whose time has passed by more than a step: the steps are placed again, two steps on.
+  p.ctx.currentTime += 1
+  ring(0, 'bang', 'round', [0, 0, 0], 0.003)
+  step()
+  p.frame()
+  expect(starts(5)).toEqual([p.ctx.currentTime + 2 * DT + 0.003])
+  // A cue whose entry carries no t starts at once.
+  ring(0, 'thud', 'from')
+  step()
+  p.frame()
+  expect(sounds(p.ctx).at(-1)!.started).toEqual([0])
+})
+
+test('a held loop plays on each row of its kind while its field gives it a gain, placed on the row, its gain and rate following the field, and fades out and stops once its gain is 0 or its row is gone', () => {
+  const { step, truth, bells } = rig(ARMED)
+  const p = armed(truth)
+  step()
+  p.frame()
+  const hums = () => p.ctx.started.filter(s => s.loop && s.name === 'hum')
+  expect(hums()).toEqual([])
+  bells[1].data.on = true
+  step()
+  p.frame()
+  expect(hums().length).toBe(1)
+  const hum = hums()[0]
+  expect(hum.startedAt).toEqual([50, 0, 0])
+  expect(hum.panner!.maxDistance).toBe(200)
+  expect(hum.gain.gain.events).toEqual([['target', 0.6, 3, DT]])
+  expect(hum.playbackRate.value).toBe(1)
+  bells[1].data.on = 0.5
+  bells[1].data.walk = true
+  step()
+  p.frame()
+  expect(hum.gain.gain.events.at(-1)).toEqual(['target', 0.3, 3, DT])
+  expect(hum.playbackRate.events.at(-1)).toEqual(['target', 0.75, 3, DT])
+  expect(hum.panner!.at()).toEqual(bells[1].data.pos)
+  expect(hums().length).toBe(1)
+  bells[1].data.on = false
+  step()
+  p.frame()
+  expect(hum.gain.gain.events.at(-1)).toEqual(['target', 0, 3, DT])
+  expect(hum.stopped).toBe(3 + 5 * DT)
+  // Back on, a loop starts again; its row gone, it stops.
+  bells[1].data.on = 1
+  step()
+  p.frame()
+  expect(hums().length).toBe(2)
+  truth.end(bells[1])
+  step()
+  p.frame()
+  expect(hums()[1].stopped).toBe(3 + 5 * DT)
 })

@@ -4,7 +4,7 @@
 // loops and the listener).
 //
 // The one row of this kind is the ledger: `step`, the steps it has counted, `next`, the id the next
-// entry gets, and `live`, the entries, each `{ id, cue, at?, from?, step }`. Its prefab is those
+// entry gets, and `live`, the entries, each `{ id, cue, at?, from?, step, t? }`. Its prefab is those
 // three and nothing else, since a prefab field goes onto the row and a row goes to every seat every
 // step. `hold` is fixed, so it is `world.audio.hold`, beside the browser half's own numbers.
 //
@@ -18,11 +18,14 @@
 // step early. A seat's message is answered before every `before`, so a sound its act raises is
 // stamped with the step before as well.
 //
-// `sound(w, cue, at?, from?)` appends an entry with the next id: the cue's name, the point `at`, and
+// `sound(w, cue, at?, from?, t?)` appends an entry with the next id: the cue's name, the point `at`, and
 // `from`, the id of the row it comes from. Given `from` and no `at`, the entry's `at` is that row's
 // `pos` as it stands, so a page that sees the entry after the row has gone still plays it where it
 // was raised; a page follows `from` for as long as its rows hold it. With neither, the sound has no
-// place. A cue raised is one entry, so two sounds in one step are two sounds.
+// place. A cue raised is one entry, so two sounds in one step are two sounds. `t` is the seconds into
+// its step the sound happens, for a rule that knows: a gun firing several rounds a step fires each a
+// share of the step after the last, and a page plays each that far into the step, not all at once
+// (`audio.plugin.ts`). Left out, the entry carries none, and plays the frame it is seen.
 //
 // A sound `from` a `player` row is that row's own: it goes on the row's `voiced` list, not the
 // ledger, and leaves it after `hold` as a ledger entry does. Every seat is sent every player row, so
@@ -39,7 +42,7 @@
 // roll of the scene's generator.
 import { seeded, type Kind, type W } from '#engine/engine.ts'
 
-export type Entry = { id: number; cue: string; at?: number[]; from?: number; step: number }
+export type Entry = { id: number; cue: string; at?: number[]; from?: number; step: number; t?: number }
 
 const ledgerOf = (w: W) => {
   const rows = w.all('audio')
@@ -47,13 +50,14 @@ const ledgerOf = (w: W) => {
   return rows[0].data
 }
 
-export function sound(w: W, cue: string, at?: number[], from?: number) {
+export function sound(w: W, cue: string, at?: number[], from?: number, t?: number) {
   const ledger = ledgerOf(w)
   const entry: Entry = { id: ledger.next++, cue, step: ledger.step }
   const row = from === undefined ? undefined : w.get(from)
   if (at) entry.at = [...at]
   else if (row) entry.at = [...row.data.pos]
   if (from !== undefined) entry.from = from
+  if (t !== undefined) entry.t = t
   // A seat's own row is drawn on its page from the copy that runs ahead, so a sound it raises rides
   // on it and is heard on the next frame (`voiced`); every other sound is the ledger's.
   if (row?.kind === 'player') (row.data.voiced ??= []).push(entry)

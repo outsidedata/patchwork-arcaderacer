@@ -33,6 +33,12 @@ test('the game boots from the site alone, its page at the site\'s root, its scen
   expect(files).toContain('core/engine/engine.js')
   expect(readFileSync(at('site', 'index.html'), 'utf8')).toContain('from "./core/engine/engine.js"')
   expect(readFileSync(at('site', 'index.html'), 'utf8')).toContain('from "./fresh.scene.json.js"')
+  // Beside the page, the kinds with a look the site holds.
+  expect(JSON.parse(readFileSync(at('site', 'looks.json'), 'utf8'))).toEqual(['body', 'player'])
+  // The loading screen is the first thing in the page's body, ahead of the game's module.
+  const page = readFileSync(at('site', 'index.html'), 'utf8')
+  const open = page.match(/<body\b[^>]*>/)!
+  expect(page.slice(open.index! + open[0].length).trimStart().startsWith(readFileSync(path.join(core, 'scripts/loading.html'), 'utf8').trimStart())).toBe(true)
 
   // Every module names its imports by a path from its place, none by `#…`, and no url it builds
   // names a `.ts` file.

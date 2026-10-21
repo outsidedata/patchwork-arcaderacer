@@ -14,8 +14,10 @@
 //             this.
 //   moves     metres: a one-shot carries travel when it ends more than this from its start,
 //   turns     degrees: or when it turns this far or further; turning less, its yaw column is zeroed.
-//   kinds     `{ <kind>: { rig, model, fade, reads, aim, props } }`: the rig file (a loader `json`
-//             entry) and the model (a loader `model` entry) each kind's rows play, `fade`, the
+//   kinds     `{ <kind>: { rig, model, glb, fade, reads, aim, props } }`: the rig file (a loader `json`
+//             entry) and the model (a loader `model` entry) each kind's rows play, `glb`, a loader
+//             `binary` entry of the model's same file, which the server poses the body by (below,
+//             The pose), and which a kind no rule poses may leave out, `fade`, the
 //             seconds a crossfade takes, and `reads`, the names of the fields of the kind's rows that
 //             anim reads and whatever moves the body writes: `pos` (x, y, z metres), `yaw` (radians,
 //             positive left), `vel` (x, y, z m/s, y up), `grounded` (false in the air) and `limp`
@@ -68,6 +70,10 @@
 //            and dismember3d ask it, and nothing here draws by it.
 //   meshes   role to a regular expression matched against a mesh's name (the browser half's).
 //   show     stance to the roles it draws (the browser half's).
+//   blades   the roles of `meshes` that are rigid weapons the body holds, each measured into `ends` as
+//            a segment of its name, its guard to its tip, and into `grips` (`anim.export.py`).
+//   grips    per body, per blade, measured: `{ bone, guard, tip }`, the joint that carries it and its
+//            guard and tip in that joint's frame, which a blade's place is read by off `posed`.
 //
 // A row that plays carries `state` (`loco` in its gears, `act` in a one-shot or loop it was told to
 // play, `fall` in the air), `clip`, `clipT` (seconds into the clip), `rate`, `holds`, `cancel`,
@@ -151,8 +157,14 @@
 // the loader replaces whole when the file is written, so an edit is read on the next step.
 import type { Row, W } from '#engine/engine.ts'
 import type { Wire } from '#engine/browser.ts'
-import { json } from '#plugins/loader/loader.sim.ts'
+import { Matrix4, Quaternion, Vector3 } from 'three'
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
+import { binary, json } from '#plugins/loader/loader.sim.ts'
 import * as math from '#plugins/math/math.sim.ts'
+
+// The decoder's WebAssembly is made once, as the module is loaded, so a pose read on any step decodes
+// at once.
+await MeshoptDecoder.ready
 
 export type Entry = string | {
   file?: string; loop?: boolean; gear?: number; markers?: Record<string, number | string>
@@ -180,10 +192,14 @@ export type Rig = {
   ends?: Record<string, Record<string, { fps: number } & Record<string, number[][]>>>
   meshes?: Record<string, string>
   show?: Record<string, string[]>
+  blades?: string[]
+  grips?: Record<string, Record<string, Grip>>
 }
+// Where a blade stands on the joint that carries it: its guard and its tip in that joint's frame.
+export type Grip = { bone: string; guard: number[]; tip: number[] }
 export type Numbers = {
   still: number; shift: number; leap: number; landFall: number; moves: number; turns: number
-  kinds: Record<string, { rig: string; model: string; fade: number; reads: Reads; aim?: { bones: Record<string, number> }; props?: Prop[] }>
+  kinds: Record<string, { rig: string; model: string; glb?: string; fade: number; reads: Reads; aim?: { bones: Record<string, number> }; props?: Prop[] }>
 }
 export type Clip = {
   name: string
@@ -412,7 +428,8 @@ export const animKind = (me: Row): string => (typeof me.data.as === 'string' ? m
 
 // A segment's two ends in the body's frame (x its left, y up, z ahead), at `at`, a clip and its
 // playhead, the row's own `clip` and `clipT` unless given: [ax, ay, az, bx, by, bz], off the rig's
-// `ends` for the kind's `model`, the frame the playhead falls on, held within the clip's frames.
+// `ends` for the kind's `model`, straight between the two frames the playhead falls between, held
+// within the clip's frames.
 export function ends(w: W | Wire, me: Row, segment: string, at: { clip: string; clipT: number } = me.data as any): number[] {
   const kind = animKind(me)
   const body = numbersOf(w).kinds[kind].model
@@ -420,7 +437,313 @@ export function ends(w: W | Wire, me: Row, segment: string, at: { clip: string; 
   if (!measured) throw new Error(`anim: ${kind}'s rig has no ends for ${body}; bake it (anim.export.py)`)
   const clip = measured[at.clip]
   const rows = clip[segment] as number[][]
-  return rows[Math.min(rows.length - 1, Math.max(0, Math.round(at.clipT * clip.fps)))]
+  const f = Math.min(rows.length - 1, Math.max(0, at.clipT * clip.fps))
+  const i = Math.floor(f), s = f - i
+  if (s === 0) return rows[i]
+  const a = rows[i], b = rows[i + 1]
+  return a.map((v, k) => v + (b[k] - v) * s)
+}
+
+// ---------------------------------------------------------------- the pose
+//
+// A kind's model as the browser half draws it is the glb its `kinds.<kind>.glb` names, a loader
+// `binary` entry of the same file as its `model` entry, which a rule reads before its first step. Its
+// skeleton and clips are read off those bytes once per copy of them (`skeletonOf`), as three's glTF
+// loader reads them: each buffer view gltfpack compressed decoded by three's meshopt decoder, each
+// normalized accessor scaled as three scales it, every joint of its skin under its bare name (with no
+// `mixamorig` prefix), the hips the joint with no joint above it, `root` the place of the hips' parent
+// in the model, each joint's rest translation, rotation and scale, and each clip's rotation and
+// translation tracks moved to start at 0 as the browser half moves them.
+//
+// `posed(from, me)` is every joint, each its matrix in the body's frame (x its left, y up, z ahead,
+// metres, before the row's yaw and position), as the browser half poses the model from the row's
+// fields this step: the same parts at the same weights (`partsOf`), each track sampled as three's
+// interpolants sample it (straight between keys, rotations the short way, held past either end), each
+// joint's turn the running average three's mixer keeps over the parts that key it, in the parts'
+// order, short of a whole weight eased back toward its rest; the masked joints from the upper parts
+// too; the hips pinned as `pin` pins them; and the aim turned on after. A row with no clip yet stands
+// in its stance's `still` role at 0. A row is posed once a step whatever asks: the answer is kept on
+// it until the fields it is posed from change, and nothing may write into it. It throws for a kind
+// with no `glb`, and for a clip the glb has no animation of.
+
+const swapSide = (name: string) => name.replace(/Left|Right/g, s => (s === 'Left' ? 'Right' : 'Left'))
+const SHARE = 0.999 // as the browser half: the most of a masked bone the upper layer holds
+const bareBone = (name: string) => name.replace(/^mixamorig\d*:?/, '')
+
+type Track = { times: Float32Array; values: Float32Array }
+export type Skeleton = {
+  root: Matrix4
+  hips: string
+  bones: Record<string, { parent: string | null; t: number[]; r: number[]; s: number[] }>
+  // Each clip's tracks, and its length: its last key, as three's clip measures it.
+  clips: Map<string, { r: Map<string, Track>; p: Map<string, Track>; dur: number }>
+}
+
+// The scale three gives a normalized accessor of each component type.
+const NORMAL: Record<number, number> = { 5120: 1 / 127, 5121: 1 / 255, 5122: 1 / 32767, 5123: 1 / 65535 }
+const ARRAYS: Record<number, any> = { 5120: Int8Array, 5121: Uint8Array, 5122: Int16Array, 5123: Uint16Array, 5125: Uint32Array, 5126: Float32Array }
+const WIDTHS: Record<string, number> = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 }
+
+const skeletons = new WeakMap<Uint8Array, Skeleton>()
+export function skeletonOf(from: W | Wire, kind: string): Skeleton {
+  const k = kindOf(numbersOf(from), kind)
+  if (!k.glb) throw new Error(`anim kinds.${kind} names no glb, the binary entry of its model the server poses it by`)
+  const bytes = binary(from, k.glb)
+  let sk = skeletons.get(bytes)
+  if (!sk) skeletons.set(bytes, sk = readSkeleton(bytes, kind))
+  return sk
+}
+
+function readSkeleton(bytes: Uint8Array, kind: string): Skeleton {
+  const at = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const jsonLength = at.getUint32(12, true)
+  const gltf = JSON.parse(new TextDecoder().decode(bytes.subarray(20, 20 + jsonLength)))
+  const binLength = at.getUint32(20 + jsonLength, true)
+  const bin = bytes.subarray(28 + jsonLength, 28 + jsonLength + binLength)
+  // Each buffer view's bytes, decoded once.
+  const views = new Map<number, { data: Uint8Array; stride: number | undefined }>()
+  const view = (i: number) => {
+    let v = views.get(i)
+    if (v) return v
+    const bv = gltf.bufferViews[i]
+    const ext = bv.extensions?.EXT_meshopt_compression
+    if (ext) {
+      const data = new Uint8Array(ext.count * ext.byteStride)
+      const source = bin.subarray(ext.byteOffset ?? 0, (ext.byteOffset ?? 0) + ext.byteLength)
+      MeshoptDecoder.decodeGltfBuffer(data, ext.count, ext.byteStride, source, ext.mode, ext.filter ?? 'NONE')
+      v = { data, stride: ext.byteStride }
+    } else v = { data: bin.subarray(bv.byteOffset ?? 0, (bv.byteOffset ?? 0) + bv.byteLength), stride: bv.byteStride }
+    views.set(i, v)
+    return v
+  }
+  // An accessor's values as floats, a normalized one scaled as three scales it.
+  const accessor = (i: number): Float32Array => {
+    const a = gltf.accessors[i]
+    const { data, stride } = view(a.bufferView)
+    const Type = ARRAYS[a.componentType]
+    const width = WIDTHS[a.type]
+    const size = Type.BYTES_PER_ELEMENT
+    const step = stride ?? width * size
+    const out = new Float32Array(a.count * width)
+    const dv = new DataView(data.buffer, data.byteOffset, data.byteLength)
+    const read = { 5120: dv.getInt8, 5121: dv.getUint8, 5122: dv.getInt16, 5123: dv.getUint16, 5125: dv.getUint32, 5126: dv.getFloat32 }[a.componentType as 5126]!
+    const scale = a.normalized ? NORMAL[a.componentType] : 1
+    for (let e = 0; e < a.count; e++) for (let c = 0; c < width; c++) out[e * width + c] = read.call(dv, (a.byteOffset ?? 0) + e * step + c * size, true) * scale
+    return out
+  }
+  const nodes: any[] = gltf.nodes
+  const parent = new Map<number, number>()
+  nodes.forEach((n, i) => { for (const c of n.children ?? []) parent.set(c, i) })
+  const joints = new Set<number>(gltf.skins?.[0]?.joints ?? [])
+  if (!joints.size) throw new Error(`anim: ${kind}'s glb has no skin`)
+  const trs = (n: any) => ({ t: n.translation ?? [0, 0, 0], r: n.rotation ?? [0, 0, 0, 1], s: n.scale ?? [1, 1, 1] })
+  const local = (n: any) => (n.matrix ? new Matrix4().fromArray(n.matrix) : (({ t, r, s }) => new Matrix4().compose(new Vector3().fromArray(t), new Quaternion().fromArray(r), new Vector3().fromArray(s)))(trs(n)))
+  const hipsAt = [...joints].find(j => !joints.has(parent.get(j) ?? -1))!
+  const root = new Matrix4()
+  for (let i = parent.get(hipsAt); i !== undefined; i = parent.get(i)) root.premultiply(local(nodes[i]))
+  const bones: Skeleton['bones'] = {}
+  for (const j of joints) bones[bareBone(nodes[j].name)] = { parent: j === hipsAt ? null : bareBone(nodes[parent.get(j)!].name), ...trs(nodes[j]) }
+  const clips: Skeleton['clips'] = new Map()
+  for (const a of gltf.animations ?? []) {
+    const tracks: [string, 'r' | 'p', Track][] = []
+    for (const ch of a.channels) {
+      const path = ch.target.path
+      const s = a.samplers[ch.sampler]
+      const tr = { times: accessor(s.input), values: accessor(s.output) }
+      if (!joints.has(ch.target.node) || (path !== 'rotation' && path !== 'translation')) {
+        tracks.push(['', 'r', tr])
+        continue
+      }
+      tracks.push([bareBone(nodes[ch.target.node].name), path === 'rotation' ? 'r' : 'p', tr])
+    }
+    // As the browser half moves every track of a clip to start at 0.
+    const first = Math.min(...tracks.map(([, , tr]) => tr.times[0]))
+    const r = new Map<string, Track>(), p = new Map<string, Track>()
+    for (const [bone, what, tr] of tracks) {
+      if (!bone) continue
+      ;(what === 'r' ? r : p).set(bone, { times: tr.times.map(t => t - first), values: tr.values })
+    }
+    clips.set(a.name, { r, p, dur: Math.max(...tracks.map(([, , tr]) => tr.times[tr.times.length - 1] - first)) })
+  }
+  return { root, hips: bareBone(nodes[hipsAt].name), bones, clips }
+}
+
+type Part = { slot: 'to' | 'from' | 'upper' | 'was'; clip: string; t: number; w: number }
+
+// The parts the row's fields draw, as the browser half weighs them.
+function partsOf(d: any, rig: Rig): Part[] {
+  const clip = d.clip ?? momentOf(rig, stanceOf(rig, d), 'still')
+  if (clip === undefined) return []
+  const blend = d.from != null ? d.blend : 1
+  const out: Part[] = [{ slot: 'to', clip, t: d.clip != null ? d.clipT : 0, w: blend }]
+  if (d.from != null && blend < 1) out.push({ slot: 'from', clip: d.from, t: d.fromT, w: 1 - blend })
+  if (rig.mask === undefined) return out
+  const a = d.upper != null ? d.upperW : 0
+  const w = d.was != null ? d.wasW : 0
+  if (a + w > 0) {
+    const s = Math.min(SHARE, a + w)
+    const k = s / (a + w) / (1 - s)
+    if (a > 0) out.push({ slot: 'upper', clip: d.upper, t: d.upperT, w: a * k })
+    if (w > 0) out.push({ slot: 'was', clip: d.was, t: d.wasT, w: w * k })
+  }
+  return out.filter(p => p.w > 0)
+}
+
+// A joint's rotation or translation in a clip at t, as three's interpolants sample its track:
+// straight between the two keys about t (rotations the short way), held at either end; a mirrored
+// clip's from its source's other side, reflected across x.
+function sampled(rig: Rig, sk: Skeleton, clip: string, bone: string, what: 'r' | 'p', t: number): number[] | undefined {
+  const c = clipOf(rig, clip)
+  const src = sk.clips.get(c.source)
+  if (!src) throw new Error(`anim: the glb has no animation ${c.source}`)
+  const track = src[what].get(c.mirrored ? swapSide(bone) : bone)
+  if (!track) return undefined
+  const { times, values } = track
+  const n = what === 'r' ? 4 : 3
+  const last = times.length - 1
+  let v: number[]
+  if (t <= times[0]) v = Array.from(values.subarray(0, n))
+  else if (t >= times[last]) v = Array.from(values.subarray(last * n, last * n + n))
+  else {
+    let lo = 0, hi = last
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1
+      if (times[mid] <= t) lo = mid
+      else hi = mid
+    }
+    const s = (t - times[lo]) / (times[hi] - times[lo])
+    if (what === 'r') {
+      v = [0, 0, 0, 0]
+      Quaternion.slerpFlat(v, 0, values as unknown as number[], lo * 4, values as unknown as number[], hi * 4, s)
+    } else v = [0, 1, 2].map(k => values[lo * 3 + k] + (values[hi * 3 + k] - values[lo * 3 + k]) * s)
+  }
+  if (!c.mirrored) return v
+  return what === 'r' ? [v[0], -v[1], -v[2], v[3]] : [-v[0], v[1], v[2]]
+}
+
+// Each row's last pose, and what it was posed from.
+const lastPose = new WeakMap<Row, { key: string; sk: Skeleton; bones: Map<string, Matrix4> }>()
+
+export function posed(from: W | Wire, me: Row): Map<string, Matrix4> {
+  const kind = animKind(me)
+  const k = kindOf(numbersOf(from), kind)
+  const rig = rigOf(from, kind)
+  const sk = skeletonOf(from, kind)
+  const d = me.data
+  const parts = partsOf(d, rig)
+  let pitch: any = d
+  const reads = k.aim ? readsIn(numbersOf(from), kind) : undefined
+  if (k.aim) {
+    if (reads!.aim === undefined) throw new Error(`anim kinds.${kind} has an aim, and its reads name no aim`)
+    for (const f of reads!.aim.split('.')) pitch = pitch?.[f]
+  }
+  const key = JSON.stringify([parts, k.aim ? pitch : null])
+  const had = lastPose.get(me)
+  if (had && had.key === key && had.sk === sk) return had.bones
+  const names = Object.keys(sk.bones)
+  // The joints under the mask: the joint whose name ends with it, and every joint below it.
+  const masked = (name: string): boolean => {
+    if (rig.mask === undefined) return false
+    for (let b: string | null = name; b; b = sk.bones[b].parent) if (b.endsWith(rig.mask)) return true
+    return false
+  }
+  const local = new Map<string, { t: Vector3; q: Quaternion; s: Vector3 }>()
+  for (const name of names) {
+    const rest = sk.bones[name]
+    const upper = masked(name)
+    const q = [0, 0, 0, 1], p = [0, 0, 0]
+    let wq = 0, wp = 0
+    for (const part of parts) {
+      if ((part.slot === 'upper' || part.slot === 'was') && !upper) continue
+      const r = sampled(rig, sk, part.clip, name, 'r', part.t)
+      if (r) {
+        if (wq === 0) q.splice(0, 4, ...r)
+        else Quaternion.slerpFlat(q, 0, q, 0, r, 0, part.w / (wq + part.w))
+        wq += part.w
+      }
+      const t = sampled(rig, sk, part.clip, name, 'p', part.t)
+      if (t) {
+        if (wp === 0) p.splice(0, 3, ...t)
+        else for (let i = 0; i < 3; i++) p[i] += (t[i] - p[i]) * (part.w / (wp + part.w))
+        wp += part.w
+      }
+    }
+    if (wq === 0) q.splice(0, 4, ...rest.r)
+    else if (wq < 1) Quaternion.slerpFlat(q, 0, q, 0, rest.r, 0, 1 - wq)
+    if (wp === 0) p.splice(0, 3, ...rest.t)
+    else if (wp < 1) for (let i = 0; i < 3; i++) p[i] += (rest.t[i] - p[i]) * (1 - wp)
+    local.set(name, { t: new Vector3().fromArray(p), q: new Quaternion().fromArray(q), s: new Vector3().fromArray(rest.s) })
+  }
+  pin(rig, sk, local.get(sk.hips)!, parts.filter(p => p.slot === 'to' || p.slot === 'from'), numbersOf(from))
+  // Each joint's matrix in the model, its parent's first.
+  const world = () => {
+    const out = new Map<string, Matrix4>()
+    const of = (name: string): Matrix4 => {
+      let m = out.get(name)
+      if (m) return m
+      const b = local.get(name)!
+      const parent = sk.bones[name].parent
+      m = (parent === null ? sk.root.clone() : of(parent).clone()).multiply(new Matrix4().compose(b.t, b.q, b.s))
+      out.set(name, m)
+      return m
+    }
+    for (const name of names) of(name)
+    return out
+  }
+  if (k.aim && typeof pitch === 'number') {
+    // Each listed joint turned by its share of the pitch about the body's right, in its parent's frame.
+    const right = new Vector3(-1, 0, 0)
+    for (const [suffix, share] of Object.entries(k.aim.bones)) {
+      const name = names.find(n => n.endsWith(suffix))
+      if (!name) throw new Error(`anim: the glb of ${k.model} has no joint ending ${suffix}`)
+      const parent = sk.bones[name].parent
+      const turn = new Quaternion()
+      if (parent !== null) world().get(parent)!.decompose(new Vector3(), turn, new Vector3())
+      else sk.root.decompose(new Vector3(), turn, new Vector3())
+      const b = local.get(name)!
+      b.q.premultiply(new Quaternion().setFromAxisAngle(right.clone().applyQuaternion(turn.invert()), share * pitch))
+    }
+  }
+  const bones = world()
+  lastPose.set(me, { key, sk, bones })
+  return bones
+}
+
+// The hips from the base parts, each pinned as its clip is, weighted as the mixer weighs them.
+function pin(rig: Rig, sk: Skeleton, hips: { t: Vector3; q: Quaternion }, parts: Part[], a: Numbers) {
+  if (!parts.length) return
+  const turn = new Quaternion()
+  sk.root.decompose(new Vector3(), turn, new Vector3())
+  const up = new Vector3(0, 1, 0).applyQuaternion(turn.invert()).normalize()
+  const vert = (v: Vector3) => up.clone().multiplyScalar(v.dot(up))
+  const flat = (v: Vector3) => v.clone().sub(vert(v))
+  const bind = sk.bones[sk.hips]
+  const restPos = new Vector3().fromArray(bind.t)
+  const pos = new Vector3()
+  let quat: Quaternion | undefined
+  let total = 0
+  for (const p of parts) {
+    const c = clipOf(rig, p.clip)
+    const at3 = (t: number) => sampled(rig, sk, p.clip, sk.hips, 'p', t)
+    const h = at3(p.t) ? new Vector3().fromArray(at3(p.t)!) : restPos.clone()
+    let q = new Quaternion().fromArray(sampled(rig, sk, p.clip, sk.hips, 'r', p.t) ?? bind.r)
+    const how = carries(c, a)
+    let x = h
+    if (c.loop) {
+      const dur = sk.clips.get(c.source)!.dur
+      const start = at3(0) ? new Vector3().fromArray(at3(0)!) : new Vector3()
+      const end = at3(dur) ? new Vector3().fromArray(at3(dur)!) : new Vector3()
+      const steady = start.lerp(end, p.t / dur)
+      x = flat(restPos).add(flat(h.clone().sub(steady))).add(vert(h))
+    } else if (how.carries) x = flat(restPos).add(vert(h))
+    if (how.turns) q = new Quaternion().setFromAxisAngle(up, -at(c.measure, p.t)[2] * DEG).multiply(q)
+    pos.addScaledVector(x, p.w)
+    total += p.w
+    if (!quat) quat = q
+    else quat.slerp(q, p.w / total)
+  }
+  hips.t.copy(pos.divideScalar(total))
+  hips.q.copy(quat!)
 }
 
 export function stop(me: Row, w: W) {

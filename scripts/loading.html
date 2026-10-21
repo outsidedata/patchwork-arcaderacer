@@ -1,0 +1,147 @@
+<!--
+  The loading screen of every game's page, written into it just inside its <body> by
+  produce_static_site.ts, so it is in the first bytes the host sends and fetches nothing: the
+  colours are the site's palette, copied in. A quilt of dark patches fills the window, and the
+  letters of PATCHWORK flash up in it one at a time, each somewhere new, like a colour-blindness
+  plate. The first canvas the game shows takes all of it, its style and script too, off the page and
+  stops its timers.
+
+  `yarn preview_loading` serves it on its own at http://localhost:8000/loading.html, where no canvas
+  ever shows, so it plays until the tab is closed: change it and reload.
+-->
+<div id="patchwork-loading">
+<style>
+  .patchwork-loading {
+    --purple-l: #7d6db5; --purple-d: #4a3d7c;
+    --blue-l: #82a9d2;   --blue-d: #33589a;
+    --gold-l: #e8c76a;   --gold-d: #9e7a22;
+    --orange-l: #e3a275; --orange-d: #b25a2c;
+    --green-l: #95b289;  --green-d: #4a7146;
+    --page: #18171e;
+    position: fixed; inset: 0; z-index: 2147483647; background: var(--page);
+    display: grid; gap: 4px; padding: 4px;
+    grid-template-columns: repeat(16, 1fr); grid-template-rows: repeat(10, 1fr);
+  }
+  @media (orientation: portrait) {
+    .patchwork-loading { grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(16, 1fr); }
+  }
+  .patchwork-loading i { --c: 0; --r: 0; position: relative; border-radius: 6px; }
+
+  /* The patch's own colour. Colours repeat every 7 patches, so they shift along each row of 16 or 10. */
+  .patchwork-loading i::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: var(--dk); opacity: .5;
+  }
+  .patchwork-loading i:nth-child(7n+1) { --dk: var(--purple-d); }
+  .patchwork-loading i:nth-child(7n+2) { --dk: var(--blue-d); }
+  .patchwork-loading i:nth-child(7n+3) { --dk: var(--gold-d); }
+  .patchwork-loading i:nth-child(7n+4) { --dk: var(--orange-d); }
+  .patchwork-loading i:nth-child(7n+5) { --dk: var(--green-d); }
+  .patchwork-loading i:nth-child(7n+6) { --dk: var(--blue-d); }
+  .patchwork-loading i:nth-child(7n+7) { --dk: var(--gold-d); }
+
+  /* The letter: its patches light in one colour, --hl, set on the quilt for each letter. */
+  .patchwork-loading i::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: var(--hl); opacity: 0; transform: scale(.7);
+    transition: opacity 60ms ease-out, transform 60ms ease-out;
+  }
+  .patchwork-loading i.lit::after { opacity: 1; transform: none; box-shadow: 0 0 14px var(--hl); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .patchwork-loading i::after { transition: none; }
+  }
+
+  /* The box over the quilt, 100px down from the top, centred across, its words on one line: the
+     type shrinks with a narrow window so the line fits inside 16px from each edge. */
+  .patchwork-loading-modal {
+    position: fixed; top: 100px; left: 50%; transform: translateX(-50%); z-index: 2147483647;
+    width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; white-space: nowrap;
+    padding: 16px 28px; border: 1px solid #444; border-radius: 9999px;
+    background: rgba(24, 23, 30, .85); color: #fff; box-shadow: 0 0 12px rgba(0, 0, 0, .5);
+    font: 300 clamp(12px, 4vw, 20px) system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; letter-spacing: 0.15px;
+  }
+  /* PATCHWORK in the site's purple, the quilt's --purple-l. */
+  .patchwork-loading-modal span { color: #7d6db5; font-weight: 900; }
+</style>
+<div class="patchwork-loading" role="status" aria-label="Loading a Patchwork game"></div>
+<div class="patchwork-loading-modal">LOADING <span>PATCHWORK</span> GAME</div>
+<script>
+  // Makes the 160 patches, then lights P, A, T, C, H, W, O, R, K one at a time, each in a new spot,
+  // until a canvas of the game shows.
+  (() => {
+    const quilt = document.querySelector('.patchwork-loading');
+    const glyphs = {
+      P: ['1110', '1001', '1110', '1000', '1000'],
+      A: ['0110', '1001', '1111', '1001', '1001'],
+      T: ['111', '010', '010', '010', '010'],
+      C: ['0111', '1000', '1000', '1000', '0111'],
+      H: ['1001', '1001', '1111', '1001', '1001'],
+      W: ['10001', '10001', '10101', '10101', '01010'],
+      O: ['0110', '1001', '1001', '1001', '0110'],
+      R: ['1110', '1001', '1110', '1010', '1001'],
+      K: ['1001', '1010', '1100', '1010', '1001'],
+    };
+    const word = 'PATCHWORK';
+    const hues = ['--purple-l', '--blue-l', '--gold-l', '--orange-l', '--green-l'];
+    // How long a letter shows, the gap before the next, and the pause after K, in milliseconds.
+    const SHOW = 240, GAP = 40, REST = 260;
+
+    const tiles = Array.from({ length: 160 }, () => quilt.appendChild(document.createElement('i')));
+    let cols = 0, rows = 0;
+
+    // Column and row of every patch, from however many columns the grid has at this size.
+    function place() {
+      const style = getComputedStyle(quilt);
+      cols = style.gridTemplateColumns.split(' ').length;
+      rows = style.gridTemplateRows.split(' ').length;
+      tiles.forEach((tile, i) => {
+        tile.style.setProperty('--c', i % cols);
+        tile.style.setProperty('--r', Math.floor(i / cols));
+      });
+    }
+    const resize = new ResizeObserver(place);
+    resize.observe(quilt);
+    place();
+
+    // A random top-left corner where the letter fits, at least four patches from the last one.
+    let last = { x: -99, y: -99 };
+    function spot(width) {
+      let pick;
+      for (let tries = 0; tries < 30; tries++) {
+        pick = { x: Math.floor(Math.random() * (cols - width + 1)), y: Math.floor(Math.random() * (rows - 5 + 1)) };
+        if (Math.abs(pick.x - last.x) + Math.abs(pick.y - last.y) >= 4) break;
+      }
+      return (last = pick);
+    }
+
+    let n = 0, timer = 0;
+    function next() {
+      const glyph = glyphs[word[n]];
+      const at = spot(glyph[0].length);
+      quilt.style.setProperty('--hl', `var(${hues[n % hues.length]})`);
+      glyph.forEach((line, dy) => [...line].forEach((bit, dx) => {
+        if (bit === '1') tiles[(at.y + dy) * cols + at.x + dx].classList.add('lit');
+      }));
+      timer = setTimeout(() => {
+        tiles.forEach((tile) => tile.classList.remove('lit'));
+        n = (n + 1) % word.length;
+        timer = setTimeout(next, n === 0 ? REST : GAP);
+      }, SHOW);
+    }
+    next();
+
+    // A renderer hides its canvas until it has drawn the game's first frame, then shows it: the
+    // first canvas on the page that is not hidden ends the loading screen.
+    const shown = () => [...document.querySelectorAll('canvas')].some((canvas) => canvas.style.display !== 'none');
+    const watch = new MutationObserver(() => {
+      if (!shown()) return;
+      clearTimeout(timer);
+      resize.disconnect();
+      watch.disconnect();
+      document.getElementById('patchwork-loading').remove();
+    });
+    watch.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+  })();
+</script>
+</div>

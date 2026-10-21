@@ -172,7 +172,7 @@ export function Sound() {
         ))}
       </Section>
       <Section title="Cues" extra={<Badge>{Object.keys(table.cues).length}</Badge>}>
-        {Object.entries(table.cues).map(([c, cue]) => (
+        {Object.entries(table.cues).flatMap(([c, cue]) => ('gun' in cue ? [] : [[c, cue] as const])).map(([c, cue]) => (
           <CueForm key={c} name={c} cue={cue} owner={owner} sounds={sounds} max={max} reach={reach} write={write} refuse={refuse} remove={() => void remove(c).catch((e: Error) => ed.error(`audio: ${e.message}`))} play={player ? () => play(cue) : undefined} />
         ))}
         <LabelledRow label="new" extra={

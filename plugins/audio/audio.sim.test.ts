@@ -26,6 +26,7 @@ const bell: Sim[string] = {
       if (d.how === 'mine') sound(w, d.cue, d.pos)
       if (d.how === 'act') w.call(w.find('audio'), 'play', -1, d.cue, 4, 5, 6, null)
       if (d.how === 'actFrom') w.call(w.find('audio'), 'play', -1, d.cue, null, null, null, me.id)
+      if (d.how === 'timed') sound(w, d.cue, undefined, me.id, i * 0.005)
     }
     if (d.move) d.pos[0] += 1
     if (d.end) w.end(me)
@@ -49,6 +50,18 @@ const sim: Sim = { audio, bell }
 const ledger = (t: Truth) => t.rows.find(r => r.kind === 'audio')!.data
 const live = (t: Truth): Entry[] => ledger(t).live
 const bellOf = (t: Truth, i = 0): Row => t.rows.filter(r => r.kind === 'bell')[i]
+
+test('a sound raised with t carries the seconds into its step it happens; one raised without carries none', () => {
+  const truth = boot(scene([{ how: 'timed', times: 3 }, { how: 'from' }]), sim)
+  truth.step(DT)
+  const [a, b] = [bellOf(truth, 0).id, bellOf(truth, 1).id]
+  expect(live(truth)).toEqual([
+    { id: 1, cue: 'ding', at: [10, 0, 20], from: a, step: 1, t: 0 },
+    { id: 2, cue: 'ding', at: [10, 0, 20], from: a, step: 1, t: 0.005 },
+    { id: 3, cue: 'ding', at: [10, 0, 20], from: a, step: 1, t: 0.01 },
+    { id: 4, cue: 'ding', at: [10, 0, 20], from: b, step: 1 },
+  ])
+})
 
 test('each sound is an entry with the next id and the ledger\'s step, so two in one step are two, and ids go on rising', () => {
   const truth = boot(scene([{ on: [1, 3], times: 2 }, { on: [3], cue: 'dong' }]), sim)

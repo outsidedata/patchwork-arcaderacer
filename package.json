@@ -26,6 +26,8 @@
     "health":"node --experimental-strip-types scripts/health.ts",
     "new-game": "node --experimental-strip-types scripts/new-game.ts",
     "produce_static_site": "node --experimental-strip-types scripts/produce_static_site.ts",
+    "preview_loading": "echo 'the loading screen at http://localhost:8000/loading.html' && python3 -m http.server 8000 --bind 127.0.0.1 --directory scripts",
+    "publish_gh_pages_game": "node --experimental-strip-types scripts/publish_gh_pages_game.ts",
     "editor": "node --watch --experimental-strip-types editor/server/server.ts"
   },
   "dependencies": {

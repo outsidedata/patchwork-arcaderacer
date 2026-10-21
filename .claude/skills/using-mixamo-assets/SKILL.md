@@ -63,7 +63,22 @@ written by it. Then decide, each one a choice in the scene and none in code:
   nods and shrugs) and `packs/mixamo-motions/` single clips (`Talking*.fbx`, `Talking At
   Watercooler.fbx`). Find them with `find ~/troupe-collection/packs -iname "*<word>*"`. A walk clip
   is a gear (`loop`, `gear: 0`); an idle or a talk played in place is a `loop` played by `play`, or
-  a gesture on the upper channel over the `still` role.
+  a gesture on the upper channel over the `still` role. Beside them, `packs/mixamo-catalogue.json`
+  is Mixamo's own word on every clip (its name, description, params, length, whether it loops or
+  stays in place), keyed by id, each clip's `file` its path; and `packs/mixamo-measures.json` is each
+  clip measured on its own Mixamo skeleton, keyed by that same path: the bake's table row (length,
+  travel forward and left, turn, the hips' rise, height and dip, the right hand's fastest moment),
+  every limb segment's fastest moment (`segments.<segment>`: when, how fast, where its end is and the
+  way it moves, what a blow lands with and how high), and every segment's ends on every frame. It
+  says which way a walk goes, which hand or foot an attack lands with and when, before any clip is
+  baked. `scripts/measure-clips.py` writes it, a pack folder at a time:
+
+  ```
+  Blender -b --factory-startup --python scripts/measure-clips.py -- \
+      ~/troupe-collection/packs/mixamo-measures.json "<pack dir>" ["<pack dir>" ...]
+  ```
+
+  It holds the Great Sword, Pro Sword and Shield, Pro Melee Axe and Boxing packs.
 - **What it is solid to, and what is solid to it.** `world.walker.kinds.<kind>.bodies` lists the kinds
   it walks round; another kind walks round it only if that kind's `bodies` lists it. A bystander
   that must not block the player lists only its own kind, and no other kind adds it.

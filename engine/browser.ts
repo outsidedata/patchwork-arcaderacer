@@ -1,6 +1,8 @@
 // The browser side. Loads the scene's plugins from `../plugins/<name>/<name>.plugin.ts`, takes
 // packets from the one plugin with a mounted `pipe`, and gives each row a `<kind>.client.ts`
-// next to the page (setup, tick, remove). No client file, no actor. Each row's file is imported as
+// next to the page (setup, tick, remove). No client file, no actor, and no request for one: the
+// client starts by reading which kinds have a look (`looked`, below), and imports a row's file only
+// when its kind is one of them. Each row's file is imported as
 // `<kind>.client.ts?row=<id>&client=<c>`, `c` this client's own number, so every row of every client
 // runs a module of its own: what an actor keeps at the top of its file, the mesh it drew, is that
 // row's, and two clients in one tab (two seats, the editor's views) never share one. `actor(id)` is
@@ -42,9 +44,27 @@ export type Client = Awaited<ReturnType<typeof client>>
 // How many clients this realm has made, the number each takes for its actors' modules.
 let made = 0
 
+// The kinds that have a look among the names of a folder's files: each `<kind>.client.ts`.
+export function looks(names: string[]): string[] {
+  return names.filter(n => /^[^.]+\.client\.ts$/.test(n)).map(n => n.slice(0, -'.client.ts'.length)).sort()
+}
+
+// The kinds that have a look beside the page at `home`. A page on disk, in node or a test, has its
+// folder read. A page over http reads `looks.json` beside it, a list of those kinds, which the dev
+// server makes from the folder each time it is asked (`vite.config.ts`) and the static site's build
+// writes (`scripts/produce_static_site.ts`).
+async function looked(home: string): Promise<Set<string>> {
+  const folder = new URL('.', home)
+  if (folder.protocol === 'file:') return new Set(looks(process.getBuiltinModule('node:fs').readdirSync(folder) as string[]))
+  const res = await fetch(new URL('looks.json', folder))
+  if (!res.ok) throw new Error(`${res.url} answered ${res.status}: it lists the kinds with a look`)
+  return new Set(await res.json() as string[])
+}
+
 export async function client(scene: Scene, home: string) {
   if (!scene.plugins) throw new Error('scene names no plugins')
   const number = ++made
+  const lookable = await looked(home)
   let seq = 0
   const order: any[] = []
   const pipe = (): Pipe => {
@@ -88,6 +108,7 @@ export async function client(scene: Scene, home: string) {
         for (const id of pkt.born) {
           const row = pkt.rows.find(r => r.id === id)
           if (!row) throw new Error(`truth says row ${id} was born but did not send it`)
+          if (!lookable.has(row.kind)) continue
           const actor: Actor | undefined = await import(/* @vite-ignore */ new URL(`${row.kind}.client.ts?row=${id}&client=${number}`, home).href).catch(() => undefined)
           if (closed) return
           if (!actor) continue

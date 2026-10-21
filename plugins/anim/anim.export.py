@@ -19,6 +19,8 @@
 #           every body of the rig.
 #   clips   `<name>: "<fbx>"` or `{ file, rebase, ... }`. A clip with no `file` (a `mirror`) is built
 #           by anim itself and is skipped here.
+#   blades  `[<mesh>]`: names of the rig's `meshes`, each a rigid weapon its body holds, measured as
+#           a segment of that name beside the limbs' (below).
 #   rebase  `{ from: "<fbx>", onto: "<clip>" }`: the clip is moved from the pose it was authored
 #           around to the pose another clip starts in. Each bone's turn on each frame is taken as a
 #           turn away from its turn on the first frame of `from`, and that same turn is laid onto the
@@ -64,6 +66,18 @@
 # progress (`anim.plugin.ts`, Pinning), so the steady progress, a straight line from where the clip
 # starts the hips to where it ends them, is taken off every point, and the hips' rest put back. Every
 # body is measured, not only the first: each keeps its own limb lengths.
+# A blade (`blades`) is a segment too: its guard and its tip. Its mesh is the one object of the body
+# whose name the rig's `meshes` pattern for it matches, every vertex of it weighted to one bone, which
+# carries it rigidly. Its tip is the vertex furthest from that bone's head, its pommel's end the
+# vertex furthest from the tip, and its guard the point of the line between them level with the
+# vertex standing furthest off that line between the bone's head and the tip: the crossguard. Both
+# are measured once in the bone's rest frame and carried by the bone on every frame.
+#
+# Each blade's guard and tip are measured again in the frame of the exported glb's joint that carries
+# it, read off the glb's nodes before it is packed, and written to <table.grips.json> as `{ <body>:
+# { <blade>: { bone, guard, tip } } }`, which `merge-table.mjs` writes into the rig file's `grips`. The
+# server poses a body off the packed glb itself (`anim.sim.ts`, `posed`) and carries each blade on its
+# joint by these. The bake stops if the glb's hips at rest stand more than a millimetre from Blender's.
 #
 # Each glb is packed by the native gltfpack (`GLTFPACK` from the environment or the repo's `.env`, else
 # `gltfpack` on the PATH; `yarn health` checks it) before it is written to its <out.glb>: meshopt compression (`-cc`), every named node, bone and
@@ -315,13 +329,44 @@ SEGMENTS = {
 }
 
 
-def ends(rig, acts):
-    """Each segment's two ends on every frame of every clip (see the header)."""
+def blades(rig, objs):
+    """Each blade the rig file names: its bone's name, and its guard and tip in that bone's rest frame
+    (see the header)."""
+    out = {}
+    for name in spec.get('blades', []):
+        pattern = spec['meshes'][name]
+        found = [o for o in objs if o.type == 'MESH' and re.search(pattern, o.name)]
+        if len(found) != 1:
+            raise SystemExit(f'anim export: the blade {name} matches {len(found)} meshes by {pattern}, and is one')
+        o = found[0]
+        groups = {g.index: g.name for g in o.vertex_groups}
+        held = {groups[g.group] for v in o.data.vertices for g in v.groups if g.weight > 0}
+        if len(held) != 1:
+            raise SystemExit(f'anim export: the blade {name} is weighted to {sorted(held)}, and is carried by one bone')
+        bone = rig.data.bones[held.pop()]
+        into = bone.matrix_local.inverted() @ rig.matrix_world.inverted() @ o.matrix_world
+        pts = [into @ v.co for v in o.data.vertices]
+        tip = max(pts, key=lambda p: p.length)
+        pommel = max(pts, key=lambda p: (p - tip).length)
+        axis = (tip - pommel).normalized()
+        along = lambda p: (p - pommel).dot(axis)
+        off = lambda p: (p - pommel - axis * along(p)).length
+        grip, reach = along(Vector((0, 0, 0))), along(tip)
+        guard = max((p for p in pts if grip <= along(p) <= reach), key=off)
+        out[name] = (bare(bone.name), pommel + axis * along(guard), tip)
+        metres = (rig.matrix_world.to_3x3() @ bone.matrix_local.to_3x3() @ (axis * (reach - along(guard)))).length
+        print(f'BLADE {name} bone={bare(bone.name)} length={metres:.3f}m')
+    return out
+
+
+def ends(rig, acts, held):
+    """Each segment's two ends on every frame of every clip, and each blade's, `held` (see the header)."""
     sc = bpy.context.scene
     bone = lambda name: next(b for b in rig.pose.bones if bare(b.name) == name)
     hips = next(b for b in rig.pose.bones if b.parent is None)
     # Blender's z-up to glTF's y-up: (x, y, z) -> (x, z, -y).
-    at = lambda b: (lambda v: [v.x, v.z, -v.y])(rig.matrix_world @ b.head)
+    gltf = lambda v: [v.x, v.z, -v.y]
+    at = lambda b: gltf(rig.matrix_world @ b.head)
     # The hips' rest across the ground: the armature with no action, at rest.
     rig.animation_data.action = None
     for b in rig.pose.bones:
@@ -336,17 +381,68 @@ def ends(rig, acts):
         start = at(hips)
         sc.frame_set(last)
         end = at(hips)
-        rows = {s: [] for s in SEGMENTS}
+        rows = {s: [] for s in [*SEGMENTS, *held]}
         for f in range(first, last + 1):
             sc.frame_set(f)
             s = (f - first) / max(1, last - first)
             # Taken off every point across the ground: the steady progress, less the hips' rest.
             shift = [start[0] + (end[0] - start[0]) * s - rest[0], 0, start[2] + (end[2] - start[2]) * s - rest[2]]
+            row = lambda pa, pb: [round(c, 4) for c in [pa[0] - shift[0], pa[1], pa[2] - shift[2], pb[0] - shift[0], pb[1], pb[2] - shift[2]]]
             for seg, (a, b) in SEGMENTS.items():
-                pa, pb = at(bone(a)), at(bone(b))
-                rows[seg].append([round(c, 4) for c in [pa[0] - shift[0], pa[1], pa[2] - shift[2], pb[0] - shift[0], pb[1], pb[2] - shift[2]]])
+                rows[seg].append(row(at(bone(a)), at(bone(b))))
+            for seg, (by, guard, tip) in held.items():
+                m = rig.matrix_world @ bone(by).matrix
+                rows[seg].append(row(gltf(m @ guard), gltf(m @ tip)))
         out[name] = {'fps': FPS, **rows}
     rig.animation_data.action = None
+    return out
+
+
+def trs(t, r, s):
+    """A node's matrix from its translation, its rotation [x, y, z, w] and its scale."""
+    x, y, z, w = r
+    m = np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                  [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                  [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]]) * np.array(s)
+    out = np.eye(4)
+    out[:3, :3] = m
+    out[:3, 3] = t
+    return out
+
+
+def grips(raw, rig, held):
+    """Each blade's guard and tip in the frame of the glb's joint that carries it (see the header),
+    read off the glb's own nodes before it is packed."""
+    gltf, _ = split(raw)
+    nodes = gltf['nodes']
+    parent = {c: i for i, n in enumerate(nodes) for c in n.get('children', [])}
+    joints = {j for s in gltf.get('skins', []) for j in s['joints']}
+    by = {bare(n.get('name', '')): i for i, n in enumerate(nodes) if i in joints}
+    rest = lambda i: (nodes[i].get('translation', [0, 0, 0]), nodes[i].get('rotation', [0, 0, 0, 1]), nodes[i].get('scale', [1, 1, 1]))
+
+    def world(i):
+        m = np.eye(4)
+        while i is not None:
+            m = (np.array(nodes[i]['matrix']).reshape(4, 4).T if 'matrix' in nodes[i] else trs(*rest(i))) @ m
+            i = parent.get(i)
+        return m
+
+    # Blender's z-up to glTF's y-up: (x, y, z) -> (x, z, -y).
+    gltf_of = lambda v: np.array([v.x, v.z, -v.y, 1.0])
+    # The glb's hips at rest stand where Blender's do, or the measure below would be in another frame.
+    hips = next(j for j in joints if parent.get(j) not in joints)
+    off = np.linalg.norm(world(hips)[:3, 3] - gltf_of(rig.matrix_world @ next(b for b in rig.data.bones if bare(b.name) == bare(nodes[hips]['name'])).head_local)[:3])
+    if off > 1e-3:
+        raise SystemExit(f'anim export: the glb\'s hips stand {off:.4f} m from Blender\'s at rest')
+    out = {}
+    for name, (bone, guard, tip) in held.items():
+        if bone not in by:
+            raise SystemExit(f'anim export: the glb has no joint {bone}, which carries the blade {name}')
+        b = rig.data.bones[next(n for n in rig.data.bones.keys() if bare(n) == bone)]
+        into = np.linalg.inv(world(by[bone]))
+        at = lambda p: [round(float(c), 6) for c in (into @ gltf_of(rig.matrix_world @ b.matrix_local @ p))[:3]]
+        out[name] = {'bone': bone, 'guard': at(guard), 'tip': at(tip)}
+    print(f'GRIPS {",".join(out) or "none"}')
     return out
 
 
@@ -443,6 +539,7 @@ def pack(raw, out):
 work = tempfile.mkdtemp(prefix='anim-export-')
 table = None
 measured = {}
+gripped = {}
 for body_name, out in OUTS.items():
     fresh()
     body, keep = load(spec['bodies'][body_name], LIBRARY)
@@ -475,9 +572,11 @@ for body_name, out in OUTS.items():
                               export_animation_mode='NLA_TRACKS', export_anim_single_armature=True,
                               export_apply=True, export_optimize_animation_size=True,
                               export_image_format='JPEG', export_jpeg_quality=75)
+    held = blades(body, keep)
+    gripped[body_name] = grips(raw, body, held)
     pack(raw, out)
     print(f'MODEL {body_name} {out} clips={len(acts)} meshes={sum(o.type == "MESH" for o in keep)}')
-    measured[body_name] = ends(body, acts)
+    measured[body_name] = ends(body, acts, held)
     print(f'ENDS {body_name} clips={len(measured[body_name])}')
 
 shutil.rmtree(work)
@@ -486,3 +585,6 @@ print(f'TABLE {TABLE} clips={len(table)}')
 ENDS = os.path.splitext(TABLE)[0] + '.ends.json'
 json.dump(measured, open(ENDS, 'w'))
 print(f'ENDS {ENDS} bodies={len(measured)}')
+GRIPS = os.path.splitext(TABLE)[0] + '.grips.json'
+json.dump(gripped, open(GRIPS, 'w'))
+print(f'GRIPS {GRIPS} bodies={len(gripped)}')
