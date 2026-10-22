@@ -31,12 +31,24 @@ handed in through a mod, never imported: `{ height, cover, ramp, rules, edits }`
 
 A pack is `asset` (a loader `model` whose meshes are named `<row>-<lod>[-<part>]`) or `shape`
 (boulders: lumpy icosahedra, with an optional noise `surface` of albedo, bump, moss on up-facing
-faces and roughness), with `rows` (`{ weight, solid?, tall? }`), `cell`, `reach`, `seed`, `lods`,
-`shadow`, `leaf`, `density`, `rules`, `biomes?`, `clearing`, `size`, `vary`.
+faces and roughness), with `rows` (`{ weight, solid?, tall? }`), `cell`, `seed`, `lods`, `shadow`,
+`leaf`, `density`, `rules`, `biomes?`, `clearing`, `size`, `vary`.
 
-**Browser half (`scatter3d.plugin.ts`).** Each pack is a field of cells following render3d's camera
-in shells: shell k reaches `lods[k]` metres and draws LOD k, the last out to `reach`; shells ending
-within `shadow` cast shadows. Each row and shell is an InstancedMesh sized so it never overflows.
+**Browser half (`scatter3d.plugin.ts`).** Each pack is a field of cells following render3d's camera,
+drawn on the land's rings: terrain3d's `world.terrain3d.rings`, handed over by its mod as `rings()`.
+`lods` is the LOD drawn on each ring, finest ring first, and the pack ends at the ring of its last
+entry. Any LOD goes on any ring, and one LOD on several. With terrain3d's rings reaching 128, 512, 2048
+and 9000 m:
+
+```json
+"trees": { "lods": [0, 1, 3] }
+"rocks": { "lods": [0, 0] }
+```
+
+draws the trees' LOD 0 out to 128 m, LOD 1 to 512 m and LOD 3 to 2048 m, and the rocks out to 512 m.
+A shape pack's one geometry is drawn on every ring it lists. Only the LODs `lods` name are read from
+the model. A ring casts shadows when any of it is within `shadow` metres of the camera. Each row and ring is an InstancedMesh sized so it
+never overflows.
 Crossing a cell only asks the rings that change shell; new cells are queued nearest first and placed
 within `budget` milliseconds a frame, or in the land's workers (`scatter3d.cells.ts`, the same
 arithmetic to the bit). Each instance is bedded: tilted `lean` of the way to the ground's fitted plane
@@ -44,7 +56,10 @@ arithmetic to the bit). Each instance is bedded: tilted `lean` of the way to the
 
 Cards: every BLEND material becomes alpha-tested at `cutout`, alpha gains `coverage` per mip level so
 far firs do not thin to sticks, and `leaf` bends card normals toward the sky so a crown is lit and
-takes snow as one mass. A terrain edit re-takes the cells it reaches, so a tree rises with raised
+takes snow as one mass. A part named `billboard` (`<row>-<lod>-billboard`, the far LOD the library's
+tree bake writes: one upright card of one picture of the tree, built in place like the other LODs)
+turns about its own up to face the camera instead of taking the instance's yaw, and its shadow turns
+to face the light. A terrain edit re-takes the cells it reaches, so a tree rises with raised
 ground and one on a new road goes. A prepared place (a camera about to jump) is placed ahead.
 `hollows` mods hand boxes nothing is drawn inside (a car's body and wheels).
 
@@ -55,7 +70,8 @@ It hands out `solids(x, z, r)`, `packs()` and `ready()`.
 1. List the land's plugin (terrain3d) before `scatter3d`, and `scatter3d` before `render3d`.
 2. Give `world.scatter3d`: `mods: { ground: 'terrain3d', land: 'terrain3d', hollows? }`, `cutout`,
    `coverage`, `budget`, `hollows`, `remember`, and `packs`.
-3. Model each pack in Blender with meshes named `<row>-<lod>`, catalogue it as a loader `model`.
+3. Model each pack in Blender with meshes named `<row>-<lod>[-<part>]`, catalogue it as a loader
+   `model`, and give the pack `lods`, the LOD drawn on each of the land's rings.
 4. Name scatter3d in the mods of whatever should meet its solids (below).
 
 ## Plugins it works with

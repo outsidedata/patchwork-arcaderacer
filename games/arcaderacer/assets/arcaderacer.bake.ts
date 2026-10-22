@@ -4,7 +4,8 @@
 //   trees/trees.glb                    grown by the library's `trees/trees.py` (Blender's Sapling Tree
 //                                      Gen) from `trees/trees.trees.json`: the forest's fir and cedar
 //                                      (the library's spruce and spruce-mid) and Tokyo's zelkova, near,
-//                                      mid and far, each a metre tall, their leaves the species' leaf sets
+//                                      mid and far, each a metre tall, their leaves and bark the species'
+//                                      leaf and bark sets
 //   paris/haussmann.glb                haussmann.py, high, its limestone and zinc the cc0-textures sets
 //                                      limestone_1-4K and metal_roof-4K, through `texture`
 //   paris/haussmann_medium.glb         haussmann.py, medium
@@ -33,19 +34,19 @@ export default async ({ blender, pack, scratch, texture, library }: Tools) => {
     made(path.join(here, out))
   }
   const python = (file: string, ...args: string[]) => (raw: string) =>
-    blender(['--factory-startup', '--python', script(file), '--', ...args, raw])
+    blender(['--factory-startup', '--python-exit-code', '1', '--python', script(file), '--', ...args, raw])
 
   const [limestone, zinc] = await Promise.all([texture('limestone_1-4K'), texture('metal_roof-4K')])
   const sets = [limestone.color!, limestone.roughness!, zinc.color!, zinc.normal!, zinc.roughness!]
   const haussmann = (quality: string) => (raw: string) =>
-    blender(['--factory-startup', '--python', script('paris/haussmann.py'), '--', quality, raw, ...sets])
+    blender(['--factory-startup', '--python-exit-code', '1', '--python', script('paris/haussmann.py'), '--', quality, raw, ...sets])
 
   await Promise.all([
     glb('trees/trees.glb', async raw => {
-      // the spec's leaf sets downloaded into the library first, then the trees grown from it
-      const { leafSets } = await import(pathToFileURL(path.join(library, 'trees', 'trees.mjs')).href)
-      for (const zip of leafSets(script('trees/trees.trees.json')) as string[]) await texture(zip)
-      await blender(['--factory-startup', '--python', path.join(library, 'trees', 'trees.py'), '--', script('trees/trees.trees.json'), raw])
+      // the spec's leaf and bark sets downloaded into the library first, then the trees grown from it
+      const { leafSets, barkSets } = await import(pathToFileURL(path.join(library, 'trees', 'trees.mjs')).href)
+      for (const zip of [...leafSets(script('trees/trees.trees.json')), ...barkSets(script('trees/trees.trees.json'))] as string[]) await texture(zip)
+      await blender(['--factory-startup', '--python-exit-code', '1', '--python', path.join(library, 'trees', 'trees.py'), '--', script('trees/trees.trees.json'), raw])
     }),
     glb('paris/haussmann.glb', haussmann('high')),
     glb('paris/haussmann_medium.glb', haussmann('medium')),
@@ -54,8 +55,8 @@ export default async ({ blender, pack, scratch, texture, library }: Tools) => {
     glb('title/title.glb', python('title/title.py')),
     glb('supercar/supercar.glb', async raw => {
       const scene = scratch('supercar.blend')
-      await blender(['--factory-startup', '--python', script('supercar/supercar.py'), '--', scene])
-      await blender([scene, '--python', script('supercar/export_glb.py'), '--', raw])
+      await blender(['--factory-startup', '--python-exit-code', '1', '--python', script('supercar/supercar.py'), '--', scene])
+      await blender([scene, '--python-exit-code', '1', '--python', script('supercar/export_glb.py'), '--', raw])
     }),
   ])
 }

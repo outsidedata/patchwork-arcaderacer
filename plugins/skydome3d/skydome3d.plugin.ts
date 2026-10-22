@@ -1,8 +1,9 @@
 // The browser half of skydome3d, the one sky: the dome, the lights, the fog, the exposure, the
-// scene's environment, the shadow box, the weather on every dressed surface, the rain, snow and dust,
-// and lightning. It draws the skydome3d row and the scene's `world.skydome3d` as they stand, and
-// nothing interpolates: the sun comes from the row's `t` through the server half's `sun`
-// (`skydome3d.sim.ts`), the clouds from its `drift`, the falling things from the packet's step count.
+// scene's environment and the shadow box. It draws the skydome3d row and the scene's
+// `world.skydome3d` as they stand, and nothing interpolates: the sun comes from the row's `t` through
+// the server half's `sun` (`skydome3d.sim.ts`). The weather (weather3d) and the clouds (clouds3d) are
+// plugins of their own, listed after this one: the clouds draw into the dome through `dome`, below,
+// and the weather reaches the sky through the `weather` mod.
 //
 // It reads the camera where it stands in its `afterTick`, which runs after every plugin's tick,
 // where a follow camera or a shot places it. So a scene lists it before `render3d`, which draws in
@@ -17,11 +18,7 @@
 //                               hemisphere light's ground
 //              exposure nightOpen  render3d's exposure is exposure·(1 + nightOpen·night)
 //              sunIntensity moonIntensity hemiDay hemiNight  the lights, below
-//              cloudScale  noise cycles a metre of the cloud function; cloudSharp its edge;
-//                          cloudDrift the fraction of the drift its warp moves by, so a cloud changes
-//                          shape as it travels; cloudShadow how much the deck takes from direct light
-//              cloudLit cloudShade lining  the deck's colour, below; cirrusAlpha the cirrus's
-//              godrays stars  the god rays' and the stars' strength
+//              stars     the stars' strength
 //              starSize  a star's radius in cells of its grid; twinkle how deep it twinkles;
 //                        twinkles whole cycles a day, times a whole number from 1 to twinkleSpread
 //                        picked by each star's hash, so the stars meet themselves at midnight
@@ -29,40 +26,31 @@
 //                                  (0.0115 rad) to its high size (0.0080 rad)
 //              sunEdge moonEdge  where a disc's edge starts to soften, a fraction of its radius
 //              moonSize  the moon's radius in radians
-//              snowScale  the cycles a metre the snow's drift field is read at
-//              flash      how far a lightning flash lifts the dome's colour and the key light
 //              radius     the dome's radius in metres
 //              overcast   the weather's gloom, below
 //              haze mist  the fog, below
 //              envSun envMix envIntensity  the environment, below
-//   precip   the falling things, in a box `range` metres from the camera each way:
-//              rain snow dust splashes  the most of each, drawn times mix.rain, snow, dust and rain
-//              edge      metres inside the box's faces over which a drop fades out, so none pops as
-//                        it wraps; near, metres from the camera over which one fades in
-//              rainFall rainLen rainWidth rainOpacity  m/s, and a streak's length and width in m
-//              snowFall snowSize snowOpacity snowSway, dustFall dustSize dustOpacity dustColour
-//              dustSway  a sway is [metres, radians a second, spread]: each flake sways across x
-//                        and z on two rates, rate·(1 ± spread·(hash − 0.5)), from hashed phases
-//              swayPeriod  seconds: each sway rate is put on the nearest whole number of cycles of
-//                        it, at least one, and the sway's clock is wrapped by it
-//              splashSize splashLife splashOpacity  a splash's radius grown, its life in seconds
-//              splashRing  the ring's half-width, a fraction of the splash's radius as it grows
-//              lift      metres a splash stands over the ground
-//              keyShare  how much of the key light lights the falling things, beside the
-//                        hemisphere light
 //   shadow   { map, half, near, far, bias, normalBias }: the key light's shadow box.
+//   off      the parts not drawn, read once when the sky is built, for measuring what each costs:
+//              dome      the dome not drawn at all
+//              gradient stars moon sun flash  each compiled out of the dome's shader; with no
+//                        gradient the dome starts from black
+//              fog       no fog put on the scene
+//              environment  no environment made from the dome
+//              shadow    the key light casts no shadow
+//            A part it does not know throws.
 //
-// The splashes stand on the land a mod hands it, `world.skydome3d.mods: { land: '<a>' }` (terrain3d's,
-// `terrain3d.skydome3d.ts`): `land(plugins)` is an object whose `height(x, z)` is the ground there, or
-// undefined until it has one. With no mod named, or no land yet, no splash is drawn. The plugin the mod
-// is is listed before this one, so the land it asks in its `afterTick` is this frame's, and a scene
-// that lists it after, or does not list it, throws (`ahead`).
+// The land a scene names for it, `world.skydome3d.mods: { land: '<a>' }` (terrain3d's,
+// `terrain3d.skydome3d.ts`), is listed before it, and a scene that lists it after, or does not list
+// it, throws (`ahead`).
 //
-// With `world.skydome3d.biomes` (`skydome3d.sim.ts`), every frame is drawn in the weather standing
-// under the camera, `here` over the land's `mix(x, z)` at the camera's x and z, each biome's share by
-// name: the dome, the deck, the fog, the gloom and the falling things are that place's, so the sky
-// slides from one biome's weather to the next as the camera crosses. With no land yet, the scene's;
-// with biomes and no land mod named, it throws.
+// The weather the sky stands in comes through a mod, `world.skydome3d.mods: { weather: '<a>' }`
+// (weather3d's, `weather3d.skydome3d.ts`): `weather(plugins)` is `{ mix, lift, to, from, blend,
+// shares }`, the Weather standing under the camera, how far a lightning flash lifts the sky now (0
+// with none), the weather the sky is going to and the one it left, how far it has gone, and each
+// biome's share under the camera. With none named, the sky stands in no weather: every number of
+// `mix` 0, no lift, and the environment made again only for the sun and a new look. A scene that names
+// one and does not list its plugin throws.
 //
 // The palette, from the sun's elevation `el` in radians: day = smooth(−0.10, 0.22, el), night =
 // 1 − smooth(−0.16, 0.02, el), sunset = exp(−(el/0.20)²). The zenith is mix(nightZenith, dayZenith,
@@ -75,8 +63,8 @@
 // (0.5 + sunIntensity·day)·(1 − night) in the sun's colour, and the moon, at
 // moonIntensity·night·moonLit·smooth(−0.10, 0.22, the moon's elevation) in `moon`, so a moon that
 // has set lights nothing from under the ground. It shines at the brighter less the dimmer, so its
-// intensity is 0 at the moment it changes body, times dark, and a flash adds `look.flash` for as
-// long as it lasts. The hemisphere light is the horizon over `ground`, at hemiNight + hemiDay·day.
+// intensity is 0 at the moment it changes body, times dark, and the weather's lift is added for as
+// long as a flash lasts. The hemisphere light is the horizon over `ground`, at hemiNight + hemiDay·day.
 // The fog is FogExp2, of density haze·(0.6 + mix.haze·0.5) + mix.fog·mist. Three mixes the fog into a
 // lit material after its tone mapping, so the fog's colour is the dome's horizon as drawn, the
 // horizon plus a flash's lift, passed through three's tone curve (`toneMap`, the same `aces` and
@@ -103,46 +91,26 @@
 //   the moon      a disc lit toward the sun by cos 2πφ from behind and |sin 2πφ| from the side.
 //   the sun       a disc 0.0080–0.0115 rad in radius at 0.5 + sunIntensity·day, a glow
 //                 pow(·, 900)·0.30 and a halo pow(·, 8)·(0.20 + 0.45·sunset), all times (1 − night).
-//   cirrus        at 2.6·base, the cloud function elsewhere in the noise at a sharpness of 1, of
-//                 horizon + key·cloudLit, at cirrusAlpha.
-//   the deck      at `base`, with parallax from the camera, fading out from 2.5 to 13 km along the
-//                 ray: horizon·mix(1, cloudShade, depth) + key·(cloudLit·(1 − depth) + lining·l),
-//                 depth = 1 − exp(−thickness·dense) and l = coverage·(1 − thickness)·(1 − the
-//                 coverage 400 m toward the key light), `key` the key light's colour times its
-//                 intensity. It hides whatever is behind it, the sun's disc, glow and halo too.
-//   god rays      6 steps from D toward the key light, each open where the deck is not, times
-//                 pow(D·key, 7), godrays·its intensity·(1 − 0.6·night), and the deck's cover.
-//   a flash       its lift added to every colour.
-// The deck and the cirrus are drawn only from below them. Nothing is cut below the dome's horizon:
-// the gradient is the horizon there and the sun's glow and halo carry on.
+//   the splices   each `dome` splice's main, in the order they were handed over (clouds3d's deck,
+//                 cirrus and god rays).
+//   a flash       the weather's lift added to every colour.
+// Nothing is cut below the dome's horizon: the gradient is the horizon there and the sun's glow and
+// halo carry on.
 //
-// One cloud function drives the dome, the cloud shadow and the snow cover: 4 octaves of value noise
-// at ×2.03 with a 0.55 domain warp; hi = 1 − cover; coverage smoothstep(hi − e, hi + e, n) with e =
-// max(0.02, sharp·0.5); thickness smoothstep(hi, hi + 0.30, n). Clouds read it at (p.xz − drift)·
-// cloudScale, its warp at (p.xz − drift·cloudDrift)·cloudScale; the snow at p.xz·snowScale with
-// cover `pack`.
+// `dome(key, { uniforms, common, main })` hands the dome's shader a splice, once per key: `common`
+// goes before its `main()`, after the dome's own uniforms and `NOISE` (so a splice reads skySun,
+// skyZenith, skyHorizon, skyKey, skyLight, skyNight and the rest by name), `main` goes in its `main()`
+// after the sun and before the flash, with the colour so far in `vec3 sky`, the unit way `D` and the
+// camera `eye`; the `uniforms` objects join the dome's own, so the plugin that owns them writes
+// `value` once a frame. A splice handed over after the dome is built rebuilds its shader. `skyLight`
+// is the key light's colour times its intensity, the lift and all.
 //
-// The weather surface, registered with render3d's `splice` under `skydome3d`, so it reaches every
-// dressed standard and physical material with the dome's own uniform objects (a dressed Lambert or
-// Phong material takes all of it but the roughness, which it has none of):
-//   after normal_fragment_maps  wet darkens the albedo by 0.55·wet and takes its roughness toward
-//                               0.09; snow, over up faces smoothstep(0.20, 0.72, n.y) times the
-//                               snow's drift field, tints toward (0.90, 0.93, 0.99), takes the
-//                               roughness toward 0.72 and bends the normal up by 0.6.
-//   after lights_fragment_end   the cloud shadow multiplies directDiffuse and directSpecular, every
-//                               direct light: traced up the sun ray to the deck, capped at 6·base,
-//                               1 − cloudShadow·coverage·smoothstep(0.05, 0.22, sun.y). A point at or
-//                               above the deck's base, a peak over the clouds, takes none.
-//
-// The falling things are instanced quads, every one drawn from both sides, wrapped on the GPU into
-// the box around the camera: each drop's place is hashed from its number, carried by `drift` (the
-// wind's integral, gusts and all) and fallen at its speed for the packet's step count times the
-// engine's `dt`, so two clients draw the same drops; the drift and the fall are wrapped into the box
-// and the sway's clock by swayPeriod here, in doubles, before they reach a float uniform, so a long
-// game loses no precision. Rain streaks lie along the wind as it blows
-// now against their fall. They are lit by the hemisphere light plus keyShare of the key. Splashes
-// are rings that grow and fade over splashLife, each at a place hashed from its number and its life
-// in the same box, standing `lift` over the land's `height`.
+// `NOISE` is the one value noise the sky's splices share, 4 octaves at ×2.03 with a 0.55 domain warp:
+// `skyCloudAt(q, w, cover, sharp, salt)` is coverage smoothstep(hi − e, hi + e, n) and thickness
+// smoothstep(hi, hi + 0.30, n) of the noise at q warped by the noise at w, hi = 1 − cover, e =
+// max(0.02, sharp·0.5); salt picks where in the noise. It is in the dome's shader, and it is
+// registered with render3d's `splice` under `skydome3d`, so it is in every dressed material's
+// shader too, for clouds3d's cloud shadow and weather3d's snow.
 //
 // The environment. The dome, as it draws, is drawn alone into three's PMREMGenerator on render3d's
 // renderer (`fromScene`, sigma 0, the cube camera's own near and far, from the camera's position),
@@ -150,55 +118,54 @@
 // result is the scene's `environment`, lit at `look.envIntensity` (three's
 // `scene.environmentIntensity`), so a metal reflects the sky and every standard or physical material
 // is lit by it. It is made on the first frame with a renderer and again only when stale
-// (`stale(look, then, now)` over `lit(row, shares)`: none yet, a new `to`, `from` or look, the sun
+// (`stale(look, then, now)` over `lit(row, weather)`: none yet, a new `to`, `from` or look, the sun
 // turned more than envSun radians, or s, the smoothstep of `blend`, or a biome's share under the camera
-// moved more than envMix); the one before is disposed. It is drawn without a flash, the god rays and the light on the deck and the cirrus at the
-// key light less the flash, all put back after, so a refresh during a flash does not hold the flash
+// moved more than envMix); the one before is disposed. It is drawn without a flash, `skyLight` at the
+// key light less the lift, all put back after, so a refresh during a flash does not hold the flash
 // for as long as it stands.
 //
-// It hands out `light()`, for the sea and for whatever is lit apart from the scene, a cockpit drawn
-// in render3d's overlay: `{ sun, sunColor, zenith, horizon, fog, key, keyColor, sky, ground }`, the
-// sun's direction, its colour times its share of the key light and dark (0 once the moon has the
-// key), the zenith and horizon in linear, and the scene's fog; `key`, the unit way toward the body
-// the key light shines from, sun or moon, and `keyColor`, its colour times its intensity, a flash and
-// all; `sky` and `ground`, the hemisphere light's two colours times its intensity. The same objects
-// every frame, moved in place. `sky()` is a
-// probe for tests: the palette's numbers, the lights, the fog, the dome, the falling things and the
-// dome's uniforms. Both are undefined until the sky has drawn its first frame. `close` takes all of it
-// off the scene and disposes it, the environment and its generator too, empties the scene's
-// `environment` and fog and puts its environment intensity back to 1.
+// It hands out `light()`, for the sea, the weather, the clouds and whatever is lit apart from the
+// scene, a cockpit drawn in render3d's overlay: `{ sun, sunColor, zenith, horizon, fog, key, keyColor,
+// sky, ground, night }`, the sun's direction, its colour times its share of the key light and dark (0
+// once the moon has the key), the zenith and horizon in linear, and the scene's fog; `key`, the unit
+// way toward the body the key light shines from, sun or moon, and `keyColor`, its colour times its
+// intensity, a flash and all; `sky` and `ground`, the hemisphere light's two colours times its
+// intensity; `night`, the palette's. The same objects every frame, moved in place. `sky()` is a
+// probe for tests: the palette's numbers, the lights, the fog, the dome and the dome's uniforms. Both
+// are undefined until the sky has drawn its first frame. `close` takes all of it off the scene and
+// disposes it, the environment and its generator too, empties the scene's `environment` and fog and
+// puts its environment intensity back to 1.
 import type * as THREE from 'three'
 import type { Plugins } from '#engine/browser.ts'
-import { ahead, mod } from '#addons/scenemanager/scenemanager.addon.ts'
-import { here, moon as moonOf, moonLit, sun as sunOf, wind as windOf, type Sky, type Table, type Weather } from './skydome3d.sim.ts'
+import { ahead, mod, provided } from '#addons/scenemanager/scenemanager.addon.ts'
+import { moon as moonOf, moonLit, sun as sunOf, type Sky, type Table } from './skydome3d.sim.ts'
+import type { Weather } from '#plugins/weather3d/weather3d.sim.ts'
 
-type Sway = [number, number, number]
 export type Look = {
   dayZenith: string; dayHorizon: string; nightZenith: string; nightHorizon: string; setZenith: string; setHorizon: string
   sunHigh: string; sunLow: string; moon: string; ground: string
   exposure: number; nightOpen: number; sunIntensity: number; moonIntensity: number; hemiDay: number; hemiNight: number
-  cloudScale: number; cloudSharp: number; cloudDrift: number; cloudShadow: number; godrays: number; stars: number; haze: number; mist: number
-  cloudLit: number; cloudShade: number; lining: number; cirrusAlpha: number; starSize: number; twinkle: number; twinkles: number; twinkleSpread: number
-  sunShrink: [number, number]; sunEdge: number; moonEdge: number; moonSize: number; snowScale: number; flash: number; radius: number; overcast: number
+  stars: number; haze: number; mist: number; starSize: number; twinkle: number; twinkles: number; twinkleSpread: number
+  sunShrink: [number, number]; sunEdge: number; moonEdge: number; moonSize: number; radius: number; overcast: number
   envSun: number; envMix: number; envIntensity: number
 }
-export type Precip = {
-  rain: number; snow: number; dust: number; splashes: number; range: number; edge: number; near: number
-  rainFall: number; rainLen: number; rainWidth: number; rainOpacity: number
-  snowFall: number; snowSize: number; snowOpacity: number; snowSway: Sway
-  dustFall: number; dustSize: number; dustOpacity: number; dustColour: string; dustSway: Sway; swayPeriod: number
-  splashSize: number; splashLife: number; splashOpacity: number; splashRing: number; lift: number; keyShare: number
-}
 export type Shadow = { map: number; half: number; near: number; far: number; bias: number; normalBias: number }
+// The parts `world.skydome3d.off` can take out, each compiled out of the dome's shader as
+// `SKY_NO_<PART>` or never drawn.
+export const PARTS = ['dome', 'gradient', 'stars', 'moon', 'sun', 'flash', 'fog', 'environment', 'shadow'] as const
+export type Part = (typeof PARTS)[number]
+const defineOf = (part: Part) => `SKY_NO_${part.toUpperCase()}`
 // The row with `world.skydome3d` beside it, which the frame is drawn from.
-type Row = Sky & Table & { look: Look; precip: Precip; shadow: Shadow }
-// What the `land` mod hands back: the ground's height and each biome's share, or undefined until there is one.
-type Land = (plugins: Plugins) => { height(x: number, z: number): number; mix(x: number, z: number): Record<string, number> } | undefined
+type Row = Sky & Table & { look: Look; shadow: Shadow; off?: Part[] }
+// What the `weather` mod hands back: the weather the sky stands in this frame.
+export type Standing = { mix: Weather; lift: number; to: string; from: Weather; blend: number; shares: Record<string, number> }
+type WeatherMod = (plugins: Plugins) => Standing | undefined
+// A splice of the dome's shader.
+export type DomeSplice = { uniforms?: Record<string, THREE.IUniform>; common?: string; main?: string }
 const skyOf = (plugins: Plugins, data: Record<string, any>): Row => ({ ...data, ...plugins.wire.scene.world!.skydome3d })
 type Tone = 'aces' | 'neutral' | 'none' | undefined
 type Three = typeof import('three')
 type Uniforms = Record<string, THREE.IUniform>
-type Fall = THREE.Mesh<THREE.InstancedBufferGeometry, THREE.ShaderMaterial>
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
 export const smooth = (a: number, b: number, x: number) => {
@@ -232,9 +199,15 @@ export function toneMap(tone: Tone, [r, g, b]: number[], exposure: number): numb
   return [r, g, b]
 }
 
+// The weather of a sky that stands in none: every number 0, no lift.
+const NONE: Standing = {
+  mix: { cloud: 0, cirrus: 0, base: 0, top: 0, dense: 0, rain: 0, snow: 0, fog: 0, haze: 0, wind: 0, gust: 0, thunder: 0, dust: 0 },
+  lift: 0, to: '', from: { cloud: 0, cirrus: 0, base: 0, top: 0, dense: 0, rain: 0, snow: 0, fog: 0, haze: 0, wind: 0, gust: 0, thunder: 0, dust: 0 }, blend: 1, shares: {},
+}
+
 // What the environment was made from: when it is stale is `stale`.
 export type Lit = { sun: number[]; to: string; from: Weather; s: number; look: Look; shares: Record<string, number> }
-export const lit = (row: Row, shares: Record<string, number> = {}): Lit => ({ sun: sunOf(row), to: row.to, from: row.from, s: smooth(0, 1, row.blend), look: row.look, shares })
+export const lit = (row: Row, weather: Standing = NONE): Lit => ({ sun: sunOf(row), to: weather.to, from: weather.from, s: smooth(0, 1, weather.blend), look: row.look, shares: weather.shares })
 export function stale(look: Look, then: Lit | undefined, now: Lit): boolean {
   if (!then) return true
   if (then.to !== now.to || JSON.stringify(then.from) !== JSON.stringify(now.from) || JSON.stringify(then.look) !== JSON.stringify(now.look)) return true
@@ -243,16 +216,8 @@ export function stale(look: Look, then: Lit | undefined, now: Lit): boolean {
   return turned > look.envSun || Math.abs(now.s - then.s) > look.envMix || moved
 }
 
-// One integer hash for the drops' and splashes' seeds and the noise, the same in JS and in GLSL.
-const mixBits = (x: number) => {
-  x = (x ^ (x >>> 16)) >>> 0
-  x = Math.imul(x, 0x7feb352d) >>> 0
-  x = (x ^ (x >>> 15)) >>> 0
-  x = Math.imul(x, 0x846ca68b) >>> 0
-  return (x ^ (x >>> 16)) >>> 0
-}
-const hash01 = (a: number, salt: number) => mixBits((a + mixBits(salt)) >>> 0) / 4294967296
-const HASH = /* glsl */ `
+// One integer hash for the noise and the stars, the same in every program that reads it.
+export const HASH = /* glsl */ `
 uint skyMix( uint x ) {
   x ^= x >> 16u; x *= 0x7feb352du; x ^= x >> 15u; x *= 0x846ca68bu; x ^= x >> 16u;
   return x;
@@ -261,20 +226,8 @@ float skyDrop( uint a, uint salt ) { return float( skyMix( a + skyMix( salt ) ) 
 float skyHash( ivec2 c, uint salt ) { return float( skyMix( uint( c.x ) + skyMix( uint( c.y ) + skyMix( salt ) ) ) ) / 4294967296.0; }
 `
 
-// The cloud function and the cloud shadow, with the uniforms they read: the dome and every dressed
-// program declare these the same.
-const CLOUD = /* glsl */ `
-uniform vec3 skySun;
-uniform float skyCover;
-uniform float skyBase;
-uniform vec2 skyDrift;
-uniform float skyScale;
-uniform float skySharp;
-uniform float skyWarp;
-uniform float skyShadow;
-uniform float skyWet;
-uniform float skyPack;
-uniform float skySnowScale;
+// The value noise the sky's splices share.
+export const NOISE = /* glsl */ `
 ${HASH}
 float skyNoise( vec2 p, uint salt ) {
   vec2 i = floor( p ), f = p - i;
@@ -301,39 +254,7 @@ vec2 skyCloudAt( vec2 q, vec2 w, float cover, float sharp, uint salt ) {
   float e = max( 0.02, sharp * 0.5 );
   return vec2( smoothstep( hi - e, hi + e, n ), smoothstep( hi, hi + 0.30, n ) );
 }
-// The clouds over ground point p, carried by the drift.
-vec2 skyCloud( vec2 p, float cover, float sharp, uint salt ) {
-  return skyCloudAt( ( p - skyDrift ) * skyScale, ( p - skyDrift * skyWarp ) * skyScale, cover, sharp, salt );
-}
-float skyCloudShadow( vec3 p ) {
-  if ( p.y >= skyBase || skySun.y <= 0.0 ) return 1.0;
-  float t = min( ( skyBase - p.y ) / skySun.y, 6.0 * skyBase );
-  return 1.0 - skyShadow * skyCloud( p.xz + skySun.xz * t, skyCover, skySharp, 0u ).x * smoothstep( 0.05, 0.22, skySun.y );
-}
 `
-// The salts: the deck, the cirrus and the snow each read the noise somewhere of their own.
-const SURFACE = {
-  normal_fragment_maps: /* glsl */ `{
-  vec3 skyUp = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );
-  float skyFacing = inverseTransformDirection( normal, viewMatrix ).y;
-  vec2 skyAt = vDressWorld.xz * skySnowScale;
-  float skySnow = smoothstep( 0.20, 0.72, skyFacing ) * skyCloudAt( skyAt, skyAt, skyPack, skySharp, 6u ).x;
-  diffuseColor.rgb *= 1.0 - 0.55 * skyWet;
-  #ifdef STANDARD
-    roughnessFactor = mix( roughnessFactor, 0.09, skyWet );
-  #endif
-  diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.90, 0.93, 0.99 ), skySnow );
-  #ifdef STANDARD
-    roughnessFactor = mix( roughnessFactor, 0.72, skySnow );
-  #endif
-  normal = normalize( mix( normal, skyUp, 0.6 * skySnow ) );
-}`,
-  lights_fragment_end: /* glsl */ `{
-  float skyShade = skyCloudShadow( vDressWorld );
-  reflectedLight.directDiffuse *= skyShade;
-  reflectedLight.directSpecular *= skyShade;
-}`,
-}
 
 const DOME_VERTEX = /* glsl */ `
 varying vec3 vSkyDir;
@@ -342,31 +263,24 @@ void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 }
 `
-const DOME_FRAGMENT = /* glsl */ `
+const DOME_FRAGMENT = (splices: DomeSplice[]) => /* glsl */ `
+uniform vec3 skySun;
 uniform vec3 skyZenith;
 uniform vec3 skyHorizon;
 uniform vec3 skySunColour;
 uniform vec3 skyMoonColour;
 uniform vec3 skyKey;
-uniform vec3 skyKeyColour;
 uniform vec3 skyLight;
 uniform vec3 skyMoon;
 uniform float skyNight;
 uniform float skySunset;
 uniform float skySunPower;
 uniform float skyFlash;
-uniform float skyRays;
 uniform float skyStars;
 uniform float skyClock;
 uniform float skyPhase;
-uniform float skyCirrus;
-uniform float skyDense;
 uniform vec2 skyLat;
 uniform vec2 skyTurn;
-uniform float skyCloudLit;
-uniform float skyCloudShade;
-uniform float skyLining;
-uniform float skyCirrusAlpha;
 uniform float skyStarSize;
 uniform float skyTwinkle;
 uniform float skyTwinkles;
@@ -376,18 +290,17 @@ uniform float skySunEdge;
 uniform float skyMoonEdge;
 uniform float skyMoonSize;
 varying vec3 vSkyDir;
-${CLOUD}
-// How much of the sky the deck hides along d from the eye.
-float skyDeck( vec3 d, vec3 eye ) {
-  if ( d.y <= 0.0 || eye.y >= skyBase ) return 0.0;
-  float t = ( skyBase - eye.y ) / d.y;
-  return skyCloud( eye.xz + d.xz * t, skyCover, skySharp, 0u ).x * ( 1.0 - smoothstep( 2500.0, 13000.0, t ) );
-}
+${NOISE}
+${splices.map(s => s.common ?? '').join('\n')}
 void main() {
   vec3 D = normalize( vSkyDir );
   vec3 eye = cameraPosition;
-  vec3 sky = D.y > 0.0 ? mix( skyHorizon, skyZenith, pow( D.y, 0.55 ) ) : skyHorizon;
+  vec3 sky = vec3( 0.0 );
+  #ifndef SKY_NO_GRADIENT
+    sky = D.y > 0.0 ? mix( skyHorizon, skyZenith, pow( D.y, 0.55 ) ) : skyHorizon;
+  #endif
 
+  #ifndef SKY_NO_STARS
   if ( D.y > 0.0 && skyStars > 0.0 ) {
     // D in the frame of the pole, turned back by the hour: sin δ, then cos δ at the hour angle less H.
     float cc = skyLat.x * D.z + skyLat.y * D.y;
@@ -404,7 +317,9 @@ void main() {
       sky += vec3( skyStars * shape * twinkle * skyHash( cell, side + 5u ) * D.y );
     }
   }
+  #endif
 
+  #ifndef SKY_NO_MOON
   float mc = dot( D, skyMoon );
   vec3 o = ( D - skyMoon * mc ) / skyMoonSize;
   float r2 = dot( o, o );
@@ -416,130 +331,22 @@ void main() {
     vec3 L = side * abs( sin( a ) ) + skyMoon * cos( a );
     sky += skyMoonColour * max( dot( n, L ), 0.0 ) * ( 1.0 - smoothstep( skyMoonEdge, 1.0, sqrt( r2 ) ) );
   }
+  #endif
 
+  #ifndef SKY_NO_SUN
   float sd = dot( D, skySun );
   float r = mix( 0.0115, 0.0080, smoothstep( skySunShrink.x, skySunShrink.y, skySun.y ) );
   float disc = 1.0 - smoothstep( r * skySunEdge, r, acos( clamp( sd, -1.0, 1.0 ) ) );
   float s = max( sd, 0.0 );
   sky += skySunColour * ( disc * skySunPower + pow( s, 900.0 ) * 0.30 + pow( s, 8.0 ) * ( 0.20 + 0.45 * skySunset ) ) * ( 1.0 - skyNight );
+  #endif
 
-  if ( D.y > 0.0 ) {
-    float high = 2.6 * skyBase;
-    if ( eye.y < high ) {
-      float t = ( high - eye.y ) / D.y;
-      float c = skyCloud( eye.xz + D.xz * t, skyCirrus, 1.0, 3u ).x * ( 1.0 - smoothstep( 2500.0, 13000.0, t ) );
-      sky = mix( sky, skyHorizon + skyLight * skyCloudLit, c * skyCirrusAlpha );
-    }
-    if ( eye.y < skyBase ) {
-      float t = ( skyBase - eye.y ) / D.y;
-      vec2 q = eye.xz + D.xz * t;
-      vec2 c = skyCloud( q, skyCover, skySharp, 0u );
-      vec2 toward = dot( skyKey.xz, skyKey.xz ) > 0.0 ? normalize( skyKey.xz ) : vec2( 0.0 );
-      float ahead = skyCloud( q + toward * 400.0, skyCover, skySharp, 0u ).x;
-      float depth = 1.0 - exp( - c.y * skyDense );
-      float l = c.x * ( 1.0 - c.y ) * ( 1.0 - ahead );
-      vec3 deck = skyHorizon * mix( 1.0, skyCloudShade, depth ) + skyLight * ( skyCloudLit * ( 1.0 - depth ) + skyLining * l );
-      sky = mix( sky, deck, c.x * ( 1.0 - smoothstep( 2500.0, 13000.0, t ) ) );
-    }
-    float kd = dot( D, skyKey );
-    if ( kd > 0.0 && skyRays > 0.0 && skyCover > 0.0 ) {
-      float open = 0.0;
-      for ( int i = 0; i < 6; i++ ) open += 1.0 - skyDeck( normalize( mix( D, skyKey, float( i ) / 6.0 ) ), eye );
-      sky += skyKeyColour * skyRays * skyCover * pow( kd, 7.0 ) * open / 6.0;
-    }
-  }
+${splices.map(s => s.main ?? '').join('\n')}
 
+  #ifndef SKY_NO_FLASH
   sky += vec3( skyFlash );
+  #endif
   gl_FragColor = vec4( sky, 1.0 );
-  #include <tonemapping_fragment>
-  #include <colorspace_fragment>
-}
-`
-
-const FALL_VERTEX = /* glsl */ `
-uniform float fallTime;
-uniform float fallPeriod;
-uniform float fallDrop;
-uniform float fallSpeed;
-uniform float fallRange;
-uniform float fallEdge;
-uniform float fallNear;
-uniform vec2 fallCarry;
-uniform vec2 fallWind;
-uniform vec2 fallQuad;
-uniform vec3 fallSway;
-varying vec2 vFall;
-varying float vFade;
-${HASH}
-void main() {
-  uint id = uint( gl_InstanceID );
-  float box = 2.0 * fallRange;
-  vec3 p = vec3( skyDrop( id, 0u ), skyDrop( id, 1u ), skyDrop( id, 2u ) ) * box;
-  p.xz += fallCarry;
-  p.y -= fallDrop;
-  #ifdef SWAY
-    // Each rate put on the nearest whole number of cycles a period, at least one, so the clock wrapped
-    // by the period sways as the clock itself would.
-    float turn = 6.28318530718 / fallPeriod;
-    float r1 = turn * max( 1.0, floor( fallSway.y * ( 1.0 + fallSway.z * ( skyDrop( id, 3u ) - 0.5 ) ) / turn + 0.5 ) );
-    float r2 = turn * max( 1.0, floor( fallSway.y * ( 1.0 - fallSway.z * ( skyDrop( id, 4u ) - 0.5 ) ) / turn + 0.5 ) );
-    p.x += fallSway.x * sin( r1 * fallTime + 6.28318530718 * skyDrop( id, 5u ) );
-    p.z += fallSway.x * sin( r2 * fallTime + 6.28318530718 * skyDrop( id, 6u ) );
-  #endif
-  vec3 rel = mod( p - cameraPosition + fallRange, box ) - fallRange;
-  vec3 at = cameraPosition + rel;
-  float reach = max( abs( rel.x ), max( abs( rel.y ), abs( rel.z ) ) );
-  vFade = ( 1.0 - smoothstep( fallRange - fallEdge, fallRange, reach ) ) * smoothstep( 0.0, fallNear, length( rel ) );
-  #ifdef STREAK
-    vec3 axis = normalize( vec3( fallWind.x, - fallSpeed, fallWind.y ) );
-    vec3 across = normalize( cross( axis, rel ) );
-    at += across * position.x * fallQuad.x * 0.5 + axis * position.y * fallQuad.y * 0.5;
-  #else
-    vec3 right = vec3( viewMatrix[ 0 ][ 0 ], viewMatrix[ 1 ][ 0 ], viewMatrix[ 2 ][ 0 ] );
-    vec3 up = vec3( viewMatrix[ 0 ][ 1 ], viewMatrix[ 1 ][ 1 ], viewMatrix[ 2 ][ 1 ] );
-    at += ( right * position.x + up * position.y ) * fallQuad.x * 0.5;
-  #endif
-  vFall = position.xy;
-  gl_Position = projectionMatrix * viewMatrix * vec4( at, 1.0 );
-}
-`
-const FALL_FRAGMENT = /* glsl */ `
-uniform vec3 fallLight;
-uniform float fallOpacity;
-varying vec2 vFall;
-varying float vFade;
-void main() {
-  #ifdef STREAK
-    float a = ( 1.0 - abs( vFall.x ) ) * ( 1.0 - vFall.y * vFall.y );
-  #else
-    float a = max( 0.0, 1.0 - dot( vFall, vFall ) );
-  #endif
-  gl_FragColor = vec4( fallLight, fallOpacity * a * vFade );
-  #include <tonemapping_fragment>
-  #include <colorspace_fragment>
-}
-`
-const SPLASH_VERTEX = /* glsl */ `
-attribute vec4 spot;
-uniform float splashSize;
-varying vec2 vFall;
-varying float vAge;
-void main() {
-  vFall = position.xy;
-  vAge = spot.w;
-  gl_Position = projectionMatrix * viewMatrix * vec4( spot.xyz + vec3( position.x, 0.0, position.y ) * splashSize, 1.0 );
-}
-`
-const SPLASH_FRAGMENT = /* glsl */ `
-uniform vec3 fallLight;
-uniform float fallOpacity;
-uniform float splashRing;
-varying vec2 vFall;
-varying float vAge;
-void main() {
-  float width = splashRing * vAge;
-  float ring = width > 0.0 ? 1.0 - smoothstep( 0.0, width, abs( length( vFall ) - vAge ) ) : 0.0;
-  gl_FragColor = vec4( fallLight, fallOpacity * ( 1.0 - vAge ) * ring );
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }
@@ -554,19 +361,28 @@ type Built = {
   key: THREE.DirectionalLight
   hemi: THREE.HemisphereLight
   fog: THREE.FogExp2
-  fall?: { rain: Fall; snow: Fall; dust: Fall; splashes: Fall; key: string }
+  off: Set<Part>
   shadowKey: string
   colour: THREE.Color
-  tint: THREE.Color
   light: Light
 }
 // The sky's light as `light()` hands it out, changed in place every frame.
-export type Light = { sun: THREE.Vector3; sunColor: THREE.Color; zenith: THREE.Color; horizon: THREE.Color; fog: THREE.FogExp2; key: THREE.Vector3; keyColor: THREE.Color; sky: THREE.Color; ground: THREE.Color }
+export type Light = { sun: THREE.Vector3; sunColor: THREE.Color; zenith: THREE.Color; horizon: THREE.Color; fog: THREE.FogExp2; key: THREE.Vector3; keyColor: THREE.Color; sky: THREE.Color; ground: THREE.Color; night: number }
 
 export function skydome3d() {
   let b: Built | undefined
   let probe: ReturnType<typeof read> | undefined
   let shown = false
+  const splices = new Map<string, DomeSplice>()
+
+  // The dome's shader with every splice handed over so far, and their uniforms beside its own.
+  function shade() {
+    if (!b) return
+    const material = b.dome.material
+    material.fragmentShader = DOME_FRAGMENT([...splices.values()])
+    for (const s of splices.values()) Object.assign(material.uniforms, s.uniforms)
+    material.needsUpdate = true
+  }
 
   // Everything the sky puts on render3d's scene, and its splice, once.
   function build(plugins: Plugins, row: Row) {
@@ -576,87 +392,46 @@ export function skydome3d() {
     const c = () => ({ value: new three.Color() })
     const n = () => ({ value: 0 })
     const u: Uniforms = {
-      skySun: v3(), skyCover: n(), skyBase: n(), skyDrift: { value: new three.Vector2() }, skyScale: n(), skySharp: n(), skyWarp: n(), skyShadow: n(),
-      skyWet: n(), skyPack: n(), skySnowScale: n(),
-      skyZenith: c(), skyHorizon: c(), skySunColour: c(), skyMoonColour: c(), skyKey: v3(), skyKeyColour: c(), skyLight: c(), skyMoon: v3(),
-      skyNight: n(), skySunset: n(), skySunPower: n(), skyFlash: n(), skyRays: n(), skyStars: n(), skyClock: n(), skyPhase: n(), skyCirrus: n(), skyDense: n(),
+      skySun: v3(),
+      skyZenith: c(), skyHorizon: c(), skySunColour: c(), skyMoonColour: c(), skyKey: v3(), skyLight: c(), skyMoon: v3(),
+      skyNight: n(), skySunset: n(), skySunPower: n(), skyFlash: n(), skyStars: n(), skyClock: n(), skyPhase: n(),
       skyLat: { value: new three.Vector2() }, skyTurn: { value: new three.Vector2() },
-      skyCloudLit: n(), skyCloudShade: n(), skyLining: n(), skyCirrusAlpha: n(), skyStarSize: n(), skyTwinkle: n(), skyTwinkles: n(), skyTwinkleSpread: n(),
+      skyStarSize: n(), skyTwinkle: n(), skyTwinkles: n(), skyTwinkleSpread: n(),
       skySunShrink: { value: new three.Vector2() }, skySunEdge: n(), skyMoonEdge: n(), skyMoonSize: n(),
     }
-    const surface = ['skySun', 'skyCover', 'skyBase', 'skyDrift', 'skyScale', 'skySharp', 'skyWarp', 'skyShadow', 'skyWet', 'skyPack', 'skySnowScale']
-    plugins.render3d.splice('skydome3d', { uniforms: Object.fromEntries(surface.map(k => [k, u[k]])), fragment: { common: CLOUD, ...SURFACE } })
+    for (const part of row.off ?? []) if (!PARTS.includes(part)) throw new Error(`skydome3d has no part ${part} to take off; its parts are ${PARTS.join(', ')}`)
+    const off = new Set(row.off ?? [])
+    const defines = Object.fromEntries([...off].map(part => [defineOf(part), '']))
+    plugins.render3d.splice('skydome3d', { fragment: { common: NOISE } })
 
-    const material = new three.ShaderMaterial({ uniforms: u, vertexShader: DOME_VERTEX, fragmentShader: DOME_FRAGMENT, side: three.BackSide, depthWrite: false })
+    const material = new three.ShaderMaterial({ uniforms: u, defines, vertexShader: DOME_VERTEX, fragmentShader: DOME_FRAGMENT([]), side: three.BackSide, depthWrite: false })
     const dome = new three.Mesh(new three.SphereGeometry(row.look.radius, 48, 24), material)
     dome.renderOrder = -1000
+    dome.visible = !off.has('dome')
     scene.add(dome)
     const envScene = new three.Scene()
     const envMesh = new three.Mesh(dome.geometry, material)
     envScene.add(envMesh)
 
     const key = new three.DirectionalLight()
-    key.castShadow = true
+    key.castShadow = !off.has('shadow')
     scene.add(key, key.target)
     const hemi = new three.HemisphereLight()
     scene.add(hemi)
     const fog = new three.FogExp2(0xffffff, 0)
-    scene.fog = fog
+    if (!off.has('fog')) scene.fog = fog
     b = {
-      three, scene, u, dome, env: { scene: envScene, mesh: envMesh }, key, hemi, fog, shadowKey: '', colour: new three.Color(), tint: new three.Color(),
-      light: { sun: new three.Vector3(), sunColor: new three.Color(), zenith: new three.Color(), horizon: new three.Color(), fog, key: new three.Vector3(), keyColor: new three.Color(), sky: new three.Color(), ground: new three.Color() },
+      three, scene, u, dome, env: { scene: envScene, mesh: envMesh }, key, hemi, fog, off, shadowKey: '', colour: new three.Color(),
+      light: { sun: new three.Vector3(), sunColor: new three.Color(), zenith: new three.Color(), horizon: new three.Color(), fog, key: new three.Vector3(), keyColor: new three.Color(), sky: new three.Color(), ground: new three.Color(), night: 0 },
     }
+    shade()
   }
 
-  // The rain, snow, dust and splashes, made again when the precip numbers change.
-  function falling(p: Precip) {
-    const key = JSON.stringify(p)
-    if (b!.fall?.key === key) return b!.fall
-    dropFall()
-    const three = b!.three
-    const quad = new three.PlaneGeometry(2, 2)
-    const make = (defines: Record<string, string>, most: number, splash = false): Fall => {
-      const g = new three.InstancedBufferGeometry()
-      g.index = quad.index
-      g.setAttribute('position', quad.getAttribute('position'))
-      if (splash) g.setAttribute('spot', new three.InstancedBufferAttribute(new Float32Array(most * 4), 4).setUsage(three.DynamicDrawUsage))
-      g.instanceCount = 0
-      const uniforms: Uniforms = splash
-        ? { fallLight: { value: new three.Color() }, fallOpacity: { value: 0 }, splashRing: { value: 0 }, splashSize: { value: 0 } }
-        : {
-          fallTime: { value: 0 }, fallPeriod: { value: 1 }, fallDrop: { value: 0 }, fallSpeed: { value: 0 }, fallRange: { value: 0 }, fallEdge: { value: 0 }, fallNear: { value: 0 },
-          fallCarry: { value: new three.Vector2() }, fallWind: { value: new three.Vector2() }, fallQuad: { value: new three.Vector2() },
-          fallSway: { value: new three.Vector3() }, fallLight: { value: new three.Color() }, fallOpacity: { value: 0 },
-        }
-      const m = new three.ShaderMaterial({
-        uniforms, defines, vertexShader: splash ? SPLASH_VERTEX : FALL_VERTEX, fragmentShader: splash ? SPLASH_FRAGMENT : FALL_FRAGMENT,
-        transparent: true, depthWrite: false, side: three.DoubleSide,
-      })
-      const mesh = new three.Mesh(g, m)
-      mesh.frustumCulled = false
-      mesh.visible = false
-      b!.scene.add(mesh)
-      return mesh
-    }
-    b!.fall = { rain: make({ STREAK: '' }, p.rain), snow: make({ SWAY: '' }, p.snow), dust: make({ SWAY: '' }, p.dust), splashes: make({}, p.splashes, true), key }
-    quad.dispose()
-    return b!.fall
-  }
-
-  function dropFall() {
-    if (!b?.fall) return
-    for (const m of [b.fall.rain, b.fall.snow, b.fall.dust, b.fall.splashes]) {
-      b.scene.remove(m)
-      m.geometry.dispose()
-      m.material.dispose()
-    }
-    b.fall = undefined
-  }
-
-  // The frame's sky from the row and `world.skydome3d` as they stand, the camera where it stands, and render3d's renderer.
-  function read(plugins: Plugins, row: Row, camera: THREE.PerspectiveCamera, shares: Record<string, number>) {
+  // The frame's sky from the row and `world.skydome3d` as they stand, the weather it stands in, the
+  // camera where it stands, and render3d's renderer.
+  function read(plugins: Plugins, row: Row, weather: Standing, camera: THREE.PerspectiveCamera) {
     const { three, u, key, hemi, fog, colour, light } = b!
-    const look = row.look, mix = row.mix
+    const look = row.look, mix = weather.mix
     const s = sunOf(row), m = moonOf(row)
     const el = Math.asin(Math.min(1, Math.max(-1, s[1])))
     const day = smooth(-0.1, 0.22, el), night = 1 - smooth(-0.16, 0.02, el), sunset = Math.exp(-((el / 0.2) ** 2))
@@ -670,7 +445,7 @@ export function skydome3d() {
     const moonEl = Math.asin(Math.min(1, Math.max(-1, m[1])))
     const moonKey = look.moonIntensity * night * moonLit(row) * smooth(-0.1, 0.22, moonEl)
     const body = sunKey >= moonKey ? 'sun' : 'moon'
-    const lift = row.flash > 0 ? look.flash : 0
+    const lift = weather.lift
     const steady = Math.abs(sunKey - moonKey) * dark
     key.intensity = steady + lift
     key.color.copy(body === 'sun' ? sunColour : moonColour)
@@ -691,27 +466,20 @@ export function skydome3d() {
 
     shadowBox(renderer, row.shadow, toward, camera.position)
 
-    const rays = (flash: number) => look.godrays * (steady + flash) * (1 - 0.6 * night)
     const set = (name: string, value: number) => { u[name].value = value }
     ;(u.skySun.value as THREE.Vector3).fromArray(s)
     ;(u.skyMoon.value as THREE.Vector3).fromArray(m)
     ;(u.skyKey.value as THREE.Vector3).fromArray(toward)
     ;(u.skyZenith.value as THREE.Color).copy(zenith)
     ;(u.skyHorizon.value as THREE.Color).copy(horizon)
-    ;(u.skyKeyColour.value as THREE.Color).copy(key.color)
     const lightAt = (flash: number) => (u.skyLight.value as THREE.Color).copy(key.color).multiplyScalar(steady + flash)
     lightAt(lift)
-    ;(u.skyDrift.value as THREE.Vector2).fromArray(row.drift)
     const lat = row.lat * (Math.PI / 180), H = (row.t / row.day - 0.5) * 2 * Math.PI
     ;(u.skyLat.value as THREE.Vector2).set(Math.sin(lat), Math.cos(lat))
     ;(u.skyTurn.value as THREE.Vector2).set(Math.cos(H), Math.sin(H))
     ;(u.skySunShrink.value as THREE.Vector2).fromArray(look.sunShrink)
-    set('skyCover', mix.cloud); set('skyBase', mix.base); set('skyCirrus', mix.cirrus); set('skyDense', mix.dense)
-    set('skyScale', look.cloudScale); set('skySharp', look.cloudSharp); set('skyWarp', look.cloudDrift); set('skyShadow', look.cloudShadow)
-    set('skyWet', row.wet); set('skyPack', row.pack); set('skySnowScale', look.snowScale)
-    set('skyNight', night); set('skySunset', sunset); set('skySunPower', 0.5 + look.sunIntensity * day); set('skyFlash', lift); set('skyRays', rays(lift))
+    set('skyNight', night); set('skySunset', sunset); set('skySunPower', 0.5 + look.sunIntensity * day); set('skyFlash', lift)
     set('skyStars', look.stars * night); set('skyClock', row.t / row.day); set('skyPhase', row.phase)
-    set('skyCloudLit', look.cloudLit); set('skyCloudShade', look.cloudShade); set('skyLining', look.lining); set('skyCirrusAlpha', look.cirrusAlpha)
     set('skyStarSize', look.starSize); set('skyTwinkle', look.twinkle); set('skyTwinkles', look.twinkles); set('skyTwinkleSpread', look.twinkleSpread)
     set('skySunEdge', look.sunEdge); set('skyMoonEdge', look.moonEdge); set('skyMoonSize', look.moonSize)
 
@@ -723,23 +491,19 @@ export function skydome3d() {
     b!.dome.position.copy(camera.position)
     b!.env.mesh.scale.setScalar(1 / look.radius)
 
-    // The falling things' light: the hemisphere's sky and keyShare of the key.
-    const fallLight = colour.copy(horizon).multiplyScalar(hemi.intensity).add(b!.tint.copy(key.color).multiplyScalar(key.intensity * row.precip.keyShare))
-    fall(plugins, row, camera, fallLight)
-
     light.sun.fromArray(s)
     light.sunColor.copy(sunColour).multiplyScalar(body === 'sun' ? steady : 0)
     light.key.fromArray(toward)
     light.keyColor.copy(key.color).multiplyScalar(key.intensity)
     light.sky.copy(hemi.color).multiplyScalar(hemi.intensity)
     light.ground.copy(hemi.groundColor).multiplyScalar(hemi.intensity)
+    light.night = night
 
-    environment(renderer, row, shares, camera, () => { set('skyFlash', 0); set('skyRays', rays(0)); lightAt(0) }, () => { set('skyFlash', lift); set('skyRays', rays(lift)); lightAt(lift) })
+    environment(renderer, row, weather, camera, () => { set('skyFlash', 0); lightAt(0) }, () => { set('skyFlash', lift); lightAt(lift) })
 
     return {
       el, day, night, sunset, dark, moonEl, sunKey, moonKey, body, exposure,
       zenith, horizon, sunColour, dome: b!.dome, key, hemi, fog, uniforms: u,
-      fall: { rain: b!.fall!.rain, snow: b!.fall!.snow, dust: b!.fall!.dust, splashes: b!.fall!.splashes },
     }
   }
 
@@ -774,70 +538,11 @@ export function skydome3d() {
     key.position.copy(centre).addScaledVector(dir, sh.far / 2)
   }
 
-  function fall(plugins: Plugins, row: Row, camera: THREE.PerspectiveCamera, lightColour: THREE.Color) {
-    const p = row.precip, mix = row.mix
-    const f = falling(p)
-    const time = plugins.wire.n * plugins.wire.scene.prefabs.engine.dt
-    const box = 2 * p.range
-    const wrap = (x: number) => ((x % box) + box) % box
-    const [wx, wz] = windOf(row)
-    const each: [Fall, number, number, number, number, number, Sway | undefined, string | undefined][] = [
-      [f.rain, p.rain * mix.rain, p.rainFall, p.rainWidth, p.rainLen, p.rainOpacity, undefined, undefined],
-      [f.snow, p.snow * mix.snow, p.snowFall, p.snowSize, p.snowSize, p.snowOpacity, p.snowSway, undefined],
-      [f.dust, p.dust * mix.dust, p.dustFall, p.dustSize, p.dustSize, p.dustOpacity, p.dustSway, p.dustColour],
-    ]
-    for (const [mesh, count, speed, width, length, opacity, sway, tint] of each) {
-      const u = mesh.material.uniforms
-      mesh.geometry.instanceCount = Math.round(count)
-      mesh.visible = mesh.geometry.instanceCount > 0
-      u.fallTime.value = ((time % p.swayPeriod) + p.swayPeriod) % p.swayPeriod
-      u.fallPeriod.value = p.swayPeriod
-      u.fallDrop.value = wrap(time * speed)
-      u.fallSpeed.value = speed
-      u.fallRange.value = p.range
-      u.fallEdge.value = p.edge
-      u.fallNear.value = p.near
-      ;(u.fallCarry.value as THREE.Vector2).set(wrap(row.drift[0]), wrap(row.drift[1]))
-      ;(u.fallWind.value as THREE.Vector2).set(wx, wz)
-      ;(u.fallQuad.value as THREE.Vector2).set(width, length)
-      if (sway) (u.fallSway.value as THREE.Vector3).fromArray(sway)
-      ;(u.fallLight.value as THREE.Color).copy(lightColour)
-      if (tint) (u.fallLight.value as THREE.Color).multiply(b!.tint.set(tint))
-      u.fallOpacity.value = opacity
-    }
-
-    // Splashes: each lives splashLife, at a place hashed from its number and its life, in the box.
-    const s = f.splashes, su = s.material.uniforms
-    const ground = mod<Land>(plugins.wire.scene.world!, 'skydome3d', 'land')?.(plugins)
-    const count = ground ? Math.round(p.splashes * mix.rain) : 0
-    s.geometry.instanceCount = count
-    s.visible = count > 0
-    su.splashSize.value = p.splashSize
-    su.splashRing.value = p.splashRing
-    su.fallOpacity.value = p.splashOpacity
-    ;(su.fallLight.value as THREE.Color).copy(lightColour)
-    if (!ground) return
-    const spot = s.geometry.getAttribute('spot') as THREE.InstancedBufferAttribute
-    const at = spot.array as Float32Array, eye = camera.position
-    for (let i = 0; i < count; i++) {
-      const life = time / p.splashLife + hash01(i, 20)
-      const cycle = Math.floor(life)
-      const k = mixBits((i + mixBits(cycle >>> 0)) >>> 0)
-      const x = eye.x + wrap(hash01(k, 21) * box - eye.x + p.range) - p.range
-      const z = eye.z + wrap(hash01(k, 22) * box - eye.z + p.range) - p.range
-      at[i * 4] = x
-      at[i * 4 + 1] = ground.height(x, z) + p.lift
-      at[i * 4 + 2] = z
-      at[i * 4 + 3] = life - cycle
-    }
-    spot.needsUpdate = true
-  }
-
   // The scene's environment, made again only when stale, drawn with the flash taken out.
-  function environment(renderer: THREE.WebGLRenderer | undefined, row: Row, shares: Record<string, number>, camera: THREE.PerspectiveCamera, calm: () => void, back: () => void) {
+  function environment(renderer: THREE.WebGLRenderer | undefined, row: Row, weather: Standing, camera: THREE.PerspectiveCamera, calm: () => void, back: () => void) {
     const { three, scene, env } = b!
-    if (!renderer) return
-    const now = lit(row, shares)
+    if (!renderer || b!.off.has('environment')) return
+    const now = lit(row, weather)
     if (stale(row.look, env.then, now)) {
       env.pmrem ??= new three.PMREMGenerator(renderer)
       env.mesh.position.copy(camera.position)
@@ -866,21 +571,22 @@ export function skydome3d() {
       if (!b) build(plugins, sky)
       const camera = plugins.render3d.camera as THREE.PerspectiveCamera | undefined
       if (!camera) return
-      let shares: Record<string, number> = {}
-      if (Object.keys(sky.biomes ?? {}).length) {
-        const land = mod<Land>(plugins.wire.scene.world!, 'skydome3d', 'land')
-        if (!land) throw new Error('skydome3d has biomes and the scene names no world.skydome3d.mods.land')
-        shares = land(plugins)?.mix(camera.position.x, camera.position.z) ?? {}
-      }
-      probe = read(plugins, { ...sky, mix: here(sky.mix, sky.biomes, shares) }, camera, shares)
+      const world = plugins.wire.scene.world!
+      const weatherMod = mod<WeatherMod>(world, 'skydome3d', 'weather')
+      if (weatherMod) provided(plugins.wire.scene, 'skydome3d', 'weather')
+      probe = read(plugins, sky, weatherMod?.(plugins) ?? NONE, camera)
       shown = true
+    },
+    dome(key: string, s: DomeSplice) {
+      if (splices.has(key)) throw new Error(`skydome3d already has the dome splice ${key}`)
+      splices.set(key, s)
+      shade()
     },
     light: () => (shown ? b!.light : undefined),
     sky: () => (shown ? probe : undefined),
     close() {
       if (!b) return
       const { scene, dome, key, hemi, fog, env } = b
-      dropFall()
       scene.remove(dome, key, key.target, hemi)
       dome.geometry.dispose()
       dome.material.dispose()

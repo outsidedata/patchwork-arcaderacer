@@ -7,7 +7,8 @@
 //
 // `land(plugins)`, for a scene with `world.scatter3d.mods: { land: 'terrain3d' }`, is the land as this
 // page has it, terrain3d's browser half's `ground`, which answers the same five over the client's own
-// land: undefined until its field has loaded. terrain3d makes it, and every new land under it, in
+// land, and `rings()`, the reach of each of terrain3d's rings, finest first, which scatter3d's packs
+// draw their LODs on: undefined until its field has loaded. terrain3d makes it, and every new land under it, in
 // its own `afterTick`, where scatter3d's browser half reads it.
 import type { W } from '#engine/engine.ts'
 import type { Plugins } from '#engine/browser.ts'

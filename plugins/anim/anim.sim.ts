@@ -152,7 +152,7 @@
 // `animate` throws for a clip the rig does not hold. A `limp` row is not animated or moved: whatever
 // made it limp owns it, and `animate` hands back no markers and no travel and writes nothing.
 //
-// It reads the rig file through the loader's `json`, as terrain3d and skydome3d read theirs, and
+// It reads the rig file through the loader's `json`, as terrain3d and weather3d read theirs, and
 // imports no other plugin. A resolved clip is kept per rig file's `clips` and `table` objects, which
 // the loader replaces whole when the file is written, so an edit is read on the next step.
 import type { Row, W } from '#engine/engine.ts'

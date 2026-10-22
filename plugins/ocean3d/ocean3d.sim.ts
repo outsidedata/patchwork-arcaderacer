@@ -23,15 +23,15 @@
 //                  others the browser half's (its header).
 // Its other numbers are the browser half's.
 //
-// The weather. `wind(w)`, the mod a scene names in `world.ocean3d.mods.wind` (skydome3d's,
-// `skydome3d.ocean3d.ts`), is the wind standing now, or undefined; every wave is drawn and floated
+// The weather. `wind(w)`, the mod a scene names in `world.ocean3d.mods.wind` (weather3d's,
+// `weather3d.ocean3d.ts`), is the wind standing now, or undefined; every wave is drawn and floated
 // at `ampOf(sea, wind)` = amp·(floor + (1 − floor)·min(1, wind/windRef)), and at amp itself with no
 // mod or no wind, where `weather` may be left out. A wind with no `weather` to raise the sea by
 // throws. amp is not in the spectrum's key, so a change of weather remakes nothing, and the sky's
 // wind fades smoothly, so the sea swells and calms with it. `ampAt(w)` is the amplitude over `w`'s
 // rows: the truth's on the server, the drawn ones on the page.
 //
-// Directions. A way θ is clockwise from north, as skydome3d's `windDeg` is: 0 toward −z, 90 toward
+// Directions. A way θ is clockwise from north, as weather3d's `windDeg` is: 0 toward −z, 90 toward
 // +x. A cell's term h0(k)·e^{i(k·p + ωt)} holds its phase where k·p = −ωt, so the energy put at cell
 // k travels toward −k, the way θ = atan2(−kx, kz), and that is the θ its spreading is read at.
 //

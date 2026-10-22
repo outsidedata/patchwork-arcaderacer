@@ -54,7 +54,7 @@ Neither page is a bundle. Each is an inline module that imports `#engine/…` an
 that `package.json`'s `imports` maps to the repo's folders. Of the game's own files, `index.html`
 imports `<game>.sim.ts` and `<game>.scene.json`, and `client.html` imports the scene file alone,
 without an import attribute. Everything else the game is, the pages reach while they run, by URLs
-built at run time (What an export must give the pages, below).
+built at run time.
 
 A browser cannot do this by itself. It cannot resolve `#engine/engine.ts`, run a `.ts` file, or import
 a `.json` file without an import attribute. Vite's dev server does all three, and so does the editor's
@@ -65,9 +65,7 @@ server, which holds a Vite.
 - **Played from your machine** by people on your network: Vite's dev server serves the pages from the
   repo, and node runs the server beside it. That is the next section, and it serves the whole repo to
   that network.
-- **Online, or from any static host** (GitHub Pages, itch.io, a CDN, a web server of your own): step 1
-  is building the export in its home, in Going online below. A static host fed the repo itself, or
-  `vite build`'s `dist/` of a game's folder, shows a blank page: the export is what it is fed.
+- **Online**: `yarn publish_gh_pages_game <game>`, in Going online below.
 
 ## Playing it from your machine
 
@@ -132,56 +130,20 @@ server, which holds a Vite.
 
 ## Going online
 
-1. **Build the export in its home.** An export reads a game's files and writes a site a static host
-   serves. It names no game and finds a game's files by the names they already have, as the editor
-   does. It is about files in general, so its home is an extension of the editor's own,
-   `extensions/<name>/`, its `<name>.route.ts` doing the disk work through the editor's files, and on
-   the command line `scripts/<name>.ts` with a script in `package.json`. That is the shape `yarn
-   new-game` has: `scripts/new-game.ts` calls `make` in `extensions/games/games.route.ts`, tested in
-   `scripts/new-game.test.ts` on a root of its own and in `extensions/games/games.route.test.ts`.
-   Nothing a game runs imports `editor/`, an extension or a route, so the site it writes holds none of
-   them. It is built once, tested, used by every game, and given back to core (Giving back). It is
-   never a build script, a Vite config or a copied page in one game's folder.
+1. **Put it on GitHub Pages.** From the repo root:
 
-2. **What an export must give the pages.** All of it is in the code that runs:
-   - The pages' own imports as JavaScript a browser runs: the `#engine/…`, `#addons/…` and
-     `#plugins/…` names, TypeScript, the scene file imported with no attribute, and the packages in
-     `node_modules/` the plugins import.
-   - Every import built from a URL at run time, which no bundler follows:
-     - the scene's `<scene>.sim.ts`, beside the manager scene (`halves` in
-       `addons/scenemanager/scenemanager.addon.ts`);
-     - each mod a scene names, `plugins/<a>/<a>.<p>.ts` from the addon's own URL, or a game's own from
-       `world.scenemanager.home` (`modUrl` and `loadMods` in the same file);
-     - each row's `<kind>.client.ts?row=<id>&client=<c>`, beside the page (`engine/browser.ts`). A kind whose file
-       fails to import has no actor, and nothing says so, so a file the export leaves out is a thing
-       that is never drawn;
-     - each of the game's own plugins, `plugins/<name>/<name>.plugin.ts` under the page's folder
-       (`plugins/shipped/shipped.plugin.ts`);
-     - a scene's `.actors.json`, fetched beside its scene file (`actorsOf` in the scenemanager addon).
+   ```
+   yarn publish_gh_pages_game <game>
+   ```
 
-     `engine/browser.ts` imports each plugin's browser half as
-     `` `../plugins/${name}/${name}.plugin.ts` ``, a pattern a bundler does follow.
-   - The page's own `import.meta.url` kept as the game's folder. Every page hands it to `load` and
-     `view` as the base of the URLs above. `vite build games/<game>` moved the page's module to
-     `assets/index-….js`, and the built page asked for `assets/main.sim.ts` and got a 404.
-   - Every catalogue file at the path the catalogue gives it, from the host's root:
-     `/games/<game>/assets/<game>.json` in the scene `yarn new-game` writes, and a file one names read
-     beside it (`beside` in `plugins/loader/loader.sim.ts` keeps a leading `/`). A site served under a
-     subpath, as `https://<user>.github.io/<repo>/` is, misses every one.
-   - JavaScript at the `.ts` paths, served as JavaScript. The engine is frozen, and `engine/browser.ts`
-     names `<kind>.client.ts`, so the export puts JavaScript at that path. The host must send it with
-     a JavaScript content type. Python's `http.server` sends `.ts` as `video/mp2t`, and a browser
-     refuses a module of that type. A path an addon or a plugin builds is changed there, in its home,
-     with its test, when it is changed at all. If a host cannot serve the engine's `.ts` paths as
-     JavaScript, the route is an issue on core's GitHub repo, with the attempt and the one fact the
-     engine would have to change (prime directive, The engine is frozen). The engine is never edited.
-   - Only what the pages reach: never `dev.html`, a test, `.claude/`, `.git/` or anything
-     `server.fs.deny` names.
+   Run it again to publish the game's changes. `--owner <owner>` names the GitHub owner when this
+   repo's `origin` is not on GitHub. The game is played at
+   `https://<owner>.github.io/patchwork-<game>/`. The steps it takes are the header of
+   `scripts/publish_gh_pages_game.ts`.
 
-3. **Host it.** For `index.html`, the export on a static host is the whole game. For `client.html`,
-   the pages go on the host and the server runs on node (step 4).
+2. **`client.html`** is not on Pages. Its server runs on node (step 3).
 
-4. **Run the server online.** It runs from a clone of your repo with `yarn install`, from the root, as
+3. **Run the server online.** It runs from a clone of your repo with `yarn install`, from the root, as
    in Playing it from your machine, on Node 22.6 or later. Online it meets what follows.
 
    What stops the server. One process holds every seat, so whatever ends it ends the game for every
@@ -212,7 +174,7 @@ server, which holds a Vite.
    pages. A server elsewhere, or a scheme other than `ws://`, is a change to what every game's page
    dials, made in `gameFiles` and through the scene file, never in one game's `client.html`.
 
-5. **What a player sees when the server refuses a seat or goes away** is built in the page side of an
+4. **What a player sees when the server refuses a seat or goes away** is built in the page side of an
    addon. `dial` in the socket addon already learns that the server has gone, through its `gone`. A
    word on the page is a readout and `gone` is a listener, and a page holds neither (prime directive,
    Page). The page line at most hands one addon's function to another, as `client.html` already does
@@ -246,7 +208,7 @@ Page). Shipping meets that rule here:
 
 `dev.html`, beside `index.html`, is where the game is played to find something out (prime directive,
 Testbed). Vite's dev server serves it like every other file of the folder, so with `--host` anyone on
-the network can open it. It still never ships into anything else, and an export never takes it.
+the network can open it. It still never ships into anything else, and `yarn publish_gh_pages_game` never takes it.
 `index.html`, `client.html` and `<game>.server.ts` are written as if it did not exist. No scene file,
 rule, actor, plugin, addon, extension or test imports it, reads what it set, or asks whether it is
 running. The game plays the same with it deleted. What it found out that the game needs is built in
@@ -362,16 +324,14 @@ The steps:
 
 - A static host fed the repo, or `vite build`'s `dist/`: the page is blank. `python3 -m http.server`
   over the repo failed on `Failed to resolve module specifier '#engine/engine.ts'`. A built page asked
-  for `assets/<scene>.sim.ts` and got a 404. A static host is fed the export.
-- The export's site served under a subpath: every catalogue file, `/games/<game>/…`, misses.
-- A host that sends `.ts` as `video/mp2t`: the browser refuses every module at a `.ts` path.
+  for `assets/<scene>.sim.ts` and got a 404. The game goes online with `yarn publish_gh_pages_game`.
 - Vite started without `--host`: players on other machines get no answer.
 - Vite's dev server handed to the internet: it serves the whole repo.
 - The players sent the editor's address: it answers on `localhost` alone.
 - The server started from the game's folder, or from anywhere but the root: it exits on its first
   catalogue file.
 - The server gone for everyone: one rule threw, or one client sent a malformed message. Each is
-  built in its home (Going online, step 4), never caught in `<game>.server.ts`.
+  built in its home (Going online, step 3), never caught in `<game>.server.ts`.
 - The second player's page is blank: the scene still says `"seats": 1` (`going-multiplayer`).
 - A seat held by a player who is gone: their machine vanished without closing the socket, and the
   socket never pings.
@@ -401,11 +361,7 @@ The steps:
 - From your machine: played at the network address, not `localhost`. That means `index.html`, then
   the server running and `client.html` in two windows or on two machines, each player's thing moving
   on the frame after their key and each seeing the other move.
-- The export: its tests beside it, `scripts/<name>.test.ts` on a root of its own and
-  `extensions/<name>/<name>.route.test.ts`, export a game the test writes there. They check that every
-  URL the pages reach, the run-time ones above included, is in the site as JavaScript, and that every
-  catalogue file is at its path from the root. The site is then played in Chrome from a static server
-  that sends the `.ts` paths as JavaScript: `index.html` alone, and `client.html` against the server.
+- On GitHub Pages: the game played at `https://<owner>.github.io/patchwork-<game>/`.
 - What stops the server: the socket addon's and the scenemanager addon's tests send a malformed
   message, and run a manager of two scenes and two seats where one scene throws every step; the
   server still steps for the seat on the other scene and sends it its packets.

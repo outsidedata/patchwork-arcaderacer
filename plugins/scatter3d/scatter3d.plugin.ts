@@ -25,8 +25,8 @@
 //             down, far firs thin to sticks, and a card LOD swapped in far off turns from a solid crown
 //             into a skeleton.
 // and a pack's:
-//   lods      metres: the shells the pack is drawn in (below).
-//   shadow    metres: a shell that ends within it casts shadows; every shell takes them.
+//   lods      the LOD drawn on each of the land's rings, finest first (Shells, below).
+//   shadow    metres: a shell any of which is within it casts shadows; every shell takes them.
 //   leaf      how far a card's normal is bent toward the sky: `leafNormal(leaf)`, n ←
 //             normalize(mix(n, up, leaf)) after the normal maps, so a crown of cards is lit, and takes
 //             snow, as one mass.
@@ -37,14 +37,22 @@
 // `_2`, …, so `<row>-<lod>_n` reads as `<row>-<lod>`, and `<row>-<lod>-<part>_n` as a part. Its
 // `sanitizeNodeName` deletes `.`, so a Blender `tall-0.001` arrives as `tall-0001` and reads as LOD 1;
 // and a node of more than one primitive is a group whose meshes carry the glTF mesh's name, not the
-// node's: the name read is the mesh's own. Each mesh's geometry is copied with its node transforms
-// baked in, and every LOD of a row is moved by one offset, the one that puts LOD 0's lowest point on
-// y = 0 and the middle of its bounding box across x and z on the axis, so the LODs of a row stand on
-// one spot. A row of weight 0 needs no mesh; a row that is drawn and has no mesh for one of its LODs
-// throws naming it (`unmeshed`). Every material is copied, so the loader's own model is left as it
-// was, and every copy goes through render3d's `dress`: a card with its surface of coverage and
-// `leafNormal`, anything else with none. The model is asked of the loader once, and the
-// pack is drawn once it has landed.
+// node's: the name read is the mesh's own. Only the LODs the pack's `lods` name are read. Each mesh's
+// geometry is copied with its node transforms baked in, and every LOD of a row is moved by one offset,
+// the one that puts its finest LOD's (the lowest-numbered its `lods` name) lowest point on y = 0 and
+// the middle of its bounding box across x and z on the axis, so the LODs of a row stand on one spot. A
+// row of weight 0 needs no mesh; a row that is drawn and has no mesh for a LOD its `lods` name throws
+// naming it (`unmeshed`). Every material is copied, so the loader's own model is left as it was, and
+// every copy goes through render3d's `dress`: a card with its surface of coverage and `leafNormal`,
+// anything else with none. The model is asked of the loader once, and the pack is drawn once it has
+// landed.
+//
+// Billboards. A part named `billboard` (`<row>-<lod>-billboard`, the far LOD the library's tree bake
+// writes: one upright card of one picture of the tree, built in place like the other LODs, facing +z)
+// is turned about its instance's own up to face the eye, in place of the instance's yaw: its position
+// and its normal are turned in its vertex by the direction to `cameraPosition` taken into the
+// instance's own space. Its shadow turns the same way, through a depth material of its own
+// (`customDepthMaterial`) whose eye is the light's, so the card faces the light it casts for.
 //
 // A shape pack is boulders: `shape { detail, lumpy [base, range], squash }`. Each row is a variant,
 // three's icosahedron of radius 1 and `detail`, each vertex moved out to base + range·h of itself,
@@ -61,13 +69,17 @@
 //   moss    mixed in by smoothstep(from, to, n at an offset)·amount·smoothstep(up[0], up[1], the
 //           world normal's y), so it grows on the faces that look up;
 //   rough   the roughness.
-// Its one geometry is drawn in every shell.
+// Its one geometry is drawn in every shell, whatever LOD its `lods` name.
 //
-// Shells. A pack has lods.length + 1 of them. Shell k reaches ⌈lods[k]/cell⌉ cells from the camera's
-// cell, the last ⌈reach/cell⌉, a cell's distance being the larger of its x and z distances in cells:
-// shell 0 is the square out to its reach, each later one the square ring between the one before and
-// its own. LOD k is drawn in shell k. A shell casts shadows when it ends, at lods[k] or at reach,
-// within `shadow`.
+// Shells. A pack is drawn on its land's rings (`rings()` on the page's land, each ring's reach in
+// metres, terrain3d's `world.terrain3d.rings`), one shell for each entry of its `lods`: shell k reaches
+// ⌈rings[k]/cell⌉ cells from the camera's cell, a cell's distance being the larger of its x and z
+// distances in cells, and draws LOD lods[k]. Shell 0 is the square out to its reach, each later one the
+// square ring between the one before and its own, and the pack ends at the ring of its last LOD. A
+// pack with more `lods` than its land has rings, or a land that hands out none, throws the frame the
+// pack is made. A shell casts shadows when any of it is within `shadow`: when the ring before it ends
+// inside that distance (shell 0 always, with a `shadow` above 0). A change to the land's
+// rings builds the field again.
 //
 // Looks. Each row drawn and each shell is a look: an InstancedMesh per part of that LOD, all of them
 // as big as the shell's count of cells, since a cell holds at most one instance, so a look never
@@ -118,7 +130,7 @@
 // true when the land has none), so trees and grass never stand on ground that is not drawn yet.
 //
 // Bedding. A cell's instance is its model at `size`, yawed, then tilted, and sunk:
-//   foot    the mean distance from the axis of LOD 0's vertices from y = 0 up to a tenth of its rise,
+//   foot    the mean distance from the axis of the finest LOD's vertices from y = 0 up to a tenth of its rise,
 //           its highest point; edge the largest of those distances;
 //   lean    min(1, foot/rise): a tussock follows the slope and a fir stands up straight;
 //   tilt    the plane fitted by least squares to the ground at 8 points foot·size round the cell's
@@ -167,7 +179,9 @@ type Three = typeof import('three')
 export type Hollow = { at: number[]; rot: number[]; half: number[] }
 // What a `hollows` mod is: the boxes of its plugin's things as this page has them.
 export type Hollows = (plugins: Plugins) => Hollow[]
-export type Part = { name: string; geometry: THREE.BufferGeometry; material: THREE.Material }
+// A part of a LOD: a billboard's carries the depth material its shadow turns with (Billboards).
+export type Part = { name: string; geometry: THREE.BufferGeometry; material: THREE.Material; depth?: THREE.Material }
+// A row's parts by LOD number, only the LODs its pack's `lods` name; a shape's one geometry is LOD 0.
 export type Model = { lods: Part[][]; foot: number; edge: number; rise: number; lean: number }
 export type Held = { i: number; j: number; cell: Cell | undefined; m: Float32Array | undefined; shell: number; look: Look | undefined; slot: number }
 export type Look = { meshes: THREE.InstancedMesh[]; cap: number; count: number; held: Held[]; written: Set<number> }
@@ -189,8 +203,15 @@ export type Live = {
 // `<row>-<lod>`, with `_n` or `-<part>` after it.
 const NAME = /^(.+)-(\d+)(?:_\d+)?(?:-(.+))?$/
 
-// The sentence a model pack is refused with when a row it draws has no mesh for one of its LODs in
-// `root`, the model's scene, or undefined when every drawn row has every LOD.
+// The LODs a model pack's `lods` name, each once, finest first.
+const lodsOf = (pack: Pack) => [...new Set(pack.lods)].sort((a, b) => a - b)
+
+// Whether a part is a billboard (Billboards): `billboard`, or `billboard_n` where three's loader made a
+// repeated name unique.
+const BILLBOARD = /^billboard(?:_\d+)?$/
+
+// The sentence a model pack is refused with when a row it draws has no mesh in `root`, the model's
+// scene, for a LOD its `lods` name, or undefined when every drawn row has every one.
 export function unmeshed(name: string, pack: Pack, root: THREE.Object3D): string | undefined {
   const has = new Set<string>()
   root.traverse(o => {
@@ -199,7 +220,7 @@ export function unmeshed(name: string, pack: Pack, root: THREE.Object3D): string
   })
   for (const [row, r] of Object.entries(pack.rows)) {
     if (!(r.weight > 0)) continue
-    for (let k = 0; k <= pack.lods.length; k++) if (!has.has(`${row} ${k}`)) return `scatter3d pack ${name} row ${row} has no LOD ${k} in ${pack.asset}`
+    for (const k of lodsOf(pack)) if (!has.has(`${row} ${k}`)) return `scatter3d pack ${name} row ${row} has no LOD ${k} in ${pack.asset}`
   }
   return undefined
 }
@@ -223,6 +244,46 @@ const cardOf = (leaf: number, coverage: number) => ({
     normal_fragment_maps: leafNormal(leaf),
   },
 })
+
+// A billboard's turn (Billboards): `v`, a point or a direction in the card's own space, turned about
+// its up so its +z faces the eye, the eye taken into the instance's own space through the inverse of
+// its whole matrix. Straight over the card the eye has no direction across the ground, and it keeps
+// facing +z.
+const FACE = [
+  'vec3 scFace( vec3 v ) {',
+  '  mat4 scWhole = modelMatrix;',
+  '  #ifdef USE_INSTANCING',
+  '    scWhole = modelMatrix * instanceMatrix;',
+  '  #endif',
+  '  vec2 scEye = ( inverse( scWhole ) * vec4( cameraPosition, 1.0 ) ).xz;',
+  '  float scLen = length( scEye );',
+  '  vec2 scTo = scLen > 1e-6 ? scEye / scLen : vec2( 0.0, 1.0 );',
+  '  return vec3( v.x * scTo.y + v.z * scTo.x, v.y, v.z * scTo.y - v.x * scTo.x );',
+  '}',
+].join('\n')
+
+// A billboard's surface: its normal and its position turned to the eye, before the instance's matrix.
+const billboardOf = (): Surface => ({
+  vertex: {
+    common: FACE,
+    beginnormal_vertex: 'objectNormal = scFace( objectNormal );',
+    begin_vertex: 'transformed = scFace( transformed );',
+  },
+})
+
+// A billboard's depth material: three's own, its vertex turned as the card's is, so the shadow map,
+// drawn from the light's eye, holds the card turned to the light. Three hands it the card's map and
+// cut each time it draws the shadow.
+function billboardDepth(three: Three) {
+  const m = new three.MeshDepthMaterial()
+  m.onBeforeCompile = shader => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\n${FACE}`)
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed = scFace( transformed );')
+  }
+  m.customProgramCacheKey = () => 'scatter3d billboard'
+  return m
+}
 
 // The surface that draws nothing inside the hollows: each fragment's world point taken into each
 // box's own space, where the box is the cube from -1 to 1, and dropped inside one. `scHollow` holds
@@ -368,7 +429,8 @@ export function scatter3d() {
       seen = { s, ground }
       three = plugins.render3d.THREE
       scene = plugins.render3d.scene
-      const text = JSON.stringify(s)
+      // the field is built again when its numbers, or the land's rings it is drawn on, change
+      const text = JSON.stringify([s, ground?.rings?.()])
       if (text !== built) {
         drop()
         built = text
@@ -394,7 +456,7 @@ export function scatter3d() {
       }
       for (const [name, pack] of Object.entries(s.packs)) {
         if (lives[name]) continue
-        const l = make(name, pack, s, plugins)
+        const l = make(name, pack, s, plugins, ground)
         if (l) lives[name] = l
       }
       const e = ground.edits()
@@ -474,11 +536,17 @@ export function scatter3d() {
   }
 
   // A pack's models, its looks on the scene and its empty field; undefined while its model is coming.
-  function make(name: string, pack: Pack, s: Scatter, plugins: Plugins): Live | undefined {
+  function make(name: string, pack: Pack, s: Scatter, plugins: Plugins, ground: Ground): Live | undefined {
     const t = three!
     const drawn = Object.keys(pack.rows).filter(row => pack.rows[row].weight > 0)
-    const radii = [...pack.lods.map(l => Math.ceil(l / pack.cell)), Math.ceil(pack.reach / pack.cell)]
-    const ends = [...pack.lods, pack.reach]
+    // The land's rings, one shell on each of the first `lods.length` (Shells).
+    const rings = ground.rings?.()
+    if (!rings) throw new Error('scatter3d draws each pack on its land\'s rings, and its land hands out no rings')
+    if (pack.lods.length > rings.length) throw new Error(`scatter3d pack ${name} has ${pack.lods.length} lods, one for each land ring it is drawn on, and its land has ${rings.length} rings`)
+    const ends = pack.lods.map((_, k) => rings[k])
+    const radii = ends.map(e => Math.ceil(e / pack.cell))
+    // the LOD each shell draws: a shape's one geometry in every one
+    const shows = pack.asset !== undefined ? pack.lods : pack.lods.map(() => 0)
     const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>()
     const clear = hollow && hollowOf(hollow.cap, hollow.uniforms)
     const dress = <M extends THREE.Material>(m: M, own?: Surface): M => {
@@ -500,7 +568,9 @@ export function scatter3d() {
       const why = unmeshed(name, pack, root)
       if (why) throw new Error(why)
       root.updateMatrixWorld(true)
-      const copies = new Map<THREE.Material, THREE.Material>()
+      const used = lodsOf(pack)
+      // each material copied once as an ordinary part and once as a billboard, should one be both
+      const copies = new Map<string, { material: THREE.Material; depth?: THREE.Material }>()
       const found: Record<string, Part[][]> = {}
       root.traverse(o => {
         const mesh = o as THREE.Mesh
@@ -508,32 +578,37 @@ export function scatter3d() {
         const at = NAME.exec(mesh.name)
         if (!at || !drawn.includes(at[1])) return
         const k = Number(at[2])
-        if (k > pack.lods.length) return
+        if (!used.includes(k)) return
+        const board = at[3] !== undefined && BILLBOARD.test(at[3])
         const theirs = mesh.material as THREE.Material
-        let material = copies.get(theirs)
-        if (!material) {
-          material = theirs.clone()
+        const key = `${theirs.uuid} ${board}`
+        let copy = copies.get(key)
+        if (!copy) {
+          const material = theirs.clone()
           const card = material.transparent || material.alphaTest > 0
           if (material.transparent) {
             material.transparent = false
             material.alphaTest = s.cutout
             material.depthWrite = true
           }
-          dress(material, card ? cardOf(pack.leaf, s.coverage) : undefined)
-          copies.set(theirs, material)
+          dress(material, both(card ? cardOf(pack.leaf, s.coverage) : undefined, board ? billboardOf() : undefined))
           materials.add(material)
+          const depth = board ? billboardDepth(t) : undefined
+          if (depth) materials.add(depth)
+          copies.set(key, copy = { material, depth })
         }
         const geometry = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld)
         geometries.add(geometry)
-        ;((found[at[1]] ??= [])[k] ??= []).push({ name: mesh.name, geometry, material })
+        ;((found[at[1]] ??= [])[k] ??= []).push({ name: mesh.name, geometry, ...copy })
       })
       for (const row of drawn) {
         const lods = found[row]
+        const finest = lods[used[0]]
         const box = new t.Box3()
-        for (const p of lods[0]) { p.geometry.computeBoundingBox(); box.union(p.geometry.boundingBox!) }
+        for (const p of finest) { p.geometry.computeBoundingBox(); box.union(p.geometry.boundingBox!) }
         const dx = -(box.min.x + box.max.x) / 2, dy = -box.min.y, dz = -(box.min.z + box.max.z) / 2
-        for (const parts of lods) for (const p of parts) p.geometry.translate(dx, dy, dz)
-        models[row] = { lods, ...stand(lods[0]) }
+        for (const k of used) for (const p of lods[k]) p.geometry.translate(dx, dy, dz)
+        models[row] = { lods, ...stand(finest) }
       }
     } else {
       const material = dress(new t.MeshStandardMaterial({ color: new t.Color(pack.colour), ...(pack.surface && { roughness: pack.surface.rough }) }), pack.surface && rockOf(pack.surface, t))
@@ -544,19 +619,20 @@ export function scatter3d() {
         const geometry = boulder(pack.shape!, pack.seed + 7 + rows.indexOf(row), t)
         geometries.add(geometry)
         const part = { name: row, geometry, material }
-        models[row] = { lods: radii.map(() => [part]), ...stand([part]) }
+        models[row] = { lods: [[part]], ...stand([part]) }
       }
     }
     const looks = new Map<string, Look>(), byRow: Record<string, Look[]> = {}
     for (const row of drawn) {
       radii.forEach((R, k) => {
         const cap = (2 * R + 1) ** 2 - (k ? (2 * radii[k - 1] + 1) ** 2 : 0)
-        const meshes = models[row].lods[k].map(p => {
+        const meshes = models[row].lods[shows[k]].map(p => {
           const m = new t.InstancedMesh(p.geometry, p.material, cap)
           m.name = p.name
+          if (p.depth) m.customDepthMaterial = p.depth
           m.count = 0
           m.instanceColor = new t.InstancedBufferAttribute(new Float32Array(cap * 3), 3)
-          m.castShadow = ends[k] <= pack.shadow
+          m.castShadow = (k ? ends[k - 1] : 0) < pack.shadow
           m.receiveShadow = true
           // The instances move as the camera does; a bounding sphere kept from any one moment culls
           // the rest.

@@ -53,7 +53,7 @@
     "radix-ui": "1.6.7",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "three": "github:outsidedata/three.js#1f7e7c5",
+    "three": "https://github.com/outsidedata/three.js/releases/download/r186-1f7e7c5/three-0.186.1.tgz",
     "tone": "15",
     "ws": "^8.18.0",
     "zod": "4.6.5"

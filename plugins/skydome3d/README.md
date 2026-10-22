@@ -60,6 +60,8 @@ sea and for what render3d's overlay draws.
    environment), `precip` (rain, snow, dust and splashes), `shadow`, and `mods: { land: 'terrain3d' }`.
 3. Give the scene a `seed` if its weathers thunder.
 4. Change the weather from a rule: `w.call(w.find('skydome3d'), 'weather', -1, 'storm', 30)`.
+5. To measure what a part of the sky costs, name it in `world.skydome3d.off` and it is not drawn:
+   `dome`, `gradient`, `stars`, `moon`, `sun`, `flash`, `fog`, `environment`, `shadow`.
 
 ## Plugins it works with
 

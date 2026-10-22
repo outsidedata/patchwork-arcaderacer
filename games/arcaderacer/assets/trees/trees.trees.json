@@ -11,6 +11,6 @@
     { "name": "far", "crown": { "bands": 4, "sides": 8, "taper": 0.35 } }
   ],
   "colours": { "bark": "#705a45", "leaf": "#457b45" },
-  "textures": { "leaf": 1024, "normal": 512 },
+  "textures": { "leaf": 1024, "normal": 512, "bark": 1024, "barkNormal": 512 },
   "node": "{tree}_{lod}"
 }

@@ -23,9 +23,10 @@
 //                    metres, for what asks along a line (hitscan3d); a solid with no `tall` stands
 //                    without end.
 //     cell           metres: the pack is a grid of square cells this wide, at most one instance each.
-//     reach          metres from the camera the browser half draws the pack out to.
 //     seed           the pack's hashes' seed.
-//     lods shadow leaf  the browser half's shells, shadows and card normals (its header).
+//     lods           the LOD the browser half draws on each of its land's rings, finest ring first; the
+//                    pack is drawn out to the ring of its last (its header).
+//     shadow leaf    the browser half's shadows and card normals (its header).
 //     density        the share of cells kept on open ground.
 //     rules          `[{ q, lo, hi }]` over the land record, each a ramp the keep is multiplied by.
 //     biomes         optional, biome name to a weight: the keep is multiplied by Σ weight·share, each
@@ -87,7 +88,7 @@ export type RockSurface = {
 export type Pack = {
   asset?: string; shape?: Shape; colour?: string; surface?: RockSurface
   rows: Record<string, { weight: number; solid?: number; tall?: number }>
-  cell: number; reach: number; seed: number; lods: number[]; shadow: number; leaf: number
+  cell: number; seed: number; lods: number[]; shadow: number; leaf: number
   density: number; rules: Rule[]; biomes?: Record<string, number>; clearing: number; size: [number, number]; vary: number
 }
 export type Scatter = { mods?: { ground?: string; land?: string; hollows?: string | string[] }; hollows?: number; cutout: number; coverage: number; budget: number; remember: number; packs: Record<string, Pack> }
@@ -103,6 +104,9 @@ export type Ground = {
   // place the land has prepared, `[x, z]`, or undefined, whose cells the browser half places ahead.
   shown?(): boolean
   prepared?(): number[] | undefined
+  // The page's land alone: the reach of each of its rings in metres, finest first, the rings the browser
+  // half draws each pack's LODs on.
+  rings?(): number[]
   // The page's land alone, when it has workers: the module at `url`'s `task(ground, input)` run on the
   // land in one, its output handed back; undefined where it has none.
   task?(url: string, input: unknown): Promise<unknown> | undefined
@@ -167,7 +171,7 @@ export function check(s: Scatter, ground: Ground) {
     if (p.asset === undefined && p.shape === undefined) throw new Error(`${what} has neither an asset nor a shape`)
     if (p.shape !== undefined && p.colour === undefined) throw new Error(`${what} has a shape and no colour`)
     if (!(p.cell > 0)) throw new Error(`${what} cell ${p.cell} is not above 0`)
-    if (!p.lods.every((l, k) => l > (k ? p.lods[k - 1] : 0) && l < p.reach)) throw new Error(`${what} lods ${p.lods.join(', ')} do not rise from above 0 to under its reach ${p.reach}`)
+    if (!(p.lods.length > 0 && p.lods.every(l => Number.isInteger(l) && l >= 0))) throw new Error(`${what} lods ${p.lods.join(', ')} are not a LOD, a whole number of at least 0, for each land ring it is drawn on`)
     for (const [row, r] of Object.entries(p.rows)) if (!(r.weight >= 0)) throw new Error(`${what} row ${row} weighs ${r.weight}`)
     for (const [row, r] of Object.entries(p.rows)) if (r.tall !== undefined && !(r.tall > 0)) throw new Error(`${what} row ${row} stands ${r.tall} tall`)
     ground.rules(p.rules, what)

@@ -3972,9 +3972,9 @@ test-exclude@^7.0.1:
     glob "^10.4.1"
     minimatch "^10.2.2"
 
-"three@github:outsidedata/three.js#1f7e7c5":
+"three@https://github.com/outsidedata/three.js/releases/download/r186-1f7e7c5/three-0.186.1.tgz":
   version "0.186.1"
-  resolved "https://codeload.github.com/outsidedata/three.js/tar.gz/1f7e7c5799711501a498b01ab8eb713d8ee32842"
+  resolved "https://github.com/outsidedata/three.js/releases/download/r186-1f7e7c5/three-0.186.1.tgz#27668597045e04f53b2dc9b6d78f8262c77f8e45"
 
 tiny-lru@^11.4.7:
   version "11.4.7"

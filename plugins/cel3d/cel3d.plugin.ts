@@ -4,7 +4,7 @@
 //
 // The bands, a splice (render3d's `splice`, under `cel3d`) after `lights_fragment_end`, so it reaches
 // every dressed material, standard, physical, Lambert and Phong alike, and lands on the light every
-// earlier splice left, skydome3d's cloud shadow among them when the scene lists skydome3d first. L is
+// earlier splice left, clouds3d's cloud shadow among them when the scene lists clouds3d first. L is
 // the directional lights' colours added, and lit how much of L the direct diffuse light is:
 // its luminance over the diffuse colour's Lambert term, over L's luminance, so 1 where a face looks
 // straight at an unshadowed sun and 0 in shadow or facing away. Then:

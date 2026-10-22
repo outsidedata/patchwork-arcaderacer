@@ -170,10 +170,11 @@
 // on the scene; `prepare(x, z)`, `prepared()` and `unprepare()` (Prepared places); `task(url, input)`
 // (Workers); `bake(meshes, x, z, cover)` and `baked()` (Baked rings); `focus(x, z)` (Near maps);
 // `carry(list)` (What the ground carries); and `ground`, once there is a land: `{ height, raw, depth, at, cover, spray, mark, ramp,
-// rules, edits, ray, mix, layers, shown, prepare, prepared, unprepare, task }` over this client's
+// rules, edits, ray, mix, layers, rings, shown, prepare, prepared, unprepare, task }` over this client's
 // land, `at` its land record, `cover`, `spray` and `mark` its paint's, `rules` the land's own check,
 // which knows its biomes, `ray(origin, dir)` marched out to the camera's far plane and `mix(x, z)` each
-// biome's share there by name, `layers(x, z)` each ground layer's weight there by name, `shown()`, `prepare(x, z)`, `unprepare()` and `task` as above, and
+// biome's share there by name, `layers(x, z)` each ground layer's weight there by name, `rings()` each
+// ring's `reach`, finest first, which scatter3d draws its LODs on, `shown()`, `prepare(x, z)`, `unprepare()` and `task` as above, and
 // `prepared()` the place in hand's `at`, or undefined. `close` takes the rings off the scene and disposes
 // every geometry and the material.
 import type * as THREE from 'three'
@@ -549,7 +550,7 @@ export function terrain3d() {
       at(x: number, z: number): ReturnType<Land['analyse']>; cover(x: number, z: number): number
       spray(x: number, z: number): string | false | undefined; mark(x: number, z: number): number | undefined
       ramp(rule: Rule, x: number, z: number): number; rules: Land['rules']; edits(): ReturnType<Land['edits']>
-      ray(origin: number[], dir: number[]): number[] | undefined; mix: Land['mix']; layers: Land['layers']; shown(): boolean
+      ray(origin: number[], dir: number[]): number[] | undefined; mix: Land['mix']; layers: Land['layers']; rings(): number[]; shown(): boolean
       prepare(x: number, z: number): void; prepared(): number[] | undefined; unprepare(): void
       task(url: string, input: unknown): Promise<unknown> | undefined
     },
@@ -925,6 +926,7 @@ export function terrain3d() {
       ray: (origin, dir) => me.land!.ray(origin, dir, (plugins.render3d.camera as THREE.PerspectiveCamera).far),
       mix: (x, z) => me.land!.mix(x, z),
       layers: (x, z) => me.land!.layers(x, z),
+      rings: () => layout!.rings.map(r => r.reach),
       task: (url, input) => me.task(url, input),
       shown: () => onScene,
       prepare: (x, z) => me.prepare(x, z),
