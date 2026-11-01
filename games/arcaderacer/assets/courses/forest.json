@@ -1,0 +1,108 @@
+{
+  "name": "CASCADE FOREST",
+  "music": "jungle-60896",
+  "track": {
+    "points": 14,
+    "radius": [190, 350],
+    "wander": 0.65,
+    "hills": { "height": 20, "waves": 3 },
+    "width": 16,
+    "shoulder": 3,
+    "step": 2,
+    "smooth": 6,
+    "tightest": 0.024,
+    "steepest": 0.13,
+    "bank": { "gain": 14, "most": 0.12 },
+    "straight": 120,
+    "gap": 30,
+    "checkpoints": 4,
+    "grid": { "gap": 9, "lane": 3.6 },
+    "features": [
+      { "kind": "tunnel", "length": 240, "ramp": 70, "at": 0.55 }
+    ]
+  },
+  "road": {
+    "asphalt": "#35373b",
+    "line": "#e8e6df",
+    "kerb": ["#d62d2d", "#f2f2f2"],
+    "kerbWidth": 1.2,
+    "kerbLength": 4,
+    "kerbCurve": 0.008,
+    "lineWidth": 0.25,
+    "dash": [6, 6],
+    "verge": "#5e5544",
+    "finish": { "squares": 8, "depth": 2 },
+    "surface": {
+      "maps": { "colour": "asphalt.colour", "normal": "asphalt.normal", "roughness": "asphalt.roughness" },
+      "tint": 0.85, "size": [2.5, 17], "turn": 0.7, "mix": 0.25, "fade": [25, 200], "normal": [1, 0.3], "roughness": 1.15,
+      "paint": { "grain": 0.35, "normal": 0.7, "roughness": 0.6 },
+      "wear": { "width": 2.4, "darken": 0.12, "smooth": 0.12 }
+    }
+  },
+  "land": {
+    "size": 4200, "cell": 20,
+    "hills": { "height": 160, "scale": 900, "octaves": 5 },
+    "skirt": 6, "under": 0.3, "blend": 110, "rim": 600, "clearance": 5,
+    "mountain": { "height": 45, "reach": 260 }
+  },
+  "things": [
+    { "name": "fir", "count": 4200, "clear": 6, "size": [24, 48] },
+    { "name": "cedar", "count": 1100, "clear": 8, "size": [16, 30] },
+    { "name": "fern", "count": 2600, "clear": 1, "size": [0.8, 1.8] },
+    { "name": "rock", "count": 500, "clear": 3, "size": [1.2, 5] }
+  ],
+  "along": [
+    { "name": "marker", "every": 30, "out": 0.6, "sides": [-1, 1] }
+  ],
+  "landmarks": [
+    { "name": "volcano", "angle": 0.12, "distance": 5200, "clear": 0, "height": 1500, "width": 5200 },
+    { "name": "range", "angle": 0, "distance": 4300, "clear": 0, "count": 30, "height": [380, 820], "width": [1300, 2300], "spread": 900 }
+  ],
+  "light": {
+    "sun": { "dir": [0.35, 0.4, 0.5], "colour": "#fff4e2", "intensity": 2.3, "shadow": 2048, "reach": 90 },
+    "sky": { "colour": "#c7d8e6", "ground": "#3d5230", "intensity": 1.5 },
+    "air": {
+      "away": "#aebfcc", "toward": "#eadcc2", "spread": 3,
+      "halo": { "colour": "#fff0d4", "strength": 0.45, "sharp": 28 },
+      "layers": [{ "density": 0.00032, "height": 1400, "base": 0 }, { "density": 0.003, "height": 14, "base": -25 }],
+      "tunnel": { "colour": "#1d1c1a", "density": 0.02, "reach": 120, "fade": 30 },
+      "disc": { "size": 0.6, "edge": 0.35, "colour": "#fff4e2", "strength": 20 },
+      "shafts": { "strength": 0.38, "colour": "#ffe9c4", "samples": 48, "length": 0.85, "decay": 0.975, "sharp": 12, "facing": [-0.1, 0.45], "scale": 0.5 }
+    },
+    "dome": { "top": "#5b88bb", "curve": 0.55, "radius": 9000 },
+    "lit": false
+  },
+  "look": {
+    "smoke": "#dcdcd6",
+    "ground": { "colours": ["#3f5f2c", "#4f6e33", "#5d6b3c", "#4a5a35"], "plain": "#3f5a2e", "scale": 60,
+      "surface": {
+        "flat": { "colour": "forest-floor.colour", "normal": "forest-floor.normal", "roughness": "forest-floor.roughness", "tint": 0.6 },
+        "steep": { "colour": "mossy-rock.colour", "normal": "mossy-rock.normal", "roughness": "mossy-rock.roughness", "tint": 0.35 },
+        "size": [2.5, 19], "turn": 0.9, "mix": 0.3, "fade": [20, 180], "normal": [1.2, 0.3], "roughness": 1, "slope": [0.82, 0.62], "sharp": 4
+      } },
+    "skirt": "#4c6630",
+    "walls": { "barrier": "#c3c7cc", "height": 0.9, "retain": 4, "retaining": "#8a8d86", "rail": "#c3c7cc", "railHeight": 1.1,
+      "surface": {
+        "flat": { "colour": "concrete.colour", "normal": "concrete.normal", "roughness": "concrete.roughness", "tint": 0.85 },
+        "steep": { "colour": "concrete.colour", "normal": "concrete.normal", "roughness": "concrete.roughness", "tint": 0.85 },
+        "size": [2, 13], "turn": 0.9, "mix": 0.3, "fade": [20, 160], "normal": [1, 0.3], "roughness": 1, "slope": [0.9, 0.7], "sharp": 4
+      } },
+    "tunnel": { "height": 7, "colour": "#9a9b96", "ceiling": "#6e6f6b", "lights": "#ffd9a0", "every": 14, "portal": "#a7a59c", "glow": 3 },
+    "elevated": { "deck": 2.2, "colour": "#a9aaa5", "piers": 30, "pier": 2.2 },
+    "things": {
+      "fir": { "model": "trees", "lods": [{ "node": "fir_near", "within": 160 }, { "node": "fir_mid", "within": 450 }, { "node": "fir_far" }],
+        "leaves": ["#ffffff", "#eef4e6", "#e2ecdc", "#f6f2e4"], "girth": [0.85, 1.15], "sink": 0.3 },
+      "cedar": { "model": "trees", "lods": [{ "node": "cedar_near", "within": 160 }, { "node": "cedar_mid", "within": 450 }, { "node": "cedar_far" }],
+        "leaves": ["#ffffff", "#f0f6e8", "#e6eedd"], "girth": [1.0, 1.35], "sink": 0.3 },
+      "fern": { "leaves": ["#4c7a2e", "#5c8a36", "#3f6a28"] },
+      "rock": { "colours": ["#6f726b", "#7b7c70", "#5f6b4f"] }
+    },
+    "along": {
+      "marker": { "height": 1.1, "colour": "#f2f2f2", "band": "#d62d2d" }
+    },
+    "landmarks": {
+      "volcano": { "colour": "#5d6670", "snow": "#f4f6f8", "snowline": 0.55, "sides": 24 },
+      "range": { "colour": "#4d5a63", "snow": "#e8edf1", "snowline": 0.8, "sides": 7 }
+    }
+  }
+}

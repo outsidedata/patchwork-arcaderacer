@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>editor</title>
+    <!-- No icon, so the browser asks the server for none. -->
+    <link rel="icon" href="data:," />
+    <script>
+      // Every module this page fetches, by its path from the repo, which the page holds as it was
+      // until it reloads (`FilesApi.ran`, `files.ts`): the fetches the browser times as a script's,
+      // static and dynamic imports alike. Watched from before the first module is fetched, since the
+      // browser keeps only the first 250 fetches it times, fewer than the editor's modules.
+      window.modules = new Set()
+      new PerformanceObserver(list => {
+        for (const e of list.getEntries()) if (e.initiatorType === 'script') window.modules.add(decodeURIComponent(new URL(e.name).pathname.slice(1)))
+      }).observe({ type: 'resource', buffered: true })
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

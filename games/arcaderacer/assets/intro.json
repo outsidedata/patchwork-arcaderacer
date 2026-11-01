@@ -1,0 +1,232 @@
+{
+  "end": 24.37,
+  "reach": 10,
+  "stop": 10,
+  "head": 1,
+  "fov": 55,
+  "pace": 1,
+  "limit": 1,
+  "cast": {
+    "rival1": {
+      "kind": "rival",
+      "name": "rival1"
+    },
+    "rival2": {
+      "kind": "rival",
+      "name": "rival2"
+    },
+    "rival3": {
+      "kind": "rival",
+      "name": "rival3"
+    },
+    "rival4": {
+      "kind": "rival",
+      "name": "rival4"
+    },
+    "rival5": {
+      "kind": "rival",
+      "name": "rival5"
+    },
+    "rival6": {
+      "kind": "rival",
+      "name": "rival6"
+    },
+    "rival7": {
+      "kind": "rival",
+      "name": "rival7"
+    },
+    "rival8": {
+      "kind": "rival",
+      "name": "rival8"
+    }
+  },
+  "cues": [
+    {
+      "at": 0,
+      "do": "bars",
+      "on": true,
+      "over": 0
+    },
+    {
+      "at": 0,
+      "do": "fade",
+      "to": 1,
+      "over": 0
+    },
+    {
+      "at": 0,
+      "do": "shot",
+      "name": "grid",
+      "pos": [
+        -215.3,
+        1.97,
+        127.7
+      ],
+      "look": [
+        -223.29,
+        1.64,
+        69.76
+      ],
+      "fov": 38,
+      "over": 0
+    },
+    {
+      "at": 0.15,
+      "do": "fade",
+      "to": 0,
+      "over": 1.4
+    },
+    {
+      "at": 0.05,
+      "do": "shot",
+      "name": "grid push",
+      "pos": [
+        -215.95,
+        1.55,
+        118.83
+      ],
+      "look": [
+        -223.29,
+        1.64,
+        69.76
+      ],
+      "fov": 42,
+      "over": 2.366666666666661
+    },
+    {
+      "at": 2.42,
+      "do": "shot",
+      "name": "launch",
+      "pos": [
+        -218.57,
+        3.62,
+        150.24
+      ],
+      "look": "rival1",
+      "fov": 44,
+      "over": 0
+    },
+    {
+      "at": 3.07,
+      "do": "shake",
+      "over": 0.8,
+      "amp": 0.12
+    },
+    {
+      "at": 6.05,
+      "do": "shot",
+      "name": "sweep",
+      "pos": [
+        -101.78,
+        55.77,
+        255.15
+      ],
+      "look": "rival1",
+      "fov": 48,
+      "over": 0
+    },
+    {
+      "at": 6.1,
+      "do": "shot",
+      "name": "sweep down",
+      "pos": [
+        -143.58,
+        14.92,
+        278.5
+      ],
+      "look": "rival1",
+      "fov": 52,
+      "over": 3.95
+    },
+    {
+      "at": 10.05,
+      "do": "shot",
+      "name": "slide",
+      "pos": [
+        -0.41,
+        1.1,
+        5.13
+      ],
+      "look": "rival5",
+      "follows": "rival5",
+      "fov": 50,
+      "over": 0
+    },
+    {
+      "at": 12.85,
+      "do": "shot",
+      "name": "chase",
+      "pos": [
+        0.9,
+        1.2,
+        -5.5
+      ],
+      "look": "rival1",
+      "follows": "rival2",
+      "frame": "body",
+      "fov": 40,
+      "over": 0
+    },
+    {
+      "at": 15.27,
+      "do": "shot",
+      "name": "bay",
+      "pos": [
+        349.82,
+        62.51,
+        354.25
+      ],
+      "look": "rival1",
+      "fov": 46,
+      "over": 0
+    },
+    {
+      "at": 15.32,
+      "do": "shot",
+      "name": "bay drift",
+      "pos": [
+        403.17,
+        39.51,
+        97.05
+      ],
+      "look": "rival1",
+      "fov": 42,
+      "over": 4.8500000000000005
+    },
+    {
+      "at": 20.17,
+      "do": "shot",
+      "name": "hangers",
+      "pos": [
+        3.4,
+        0.9,
+        1.2
+      ],
+      "look": "rival3",
+      "follows": "rival3",
+      "frame": "body",
+      "fov": 56,
+      "over": 0
+    },
+    {
+      "at": 22.57,
+      "do": "shot",
+      "name": "title",
+      "pos": [
+        -3.32,
+        6.5,
+        16.76
+      ],
+      "look": "rival1",
+      "follows": "rival1",
+      "fov": 55,
+      "over": 0
+    },
+    {
+      "at": 22.67,
+      "do": "bars",
+      "on": false,
+      "over": 1.2
+    }
+  ]
+}

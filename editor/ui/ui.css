@@ -1,0 +1,321 @@
+/* The design system. Every colour and size is a variable a theme sets (editor/themes/). */
+
+:root {
+  --font: 12px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
+  --mono: 11px/1.4 ui-monospace, 'SF Mono', Menlo, monospace;
+  --radius: 4px;
+  --row: 24px;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--fg); font: var(--font); overflow: hidden; }
+button, input, select { font: inherit; color: inherit; }
+
+/* ---------------------------------------------------------------- app */
+
+.editor { display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
+.editor-dock { min-height: 0; }
+.editor-status { display: flex; gap: 16px; align-items: center; padding: 2px 10px; background: var(--bg); border-top: 1px solid var(--border); color: var(--dim); font: var(--mono); }
+.editor-status .ui-spacer { flex: 1; }
+.ui-pad { padding: 8px; }
+.ui-range { width: 100%; accent-color: var(--accent); }
+.ui-games { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; align-items: center; }
+.ui-games li { display: flex; gap: 8px; align-items: center; }
+
+/* ---------------------------------------------------------------- menus */
+
+.ui-menubar { display: flex; gap: 2px; padding: 2px 6px; background: var(--bg); border-bottom: 1px solid var(--border); }
+.ui-menu-trigger { all: unset; padding: 3px 9px; border-radius: var(--radius); cursor: default; }
+.ui-menu-trigger[data-state='open'], .ui-menu-trigger:hover { background: var(--hover); }
+.ui-menu { min-width: 220px; padding: 4px; background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 24px var(--shadow); z-index: 1000; }
+.ui-menu-item { display: flex; align-items: center; gap: 16px; padding: 4px 10px; border-radius: 3px; outline: none; cursor: default; }
+.ui-menu-item[data-highlighted] { background: var(--accent); color: var(--accent-fg); }
+.ui-menu-item[data-disabled] { color: var(--dim); }
+.ui-menu-key { margin-left: auto; color: var(--dim); font: var(--mono); }
+.ui-menu-item[data-highlighted] .ui-menu-key { color: inherit; }
+.ui-menu-separator { height: 1px; margin: 4px 0; background: var(--border); }
+.ui-menu-check { width: 12px; }
+
+/* ---------------------------------------------------------------- dialogs */
+
+.ui-overlay { position: fixed; inset: 0; background: var(--shadow); z-index: 1000; }
+.ui-dialog { position: fixed; top: 20%; left: 50%; transform: translateX(-50%); width: min(520px, 90vw); max-height: 60vh; overflow: auto; padding: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 16px 48px var(--shadow); z-index: 1001; }
+.ui-dialog-title { margin: 0 0 12px; font-size: 14px; }
+
+/* ---------------------------------------------------------------- panels */
+
+.ui-panel { display: flex; flex-direction: column; height: 100%; background: var(--panel); }
+.ui-panel-body { flex: 1; min-height: 0; overflow: auto; }
+.ui-toolbar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 4px 6px; border-bottom: 1px solid var(--border); background: var(--bg); }
+.ui-toolbar .ui-spacer { flex: 1; }
+.ui-toolbar .ui-input { width: auto; flex: 0 1 auto; }
+.ui-toolbar input.ui-input { flex: 1 1 120px; }
+.ui-section { border-bottom: 1px solid var(--border); }
+.ui-section-head { display: flex; align-items: center; gap: 6px; padding-right: 6px; }
+.ui-disclosure { all: unset; flex: 1; display: flex; align-items: center; gap: 4px; min-width: 0; height: var(--row); padding: 0 6px; font-weight: 600; white-space: nowrap; cursor: default; }
+.ui-disclosure .ui-badge { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ui-disclosure:focus-visible { outline: 1px solid var(--accent); }
+.ui-section-body { padding: 2px 6px 6px 14px; }
+.ui-empty { padding: 24px; color: var(--dim); text-align: center; }
+.ui-badge { padding: 0 6px; border-radius: 8px; background: var(--raised); color: var(--dim); font: var(--mono); white-space: nowrap; }
+.ui-badge.ui-accent { background: var(--accent); color: var(--accent-fg); }
+.ui-badge.ui-danger { background: var(--danger); color: var(--accent-fg); }
+.ui-split { display: flex; height: 100%; min-height: 0; }
+.ui-split-main { flex: 1; min-width: 0; min-height: 0; }
+.ui-split-side { width: 260px; flex: none; overflow: auto; border-left: 1px solid var(--border); }
+.ui-strip.ui-wrap { flex-wrap: wrap; overflow-x: visible; }
+.ui-row { display: flex; gap: 4px; align-items: center; min-width: 0; }
+.ui-spacer { flex: 1; }
+
+/* ---------------------------------------------------------------- buttons and fields */
+
+.ui-button { height: 22px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--raised); cursor: default; }
+.ui-button:hover:not(:disabled) { background: var(--hover); }
+.ui-button:disabled { color: var(--dim); }
+.ui-button[aria-pressed='true'], .ui-button.ui-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.ui-button.ui-primary:disabled { opacity: 0.45; }
+.ui-input { height: 20px; min-width: 0; width: 100%; padding: 0 5px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--field); outline: none; }
+.ui-input:focus { border-color: var(--accent); }
+.ui-number { font: var(--mono); line-height: 18px; text-align: right; }
+.ui-scrub { cursor: ew-resize; user-select: none; overflow: hidden; white-space: nowrap; }
+.ui-scrub:hover { border-color: var(--dim); }
+.ui-mono { font: var(--mono); }
+.ui-bad { border-color: var(--danger); }
+.ui-check { margin: 0; accent-color: var(--accent); }
+.ui-color { width: 28px; height: 20px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: none; }
+.ui-select { padding: 0 2px; }
+.ui-vec { width: 100%; }
+.ui-vec-part { display: flex; flex: 1; align-items: center; gap: 2px; min-width: 0; }
+.ui-axis { color: var(--dim); font: var(--mono); }
+
+/* ---------------------------------------------------------------- grids and trees */
+
+.ui-grid { display: flex; flex-direction: column; }
+.ui-grid-row { display: grid; grid-template-columns: minmax(70px, 38%) minmax(0, 1fr) auto; gap: 6px; align-items: center; min-height: var(--row); }
+.ui-grid-value { min-width: 0; }
+.ui-key { overflow: hidden; color: var(--dim); text-overflow: ellipsis; white-space: nowrap; }
+.ui-tree { outline: none; padding: 2px 0; }
+.ui-tree-item { display: flex; align-items: center; gap: 4px; height: var(--row); padding-right: 6px; cursor: default; white-space: nowrap; }
+.ui-tree-item:hover { background: var(--hover); }
+.ui-tree-item.ui-selected { background: var(--selected); }
+.ui-tree:focus .ui-tree-item.ui-selected { background: var(--accent); color: var(--accent-fg); }
+.ui-tree:focus .ui-tree-item.ui-selected .ui-caret, .ui-tree:focus .ui-tree-item.ui-selected .ui-key { color: inherit; }
+.ui-tree-label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.ui-caret { display: inline-block; width: 10px; color: var(--dim); }
+
+/* ---------------------------------------------------------------- the dock, in the theme's colours */
+
+.editor .dockview-theme-dark {
+  color-scheme: inherit;
+  --dv-group-view-background-color: var(--panel);
+  --dv-tabs-and-actions-container-background-color: var(--bg);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--panel);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--bg);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--panel);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--bg);
+  --dv-activegroup-visiblepanel-tab-color: var(--fg);
+  --dv-activegroup-hiddenpanel-tab-color: var(--dim);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--dim);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--dim);
+  --dv-tab-divider-color: var(--border);
+  --dv-separator-border: var(--border);
+  --dv-paneview-header-border-color: var(--border);
+  --dv-paneview-active-outline-color: var(--accent);
+  --dv-drag-over-background-color: var(--hover);
+  --dv-tabs-and-actions-container-font-size: 12px;
+  --dv-tabs-and-actions-container-height: 28px;
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--accent);
+}
+
+/* ---------------------------------------------------------------- the game view */
+
+.game-view { position: relative; height: 100%; overflow: hidden; background: var(--canvas); }
+.game-stage { outline: none; }
+.game-view:has(.game-stage:focus) { box-shadow: inset 0 0 0 1px var(--accent); }
+.game-stage { position: absolute; left: 50%; top: 50%; display: grid; transform-origin: center; }
+.game-stage canvas { grid-area: 1 / 1; }
+.game-hint { position: absolute; right: 8px; bottom: 6px; color: var(--dim); font: var(--mono); pointer-events: none; }
+
+/* ---------------------------------------------------------------- console */
+
+.console-line { display: flex; gap: 8px; padding: 1px 8px; font: var(--mono); white-space: pre-wrap; }
+.console-line.error { color: var(--danger); }
+.console-time { color: var(--dim); }
+
+/* ---------------------------------------------------------------- strips of tiles */
+
+.ui-strip { display: flex; gap: 4px; padding: 4px 0; overflow-x: auto; }
+.ui-tile { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--field); color: var(--dim); font: var(--mono); cursor: default; }
+.ui-tile:hover { border-color: var(--dim); }
+.ui-tile.ui-selected { border-color: var(--accent); background: var(--selected); color: var(--fg); }
+.ui-tile canvas, .ui-tile img { display: block; width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; }
+/* A strip laid out in columns, such as a tileset as its image lays it out: each tile as wide as a
+   column, edge to edge, the one selected outlined over its neighbours. */
+.ui-strip.ui-columns { display: grid; grid-template-columns: repeat(var(--columns), minmax(0, 1fr)); gap: 0; overflow: visible; }
+.ui-columns .ui-tile { padding: 0; border: none; border-radius: 0; background: none; }
+.ui-columns .ui-tile:hover { outline: 1px solid var(--dim); z-index: 1; }
+.ui-columns .ui-tile.ui-selected { outline: 2px solid var(--accent); background: none; z-index: 2; }
+.ui-columns .ui-tile canvas, .ui-columns .ui-tile img { width: 100%; height: auto; }
+
+/* ---------------------------------------------------------------- surfaces a panel draws on */
+
+.ui-surface { position: relative; width: 100%; height: 100%; min-height: 120px; overflow: hidden; background: var(--canvas); outline: none; }
+.ui-surface:focus-visible { box-shadow: inset 0 0 0 1px var(--accent); }
+.ui-surface canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.ui-assets img { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; background: var(--field); border-radius: var(--radius); }
+
+/* ---------------------------------------------------------------- the game view's tools */
+
+.game-tools { position: absolute; top: 6px; left: 6px; display: flex; gap: 2px; padding: 2px; border-radius: var(--radius); background: var(--shadow); }
+.game-pick { position: absolute; inset: 0; cursor: crosshair; }
+.game-selection { position: absolute; border: 1px solid var(--accent); box-shadow: 0 0 0 1px var(--shadow); pointer-events: none; }
+
+/* ---------------------------------------------------------------- sliders, dials, ramps, notes */
+
+.ui-slider { width: 100%; }
+.ui-slider .ui-range { flex: 1; min-width: 0; }
+.ui-slider .ui-number { flex: 0 0 64px; }
+.ui-dial { width: 100%; }
+.ui-dial-face { flex: none; width: 24px; height: 24px; cursor: grab; outline: none; touch-action: none; }
+.ui-dial-face:focus-visible .ui-dial-ring { stroke: var(--accent); }
+.ui-dial-ring { fill: var(--field); stroke: var(--border); stroke-width: 1.5; }
+.ui-dial-needle { stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }
+.ui-dial-tip { fill: var(--accent); }
+.ui-dial .ui-number { flex: 1; }
+/* The key and the ramp on one line, lo and hi under them, so the field fits a narrow column. */
+.ui-ramp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px 4px; width: 100%; }
+.ui-ramp-plot { width: 100%; height: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--field); }
+.ui-ramp-line { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.ui-note { margin: 4px 0; color: var(--dim); }
+
+/* ---------------------------------------------------------------- lists of nodes */
+
+.ui-nodes { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+.ui-nodes > .ui-button { align-self: flex-start; }
+.ui-node { border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); }
+.ui-node-head { display: flex; align-items: center; gap: 4px; height: var(--row); padding: 0 4px; border-bottom: 1px solid var(--border); background: var(--bg); cursor: grab; }
+.ui-node-name { font-weight: 600; }
+.ui-node-body { padding: 2px 6px 4px; }
+
+/* ---------------------------------------------------------------- charts */
+
+.ui-chart { position: relative; width: 100%; }
+.ui-chart-head { gap: 10px; min-height: var(--row); }
+.ui-chart-key { display: inline-flex; align-items: center; gap: 4px; color: var(--fg); }
+.ui-chart-swatch { display: inline-block; width: 10px; height: 3px; border-radius: 2px; background: var(--series); }
+.ui-chart-plot { position: relative; }
+.ui-chart svg { display: block; overflow: visible; }
+.ui-series-1 { --series: var(--series-1); }
+.ui-series-2 { --series: var(--series-2); }
+.ui-series-3 { --series: var(--series-3); }
+.ui-series-4 { --series: var(--series-4); }
+.ui-chart-line { fill: none; stroke: var(--series); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.ui-chart-area { fill: var(--series); fill-opacity: 0.1; stroke: none; }
+.ui-chart-grid line { stroke: var(--border); stroke-width: 1; }
+.ui-chart-axis { stroke: var(--dim); stroke-width: 1; }
+.ui-chart text { fill: var(--dim); font: var(--mono); font-size: 10px; }
+.ui-chart-band rect { fill: var(--fg); fill-opacity: 0.06; stroke: var(--panel); stroke-width: 2; }
+.ui-chart-cross { stroke: var(--dim); stroke-width: 1; }
+.ui-chart-dot { fill: var(--series); stroke: var(--panel); stroke-width: 2; }
+.ui-chart-tip { position: absolute; min-width: 110px; padding: 4px 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--raised); box-shadow: 0 4px 12px var(--shadow); font: var(--mono); pointer-events: none; }
+.ui-chart-table { width: 100%; border-collapse: collapse; font: var(--mono); }
+.ui-chart-table th, .ui-chart-table td { padding: 1px 6px; border-bottom: 1px solid var(--border); text-align: right; }
+.ui-chart-table th { color: var(--dim); font-weight: normal; }
+
+/* ---------------------------------------------------------------- timelines */
+
+.ui-timeline { --tl-head: 120px; display: flex; flex-direction: column; min-height: 0; user-select: none; }
+.ui-tl-row { display: flex; min-height: var(--row); border-bottom: 1px solid var(--border); }
+.ui-tl-head { flex: 0 0 var(--tl-head); display: flex; align-items: center; gap: 4px; min-width: 0; padding: 0 6px; border-right: 1px solid var(--border); background: var(--bg); }
+.ui-tl-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-tl-ruler { position: relative; flex: 1; min-width: 0; height: var(--row); overflow: hidden; background: var(--bg); cursor: text; outline: none; }
+.ui-tl-ruler:focus-visible { box-shadow: inset 0 0 0 1px var(--accent); }
+.ui-tl-tick { position: absolute; top: 0; bottom: 0; padding: 1px 3px; border-left: 1px solid var(--border); color: var(--dim); font: var(--mono); font-size: 10px; white-space: nowrap; pointer-events: none; }
+.ui-tl-mark { position: absolute; bottom: 2px; width: 2px; height: 6px; margin-left: -1px; border-radius: 1px; background: var(--accent); pointer-events: none; }
+.ui-tl-hold { position: absolute; bottom: 0; height: 8px; background: repeating-linear-gradient(135deg, var(--dim) 0 2px, transparent 2px 5px); opacity: 0.7; pointer-events: none; }
+.ui-tl-head-mark { position: absolute; bottom: 0; width: 0; height: 0; margin-left: -5px; border: 5px solid transparent; border-bottom-color: var(--accent); pointer-events: none; }
+.ui-tl-past { position: absolute; top: 0; bottom: 0; right: 0; background: repeating-linear-gradient(135deg, var(--shadow) 0 2px, transparent 2px 6px); pointer-events: none; }
+.ui-tl-body { position: relative; flex: 1; min-height: 0; overflow: auto; outline: none; }
+.ui-tl-body:focus-visible { box-shadow: inset 0 0 0 1px var(--accent); }
+.ui-tl-track { position: relative; flex: 1; min-width: 0; overflow: hidden; }
+.ui-tl-over { position: absolute; top: 0; bottom: 0; left: calc(var(--tl-head) + 1px); right: 0; overflow: hidden; pointer-events: none; }
+.ui-tl-playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--accent); }
+.ui-tl-end { position: absolute; top: 0; bottom: 0; width: 7px; margin-left: -1px; border-left: 2px solid var(--fg); border-top: 2px solid var(--fg); border-bottom: 2px solid var(--fg); cursor: ew-resize; pointer-events: auto; }
+.ui-tl-end.ui-selected { border-color: var(--accent); }
+.ui-tl-lane-mark { position: absolute; top: 8px; bottom: 8px; min-width: 2px; border-radius: 1px; background: var(--dim); cursor: pointer; }
+.ui-tl-box { position: absolute; border: 1px solid var(--accent); background: var(--selected); opacity: 0.5; pointer-events: none; }
+.ui-chip { position: absolute; top: 3px; bottom: 3px; display: flex; align-items: center; min-width: 0; padding: 0 4px; overflow: hidden; border-radius: var(--radius); background: var(--selected); color: var(--fg); font: var(--mono); font-size: 10px; white-space: nowrap; cursor: grab; }
+.ui-chip.ui-selected { background: var(--accent); color: var(--accent-fg); }
+.ui-chip-label { overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.ui-chip-point { width: 10px; margin-left: -5px; padding: 0; top: 7px; bottom: 7px; border-radius: 2px; background: var(--dim); transform: rotate(45deg) scale(0.8); }
+.ui-chip-point.ui-selected { background: var(--accent); }
+.ui-chip-stripe { background: repeating-linear-gradient(135deg, var(--selected) 0 6px, var(--hover) 6px 10px); }
+.ui-chip-stripe.ui-selected { background: repeating-linear-gradient(135deg, var(--accent) 0 6px, var(--selected) 6px 10px); }
+.ui-chip-ramp { clip-path: polygon(0 100%, 100% 0, 100% 100%); border-radius: 0; }
+.ui-chip-loop { border-radius: 9px; }
+.ui-chip-open { border-top-right-radius: 0; border-bottom-right-radius: 0; -webkit-mask-image: linear-gradient(to right, #000 70%, transparent); mask-image: linear-gradient(to right, #000 70%, transparent); }
+.ui-chip-warn { box-shadow: inset 0 0 0 2px var(--warn); }
+.ui-chip-edge { position: absolute; top: 0; bottom: 0; right: 0; width: 6px; cursor: ew-resize; }
+
+/* ---------------------------------------------------------------- tables */
+
+.ui-table { width: 100%; border-collapse: collapse; outline: none; }
+.ui-table:focus-visible { box-shadow: inset 0 0 0 1px var(--accent); }
+.ui-table th { position: sticky; top: 0; z-index: 1; padding: 2px 6px; background: var(--bg); border-bottom: 1px solid var(--border); color: var(--dim); font-weight: normal; text-align: left; white-space: nowrap; }
+.ui-table td { padding: 1px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+.ui-table .ui-numeric { font: var(--mono); text-align: right; }
+.ui-table tbody tr:hover { background: var(--hover); }
+.ui-table tbody tr.ui-selected { background: var(--selected); }
+.ui-table:focus tbody tr.ui-selected { background: var(--accent); color: var(--accent-fg); }
+.ui-table:focus tbody tr.ui-selected .ui-badge { background: var(--panel); color: var(--fg); }
+.ui-table-sort { all: unset; cursor: default; }
+.ui-table-sort:focus-visible { outline: 1px solid var(--accent); }
+.ui-table td canvas { display: block; width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
+
+/* ---- swatch */
+
+.ui-swatch { display: inline-block; flex: none; width: 12px; height: 12px; border: 1px solid var(--border); border-radius: 2px; vertical-align: middle; }
+
+/* ---- split scrolls: a main part wider or taller than its room, such as a table, scrolls in it */
+
+.ui-split-main { overflow: auto; }
+.ui-meter-row { width: 100%; }
+.ui-meter { position: relative; flex: 1; min-width: 0; height: 8px; border-radius: 4px; background: var(--raised); overflow: hidden; }
+.ui-meter-fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+.ui-meter-mark { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--fg); }
+.ui-meter-text { flex: 0 0 auto; font: var(--mono); color: var(--dim); white-space: nowrap; }
+
+/* StepGrid (steps.tsx) */
+.ui-steps { --tl-head: 120px; display: flex; flex-direction: column; overflow: auto; }
+.ui-steps-row { display: flex; align-items: stretch; min-height: var(--row); border-bottom: 1px solid var(--border); }
+.ui-steps-head { position: sticky; left: 0; z-index: 1; flex: 0 0 var(--tl-head); display: flex; align-items: center; gap: 4px; min-width: 0; padding: 0 6px; border-right: 1px solid var(--border); background: var(--bg); }
+.ui-steps-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-step { flex: 1 0 14px; min-width: 14px; margin: 3px 1px; padding: 0; border: 1px solid var(--border); border-radius: 3px; background: var(--field); cursor: pointer; }
+.ui-step.ui-off-beat { background: var(--panel); }
+.ui-step.ui-bar { margin-left: 6px; }
+.ui-step:hover { background: var(--hover); }
+.ui-step.ui-on { background: var(--accent); border-color: var(--accent); }
+.ui-step.ui-head { box-shadow: 0 0 0 1px var(--fg); }
+.ui-step:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+
+/* CodeField (code.tsx): CodeMirror, in the theme's colours */
+.ui-code { height: 100%; min-height: 0; display: flex; flex-direction: column; background: var(--field); }
+.ui-code .cm-editor { flex: 1; min-height: 0; height: 100%; color: var(--fg); background: var(--field); }
+.ui-code .cm-editor.cm-focused { outline: none; }
+.ui-code .cm-scroller { font: var(--mono); font-size: 12px; line-height: 1.5; }
+.ui-code .cm-content { caret-color: var(--fg); }
+.ui-code .cm-cursor, .ui-code .cm-dropCursor { border-left-color: var(--fg); }
+.ui-code .cm-gutters { background: var(--panel); color: var(--dim); border-right: 1px solid var(--border); }
+.ui-code .cm-activeLine { background: var(--code-line); }
+.ui-code .cm-activeLineGutter { background: var(--hover); color: var(--fg); }
+.ui-code .cm-selectionBackground, .ui-code .cm-focused .cm-selectionBackground, .ui-code .cm-content ::selection { background: var(--code-selection) !important; }
+.ui-code .cm-matchingBracket { background: var(--code-selection); outline: 1px solid var(--border); }
+.ui-code .cm-searchMatch { background: var(--code-selection); outline: 1px solid var(--warn); }
+.ui-code .cm-searchMatch-selected { background: var(--warn); color: var(--bg); }
+.ui-code .cm-panels { background: var(--panel); color: var(--fg); border-color: var(--border); }
+.ui-code .cm-panels input, .ui-code .cm-panels button { height: 20px; padding: 0 5px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--field); color: var(--fg); font: var(--font); }
+.ui-code .cm-tooltip { background: var(--raised); color: var(--fg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 4px 12px var(--shadow); }
+.ui-code .cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--selected); color: var(--fg); }
+.ui-code .cm-foldPlaceholder { background: var(--raised); color: var(--dim); border: 1px solid var(--border); }

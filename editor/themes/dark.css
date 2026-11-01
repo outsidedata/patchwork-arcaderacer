@@ -1,0 +1,33 @@
+/* The editor's dark theme. */
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #1b1c1f;
+  --panel: #232428;
+  --raised: #2d2f34;
+  --field: #18191c;
+  --hover: #34373d;
+  --selected: #33415c;
+  --border: #36383e;
+  --fg: #d7d9de;
+  --dim: #8a8f98;
+  --accent: #4c8dff;
+  --accent-fg: #ffffff;
+  --danger: #ef5b5b;
+  --shadow: rgba(0, 0, 0, 0.45);
+  --warn: #eda100;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --canvas: #0b0b0e;
+  --code-keyword: #c792ea;
+  --code-string: #a5d6a7;
+  --code-number: #f2b179;
+  --code-comment: #6f7682;
+  --code-type: #7fc8f8;
+  --code-function: #82aaff;
+  --code-property: #d7d9de;
+  --code-operator: #89ddff;
+  --code-selection: rgba(76, 141, 255, 0.3);
+  --code-line: rgba(255, 255, 255, 0.035);
+}

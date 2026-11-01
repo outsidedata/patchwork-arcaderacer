@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>arcaderacer client</title>
+    <style>
+      body { margin: 0; background: #0b0b0e; display: grid; place-items: center; height: 100vh }
+      canvas { grid-area: 1 / 1 }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      // One seat over a socket. The server is `node --experimental-strip-types games/arcaderacer/arcaderacer.server.ts`.
+      // The page runs the scene its seat is on ahead of the server (addons/predict): it holds one
+      // client, for the scene the seat is on, made when the seat arrives and closed when it leaves, and
+      // `mount` gives each one its canvases: the game's, and the UI's over it in the same grid cell,
+      // for a scene that names each. `tap` records every frame when the page's address asks for it,
+      // `?tap=<name>` (addons/simulator).
+      import { link } from '#addons/scenemanager/scenemanager.addon.ts'
+      import { tap } from '#addons/simulator/simulator.addon.ts'
+      import { dial } from '#addons/socket/socket.addon.ts'
+      import { predict } from '#addons/predict/predict.addon.ts'
+      import file from './arcaderacer.scene.json'
+
+      const page = tap(dial(`ws://${location.hostname}:${file.prefabs.scenemanager.port}`), wire => predict(link(wire), file, import.meta.url, (me, scene) => {
+        for (const surface of [me.plugins.render3d ?? me.plugins.render2d, me.plugins.ui]) {
+          if (!surface) continue
+          const canvas = document.createElement('canvas')
+          canvas.width = scene.prefabs.engine.width
+          canvas.height = scene.prefabs.engine.height
+          document.body.appendChild(canvas)
+          surface.mount(canvas)
+        }
+      }))
+
+      const loop = async now => {
+        page.input()
+        await page.frame(now)
+        requestAnimationFrame(loop)
+      }
+      requestAnimationFrame(loop)
+    </script>
+  </body>
+</html>
