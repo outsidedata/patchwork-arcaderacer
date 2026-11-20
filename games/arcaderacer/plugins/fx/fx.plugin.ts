@@ -1,40 +1,38 @@
-// fx: what the racers leave behind them and throw off, drawn in the page from the frame's rows of
-// every racing kind (`RACING` in `drive.sim.ts`, the seats' `car` rows, and the CPU's
-// rivals). Nothing here
-// is read by a rule, so it has no server half and no row: each page draws it from the rows it is
-// sent. Every effect it throws is particle3d's, by name from the effects file the scene's
-// `world.particle3d` names, emitted from this page with `emit`; the tyre marks are its own mesh.
+// fx: what the racers leave behind them, drawn in the page from the frame's rows of every racing kind
+// (`RACING` in `drive.sim.ts`, the seats' `car` rows, and the CPU's rivals). Nothing here is read by a
+// rule, so it has no server half and no row: each page draws it from the rows it is sent. Its tyre marks
+// and boost trail are its own meshes; every particle effect the racers throw (their tyre smoke and
+// burnout, their sparks, the pop of a boost paid) is particle3d's, attached to the sources fx's mod
+// hands particle3d (`fx.particle3d.ts`) by the scene's `world.particle3d.attach`, its numbers the
+// effects file's and its drivers the sources'.
 //
+// Where a racer's tyres touch the road is its car's: the `tracks` of the car file its row's `car` names
+// (`drive.plugin.ts`), [[x, z], ...] the rear tyres' contact patches in the car's own frame (x to its
+// left, z to its nose, as the model is drawn), where marks are laid and smoke rises.
 // A racing kind's definition holds `fx`, every number in metres and seconds, points in the car's
 // own frame (x to its left, y up, z to its nose, as the model is drawn):
-//   wheels     [[x, z], ...] the rear tyres' contact patches, where marks are laid and smoke rises.
-//   held       a brake counts as braking, for the marks and the smoke, once held this long.
-//   marks      { width, slip, sideways, brake, least, gap, segments, life, fade, colour, opacity,
-//              ink, roughness, edge, lift }: a tyre lays a mark `width` across while it slides,
-//              faster than `least` m/s: drifting with more than `slip` radians of slip, gripping
-//              with more than `sideways` m/s across its nose, or braking at more than `brake` m/s.
-//              A mark is laid a piece each time the tyre has moved `gap` on, `lift` over the road,
-//              of `colour` and `roughness`, at most `opacity` dark: `ink` of that and as much more
-//              as it slides past its threshold, faded across its width by the `edge`th power of how
-//              far off its middle; it holds `life` seconds and fades out over the last `fade` of
-//              them. Each racing kind's marks are one mesh, `fx.marks.<kind>`, made the first frame
-//              a racer of it is seen, which keeps the last `segments` pieces its racers laid, the
-//              oldest given up first.
+//   held      a brake counts as braking, for the marks and the smoke, once held this long.
+//   burnout    { launch }: the throttle held under `launch` m/s looks as if it spins the tyres
+//              (`fx.particle3d.ts`'s `burnout`).
+//   marks      { width, gap, segments, life, fade, colour, opacity, roughness, edge, lift, lays }: a tyre
+//              lays a mark `width` across while any of `lays` holds, each a threshold block of
+//              `fx.particle3d.ts` (`slip`, `sideways`, `brake`, `turn`, `burnout`, any of them) with
+//              `least`, `ink` and `most`: it holds while the racer slides past one of its thresholds
+//              faster than `least` m/s, and its mark is `ink` and as much more as it slides past it, at
+//              most `most`, of `opacity` dark; the darkest that holds is laid. A mark is laid a piece each
+//              time the tyre has moved `gap` on, `lift` over the road, of `colour` and `roughness`,
+//              faded across its width by the `edge`th power of how far off its middle; it holds `life`
+//              seconds and fades out over the last `fade` of them. Each racing kind's marks are one
+//              mesh, `fx.marks.<kind>`, made the first frame a racer of it is seen, which keeps the last
+//              `segments` pieces its racers laid, the oldest given up first.
 //   trail      { width, least, gap, segments, life, fade, colour, gain, opacity, edge, lift }: while a
 //              racer boosts faster than `least` m/s, each tyre lays a line of light on the road as
 //              it lays a mark, `colour` × `gain`, adding to the road under it, `opacity` at most, faded
 //              out as a mark is. Each racing kind's trail is one mesh, `fx.trail.<kind>`.
-//   smoke      { effect, slip, sideways, brake, least, rise }: from each tyre sliding past those same
-//              kinds of thresholds (each its own) faster than `least` m/s, `effect` pours out `rise`
-//              over the road, coloured by the course file's `look.smoke`.
-//   sparks     { effect, wall, least, within, at, throw }: each frame a racer has touched a wall or
-//              another racer in the last `within` seconds at more than `least` m/s, `effect` off a
-//              racer and `wall` off a wall, thrown along
-//              `throw` [along, up]: that share of the way it goes and that much up, from `at` [aside,
-//              up, ahead] in its frame on the side of whichever its body is nearer, another racer
-//              (`drive.radius` round each) or the wall: the side the other's middle is on, or the wall's.
-//   pop        { effect, least, at }: thrown once from `at` in its frame the frame its boost grows by
-//              more than `least` seconds: a drift has paid.
+//   smoke      { slip, sideways, brake, least, rise }: a tyre's `skid` (`fx.particle3d.ts`), and how high
+//              over the road its sources stand.
+//   sparks     { least, within, at, throw }: a racer's `side` source (`fx.particle3d.ts`).
+//   pop        { least, at }: a racer's `tail` source and its `paid` (`fx.particle3d.ts`).
 //   rush       { from, most, boosted, ease, samples, centre, inner, outer }: the seat's own car only, so
 //              only a kind a seat drives has it. The frame's edges streak out from `centre` (a point
 //              of the frame, 0 to 1 from its bottom left) as the world rushes past: a pass of
@@ -43,18 +41,18 @@
 //              top speed to all of it, `boosted` more while it boosts, eased out over its last `ease`
 //              seconds, and 0 in a frame its car is not seen. Nothing streaks inside `inner` of the way
 //              from the centre to the frame's corner, fully past `outer`, `samples` taken a pixel.
-// `close` takes the marks out and ends every effect still pouring; the rush pass is render3d's,
-// which disposes it as it closes.
+// `boosts(id)` is the boost the racer of row `id` had the frame before the last fx drew it, undefined for
+// one it has not drawn twice: fx's mod is asked in particle3d's `afterTick`, after fx has ticked, so it
+// reads its `paid` from that and the row's boost now.
+// `close` takes the marks out; the rush pass is render3d's, which disposes it as it closes.
 import type * as THREE from 'three'
 import { Pass, FullScreenQuad } from 'three/addons/postprocessing/Pass.js'
 import type { Row } from '#engine/engine.ts'
 import type { Plugins } from '#engine/browser.ts'
-import { def } from '#plugins/loader/loader.sim.ts'
-import { courseOf, locate, trackOf } from '../track/track.sim.ts'
+import { def, json } from '#plugins/loader/loader.sim.ts'
 import { RACING } from '../drive/drive.sim.ts'
 import { holding } from '#plugins/player/player.plugin.ts'
-
-type Effect = { at: number[]; dir?: number[]; life: number; age: number }
+import { measure, over } from './fx.particle3d.ts'
 
 // A tyre's mark across the road where it last was: its two edges and its middle.
 type Edges = { l: THREE.Vector3; r: THREE.Vector3; at: THREE.Vector3 }
@@ -62,14 +60,14 @@ type Edges = { l: THREE.Vector3; r: THREE.Vector3; at: THREE.Vector3 }
 // One kind's tyre marks: a ring of `size` pieces, `next` the one laid next, over the oldest.
 type Marks = { mesh: THREE.Mesh; pos: Float32Array; born: Float32Array; ink: Float32Array; next: number; size: number }
 
-// A racer as this page last saw it: what it is pouring and where its tyres last laid a mark.
+// A racer as this page last saw it: where its tyres last laid a mark, and its boost.
 type Seen = {
-  smoke: (Effect | undefined)[]
   // the last edge pair laid per tyre, left and right, or undefined when it was not marking; and the
   // same for the boost's trail
   last: (Edges | undefined)[]
   trail: (Edges | undefined)[]
   boost: number
+  was?: number
   frame: number
 }
 
@@ -192,35 +190,25 @@ export function fx() {
     }
   }
 
-  const stop = (e: Effect | undefined) => { if (e) e.life = e.age }
-
-  function forget(id: number) {
-    const s = seen.get(id)
-    if (!s) return
-    for (const e of s.smoke) stop(e)
-    seen.delete(id)
-  }
-
   return {
     // the rush pass, once it has been handed to render3d
     get rush() { return rush },
+    boosts: (id: number): number | undefined => seen.get(id)?.was,
     tick(p: Plugins) {
-      const { wire, render3d, particle3d } = p
+      const { wire, render3d } = p
       if (!render3d?.camera) return
       const T = render3d.THREE as typeof THREE
       frame++
       // no rush unless the seat's own car is seen going fast this frame
       if (rush) rush.strength = 0
-      const course = courseOf(wire)
-      const track = trackOf(wire)
       const mine = holding(wire.rows)?.id
-      const smokeTint = parseInt(String(course.look.smoke).slice(1), 16)
       for (const row of wire.rows as Row[]) {
         const d = row.data
         if (!RACING.includes(row.kind) || d.seg < 0) continue
         const F = def(wire, row.kind).fx
         const top = def(wire, row.kind).drive.top
-        const s: Seen = seen.get(row.id) ?? { smoke: [], last: [], trail: [], boost: d.boost, frame }
+        const tracks: number[][] = json(wire, d.car).tracks
+        const s: Seen = seen.get(row.id) ?? { last: [], trail: [], boost: d.boost, frame }
         seen.set(row.id, s)
         s.frame = frame
         // the car's own frame, as drive draws it
@@ -230,20 +218,12 @@ export function fx() {
           new T.Vector3(1, 1, 1),
         )
         const point = (x: number, y: number, z: number) => new T.Vector3(x, y, z).applyMatrix4(body)
-        const speed = d.speed
-        const sideways = Math.abs(d.vel[0] * -Math.cos(d.yaw) + d.vel[1] * Math.sin(d.yaw))
-        const braking = d.brake > 0 && d.held > F.held
-        // how hard it slides against each threshold, 0 for not at all
-        const over = (at: { slip: number; sideways: number; brake: number }) => Math.max(
-          d.drift ? Math.abs(d.slip) / at.slip - 1 : -1,
-          sideways / at.sideways - 1,
-          braking ? speed / at.brake - 1 : -1,
-        )
+        const m = measure(d, F), speed = m.speed
 
         // tyre marks
         // a line on the road behind each tyre while `on`, `strength` of `M.opacity`, its last edges in `last`
         const lane = (m: Marks, M: any, last: (Edges | undefined)[], on: boolean, strength: number) => {
-          ;(F.wheels as number[][]).forEach(([x, z], w) => {
+          tracks.forEach(([x, z], w) => {
             const at = point(x, 0, z)
             const was = last[w]
             if (!on) {
@@ -262,54 +242,21 @@ export function fx() {
             last[w] = edges
           })
         }
+        // the darkest of the marks' lays that holds, or none
         const M = F.marks
-        const marking = over(M)
-        lane(made(p, `fx.marks.${row.kind}`, M), M, s.last, marking > 0 && speed >= M.least, Math.min(1, M.ink + marking))
+        let ink = -1
+        for (const L of M.lays) {
+          const past = over(m, L)
+          if (past > 0 && speed >= L.least) ink = Math.max(ink, Math.min(L.most, L.ink + past))
+        }
+        lane(made(p, `fx.marks.${row.kind}`, M), M, s.last, ink > 0, ink)
 
         // the boost's trail: light laid on the road behind each tyre while it boosts
         const B = F.trail
         lane(made(p, `fx.trail.${row.kind}`, B, true), B, s.trail, d.boost > 0 && speed >= B.least, 1)
 
-        // smoke from the tyres
-        const S = F.smoke
-        const smoking = over(S) > 0 && speed > S.least
-        ;(F.wheels as number[][]).forEach(([x, z], w) => {
-          if (!smoking) {
-            stop(s.smoke[w])
-            s.smoke[w] = undefined
-            return
-          }
-          const at = point(x, S.rise, z).toArray()
-          if (!s.smoke[w] || s.smoke[w]!.life <= s.smoke[w]!.age) s.smoke[w] = particle3d.emit(S.effect, at, { life: 1e9, tint: smokeTint })
-          else s.smoke[w]!.at = at
-        })
-
-        // sparks off a wall or a racer it is touching: whichever of the two its body is nearer
-        const K = F.sparks
-        if (d.scrape < K.within && speed > K.least) {
-          const radius = def(wire, row.kind).drive.radius
-          const where = locate(track, d.pos[0], d.pos[2], d.seg)
-          const wall = track.walls - radius * 0.5 - Math.abs(where.side)
-          // the nearest other racer, and how far its body is from this one's
-          let near: Row | undefined, apart = Infinity
-          for (const o of wire.rows as Row[]) {
-            if (o === row || !RACING.includes(o.kind) || o.data.seg < 0) continue
-            const gap = Math.hypot(o.data.pos[0] - d.pos[0], o.data.pos[2] - d.pos[2]) - 2 * radius
-            if (gap < apart) { apart = gap; near = o }
-          }
-          // the side of the body toward what it touched, +x its left: the other racer's middle in its
-          // own frame, or the wall it is nearer, the road's right being −x of the car
-          const racer = near !== undefined && apart < wall
-          const aside = racer
-            ? Math.sign(new T.Vector3(near!.data.pos[0], near!.data.pos[1], near!.data.pos[2]).applyMatrix4(body.clone().invert()).x) || 1
-            : -(Math.sign(where.side) || 1)
-          const touch = point(aside * K.at[0], K.at[1], K.at[2]).toArray()
-          const n = speed || 1
-          particle3d.emit(racer ? K.effect : K.wall, touch, { dir: [(d.vel[0] / n) * K.throw[0], K.throw[1], (d.vel[1] / n) * K.throw[0]] })
-        }
-
-        // the pop when a boost is paid
-        if (d.boost > s.boost + F.pop.least) particle3d.emit(F.pop.effect, point(F.pop.at[0], F.pop.at[1], F.pop.at[2]).toArray())
+        // the boost last frame and this, which fx's mod reads after this tick for the pop of a boost paid
+        s.was = s.boost
         s.boost = d.boost
 
         // the world rushing past the seat's own car: the edges of the frame smeared out from its middle
@@ -324,11 +271,11 @@ export function fx() {
         }
       }
       // a racer this frame did not hold has left
-      for (const [id, s] of [...seen]) if (s.frame !== frame) forget(id)
+      for (const [id, s] of [...seen]) if (s.frame !== frame) seen.delete(id)
       now.value = (performance.now() - from) / 1000
     },
     close(p: Plugins) {
-      for (const id of [...seen.keys()]) forget(id)
+      seen.clear()
       for (const m of marks.values()) {
         p.render3d.scene.remove(m.mesh)
         m.mesh.geometry.dispose()

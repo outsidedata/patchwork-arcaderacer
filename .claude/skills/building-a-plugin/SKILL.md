@@ -356,7 +356,7 @@ browser half asks it with `mod(plugins.wire.scene.world!, …)`. The server load
 names, the browser ones too, so a mod imports types alone of anything that draws.
 
 What `p` does. Its header says, for each mod, what it does with none named: the same as when the
-provider has nothing yet (no `land`: the sea is open ocean, scatter3d draws nothing, no rain splashes;
+provider has nothing yet (no `land`: the sea is open ocean, no rain splashes;
 no `wind`: the sea's own amplitude), or it throws naming the key when it cannot work without one (a
 ragdoll with no `model`, a car with no `gravity`); ocean3d with no `light` mod draws in
 `world.ocean3d.light`, and throws with neither. A browser half that hands a mod `plugins` calls

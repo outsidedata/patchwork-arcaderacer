@@ -120,8 +120,29 @@ export function check(f: Interaction, where: string) {
   })
 }
 
-// Each file's content as last checked, by the loader's parse of it, so a file is checked once per change.
-const checked = new WeakMap<object, string>()
+// Whether two values of a file are the same: the same number (NaN the same as NaN), string, boolean or
+// null, or arrays and plain objects of the same, item by item and field by field, a field holding
+// undefined the same as one not there. Read on every `interactionOf`, so it walks the two and makes
+// nothing.
+function same(a: unknown, b: unknown): boolean {
+  if (a === b || (a !== a && b !== b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a)) {
+    const c = b as unknown[]
+    if (a.length !== c.length) return false
+    for (let i = 0; i < a.length; i++) if (!same(a[i], c[i])) return false
+    return true
+  }
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>
+  for (const k in x) if (!same(x[k], y[k])) return false
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false
+  return true
+}
+
+// A copy of each file's content as last checked, by the loader's parse of it, so a file is checked once
+// per change: the loader refills a parse in place, and anything may write into it.
+const checked = new WeakMap<object, Interaction>()
 
 export function interactionOf(w: W | { scene: { world?: Record<string, any> } }, kind: string, name: string): Interaction | undefined {
   const world = ('find' in w ? w.world : w.scene.world!) as Record<string, any>
@@ -130,10 +151,9 @@ export function interactionOf(w: W | { scene: { world?: Record<string, any> } },
   const key = n.kinds[kind]?.[name]
   if (key === undefined) return undefined
   const f = json(w as W, key) as Interaction
-  const text = JSON.stringify(f)
-  if (checked.get(f) !== text) {
+  if (!same(checked.get(f), f)) {
     check(f, `interact ${kind}.${name}`)
-    checked.set(f, text)
+    checked.set(f, structuredClone(f))
   }
   return f
 }

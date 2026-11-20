@@ -704,24 +704,6 @@ test('a member whose row ends mid-scene is passed over: its cues do nothing, a w
 
 // ---------------------------------------------------------------- start, skip and end
 
-test('the row\'s starts plays the scene from the first step its whole cast is there, as start would, and once', () => {
-  const t = stage(base([sound(0, 'begun')], { auto: false, end: 1, cast: { ...CAST, late: { kind: 'actor', name: 'late' } } }))
-  const id = row(t, 'cutscene').id
-  t.step(DT)
-  row(t, 'cutscene').data.starts = true
-  for (let n = 0; n < 3; n++) t.step(DT)
-  expect(cs(t).running).toBeFalsy()
-  const late = t.spawn('actor', { name: 'late', pos: [9, 0, 9] })
-  t.step(DT)
-  expect(cs(t).running).toBe(true)
-  expect(cs(t).cast.late).toBe(late.id)
-  expect(cs(t).e).toBeCloseTo(DT, 12)
-  toEnd(t)
-  const e = cs(t).e
-  for (let n = 0; n < 5; n++) t.step(DT)
-  expect(t.rows.find(r => r.id === id)!.data).toMatchObject({ done: true, running: false, e })
-})
-
 test('strangers names every place a cue puts something at that is neither a cast member nor a mark', () => {
   const file = base([
     { at: 0, do: 'walk', who: 'paladin', to: 'nowhere', gear: null },

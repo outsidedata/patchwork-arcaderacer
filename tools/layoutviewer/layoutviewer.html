@@ -1,0 +1,453 @@
+<!doctype html>
+<!--
+  The layout viewer: draws the bones of a layout, built piece by piece from its mounts.
+  yarn dev, then localhost:5173/tools/layoutviewer/layoutviewer.html?file=/games/demo_horse3d/pureDataHorse.json
+  The file is one animal, { layout: [...] }, named by its file. A piece's bones are placed from where it mounts: `at` along
+  the bone it names on the piece it names. The piece on `root` stands at the origin.
+  Shown and hidden, from the address or from the list:
+    ?bones=0               the bones hidden, only the muscles drawn; the "bones" box in the list turns them on and off
+    ?only=torso,wingLeft   only these pieces drawn; clicking a piece's name in the list shows or hides it
+    ?view=side|top|front   the camera from the animal's left, from above or from ahead, instead of from three quarters
+    ?smooth=1              the shown pieces' muscles drawn as one shrink-wrapped skin instead of each spindle
+                           (shrinkwrap.mjs: voxelized, closed by a ball, marching cubes, Taubin smoothing, built in
+                           shrinkwrap.worker.mjs); the "smoothed muscles" box turns it on and off
+    ?fill=0.04             the closing ball's radius in metres: gaps and creases narrower than it fill (the list's "fill", mm)
+    ?cell=0.008            the voxel's size in metres (the list's "cell", mm)
+    ?soften=0.01           the Gaussian blur of the distance field, sigma in metres (the list's "soften", mm)
+    ?passes=12             Taubin smoothing passes (the list's "smooth")
+  Tweaking a muscle: click its spindle (or its name in the list) and the panel on the right shows sliders for each of
+  its values; the spindle, and the smoothed skin when it is on, follow each slider. Nothing is saved: reloading the
+  page reads the file again.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Layout viewer</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #16181c; color: #ddd; font: 13px system-ui, sans-serif; overflow: hidden; }
+      #list { max-width: 290px; position: absolute; top: 8px; left: 8px; bottom: 8px; overflow-y: auto; background: #0009; padding: 8px 10px; border-radius: 6px; line-height: 1.6; }
+      #list div { cursor: default; }
+      #list span { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; }
+      #tip { position: absolute; pointer-events: none; background: #000c; padding: 3px 7px; border-radius: 4px; display: none; white-space: nowrap; }
+      #editor { position: absolute; top: 8px; right: 8px; max-height: calc(100% - 16px); overflow-y: auto; background: #000b; padding: 8px 10px; border-radius: 6px; width: 300px; display: none; }
+      #editor .row { display: grid; grid-template-columns: 62px 1fr 58px; gap: 6px; align-items: center; margin: 2px 0; }
+      #editor .row input[type=range] { width: 100%; }
+      #editor h4 { margin: 8px 0 2px; font-size: 12px; opacity: .7; font-weight: 600; }
+      #editor select { width: 100%; }
+      .muscleRow { padding-left: 18px; color: #e9a19b; cursor: pointer !important; }
+      .muscleRow.on { background: #e9c46a33; }
+      #error { position: absolute; bottom: 8px; left: 8px; color: #f77; white-space: pre; }
+    </style>
+  </head>
+  <body>
+    <div id="list"></div>
+    <div id="editor"></div>
+    <div id="error"></div>
+    <div id="tip"></div>
+    <script type="module">
+      import * as THREE from 'three'
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+      import { checkLayout } from '/games/demo_horse3d/checkLayout.mjs'
+
+      const params = new URLSearchParams(location.search)
+      const file = params.get('file')
+      const only = params.get('only') ? params.get('only').split(',') : null
+      let bonesShown = params.get('bones') !== '0'
+      let smoothShown = params.get('smooth') === '1'
+      const view = params.get('view')
+      if (!file) throw new Error('no ?file= given')
+      const data = await (await fetch(file)).json()
+      const broken = checkLayout(data)
+      if (broken.length) {
+        document.getElementById('error').textContent = `${file} breaks the format:\n` + broken.join('\n')
+        throw new Error(`${broken.length} broken`)
+      }
+      const name = file.split('/').pop().replace(/\.json$/, '')
+      const layout = data.layout
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true })
+      renderer.setPixelRatio(devicePixelRatio)
+      renderer.setSize(innerWidth, innerHeight)
+      document.body.prepend(renderer.domElement)
+      const scene = new THREE.Scene()
+      const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.01, 100)
+      const controls = new OrbitControls(camera, renderer.domElement)
+      scene.add(new THREE.GridHelper(4, 40, 0x444444, 0x2a2a2a))
+      scene.add(new THREE.AxesHelper(0.3))
+
+      // Each piece's bones, placed in the world from its mount.
+      const animal = new THREE.Group()
+      scene.add(animal)
+      const placed = {}
+      const list = document.getElementById('list')
+      list.innerHTML = `<b>${name}</b><div><label><input type="checkbox" id="bones" ${bonesShown ? 'checked' : ''}> bones</label></div>`
+        + `<div><label><input type="checkbox" id="smooth" ${smoothShown ? 'checked' : ''}> smoothed muscles</label></div>`
+        + `<div style="padding-left:18px">fill <input id="fill" type="number" min="0" max="200" step="1" style="width:44px"> mm`
+        + ` cell <input id="cell" type="number" min="2" max="30" step="1" style="width:40px"> mm`
+        + `</div><div style="padding-left:18px">soften <input id="soften" type="number" min="0" max="60" step="1" style="width:40px"> mm`
+        + ` smooth <input id="passes" type="number" min="0" max="60" step="1" style="width:40px"></div>`
+        + `<div id="skinInfo" style="padding-left:18px;opacity:.6;font-size:11px"></div>`
+      // Each piece's bone group and muscle group, and whether the piece is shown.
+      const boneGroups = {}, muscleGroups = {}, shown = {}
+      const refresh = () => {
+        for (const id of Object.keys(boneGroups)) {
+          boneGroups[id].visible = shown[id] && bonesShown
+          // Over the skin, each spindle hides itself but the chosen one (paint).
+          muscleGroups[id].visible = shown[id]
+          rows[id].style.opacity = shown[id] ? '1' : '0.35'
+        }
+      }
+      const rows = {}
+      const muscleRowOf = new Map()
+      layout.forEach((piece, i) => {
+        const colour = new THREE.Color().setHSL(i / layout.length, 0.7, 0.6)
+        const row = document.createElement('div')
+        row.innerHTML = `<span style="background:#${colour.getHexString()}"></span>${piece.id} <i style="opacity:.6">${piece.is}</i>`
+        row.style.cursor = 'pointer'
+        rows[piece.id] = row
+        shown[piece.id] = !only || only.includes(piece.id)
+        list.append(row)
+        for (const b of piece.bones) {
+          const boneRow = document.createElement('div')
+          boneRow.style.paddingLeft = '18px'
+          boneRow.style.opacity = '0.75'
+          boneRow.textContent = b.name
+          list.append(boneRow)
+        }
+        // Each of its muscles, clicked to tweak it.
+        for (const e of piece.lookConfiguration.muscles) {
+          const muscleRow = document.createElement('div')
+          muscleRow.className = 'muscleRow'
+          muscleRow.textContent = `◆ ${e.muscle}`
+          muscleRowOf.set(e, muscleRow)
+          list.append(muscleRow)
+        }
+        let origin = new THREE.Vector3()
+        if (piece.mount !== 'root') {
+          const on = placed[piece.mount.layout][piece.mount.bone]
+          origin = on.head.clone().lerp(on.tail, piece.mount.at)
+        }
+        placed[piece.id] = {}
+        const group = new THREE.Group()
+        for (const b of piece.bones) {
+          const head = b.parent === null ? origin.clone() : placed[piece.id][b.parent].tail.clone()
+          const tail = new THREE.Vector3(...b.tail).add(origin)
+          placed[piece.id][b.name] = { head, tail }
+          const len = head.distanceTo(tail)
+          const r = Math.max(0.004, Math.min(0.02, len * 0.08))
+          // Drawn over the muscles, so every bone shows.
+          const mat = new THREE.MeshBasicMaterial({ color: colour, depthTest: false })
+          const bar = new THREE.Mesh(new THREE.ConeGeometry(r, len, 6), mat)
+          bar.position.copy(head).lerp(tail, 0.5)
+          // The cone's point is its +y end: it points at the bone's tail, so the bone is thick at its head.
+          bar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tail.clone().sub(head).normalize())
+          bar.renderOrder = 10
+          bar.userData.label = b.name
+          group.add(bar)
+          const ball = new THREE.Mesh(new THREE.SphereGeometry(r * 1.2, 8, 6), mat)
+          ball.position.copy(head)
+          ball.renderOrder = 10
+          ball.userData.label = b.name
+          group.add(ball)
+        }
+        if (piece.mount !== 'root') {
+          const dot = new THREE.Mesh(new THREE.SphereGeometry(0.018, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }))
+          dot.position.copy(origin)
+          dot.userData.label = `mounted on ${piece.mount.layout}:${piece.mount.bone}`
+          group.add(dot)
+        }
+        group.traverse((m) => { if (m.isMesh) m.userData.piece = piece })
+        animal.add(group)
+        boneGroups[piece.id] = group
+        muscleGroups[piece.id] = new THREE.Group()
+        animal.add(muscleGroups[piece.id])
+        row.onmouseenter = () => group.traverse((m) => m.material && (m.material.wireframe = true))
+        row.onmouseleave = () => group.traverse((m) => m.material && (m.material.wireframe = false))
+      })
+
+      // Each layout's muscles (its lookConfiguration.muscles), made as
+      // games/demo_horse3d/assets/pureDataBoneAndMuscleSkinner.py makes them: a spindle from its origin to its insertion. A place is
+      // [bone, along, left, up, ahead]: `along` the bone from its start (0) to its end (1), then metres to
+      // the animal's left, up and ahead. The bone is any placed bone of the animal.
+      const boneAt = {}
+      for (const bones of Object.values(placed)) Object.assign(boneAt, bones)
+      const place = (p) => boneAt[p[0]].head.clone().lerp(boneAt[p[0]].tail, p[1]).add(new THREE.Vector3(p[2], p[3], p[4]))
+      // kit.curve: a cubic Hermite curve through the points at their marks.
+      const curve = (xs, ys, x) => {
+        const n = xs.length
+        let i = 0
+        while (i < n - 2 && xs[i + 1] < x) i++
+        const slope = (j) => ys[Math.min(j + 1, n - 1)].clone().sub(ys[Math.max(j - 1, 0)]).divideScalar(xs[Math.min(j + 1, n - 1)] - xs[Math.max(j - 1, 0)])
+        const h = xs[i + 1] - xs[i]
+        const t = Math.min(1, Math.max(0, (x - xs[i]) / h))
+        return ys[i].clone().multiplyScalar(2 * t ** 3 - 3 * t ** 2 + 1)
+          .addScaledVector(slope(i), (t ** 3 - 2 * t ** 2 + t) * h)
+          .addScaledVector(ys[i + 1], -2 * t ** 3 + 3 * t ** 2)
+          .addScaledVector(slope(i + 1), (t ** 3 - t ** 2) * h)
+      }
+      // A muscle is RINGS rings along its line, and each end is rounded off by CAP more rings that close
+      // to a point, as a half ellipsoid a third as deep as the end is wide.
+      const RINGS = 14, AROUND = 20, CAP = 6
+      // A muscle's body rings: where each ring stands, the way the line runs there, its two axes and its half widths.
+      const muscleRings = (e) => {
+        const pts = [e.from, ...e.via, e.to].map(place)
+        const far = [0]
+        for (let i = 1; i < pts.length; i++) far.push(far[i - 1] + pts[i].distanceTo(pts[i - 1]))
+        const marks = far.map((d) => d / far[far.length - 1])
+        const on = (t) => curve(marks, pts, Math.min(1, Math.max(0, t)))
+        const flat = new THREE.Vector3(...e.flat)
+        const gain = Math.log(0.5) / Math.log(e.peak)
+        const thin = e.tendon
+        const body = []
+        for (let r = 0; r < RINGS; r++) {
+          const t = r / (RINGS - 1)
+          const d = on(t + 0.02).sub(on(t - 0.02)).normalize()
+          const side = flat.clone().addScaledVector(d, -flat.dot(d)).normalize()
+          const up = d.clone().cross(side).normalize()
+          const size = thin + (1 - thin) * Math.sin(Math.PI * t ** gain) ** 0.8
+          body.push({ c: on(t), d, side, up, w: e.wide * size, h: e.thick * size })
+        }
+        return body
+      }
+      const muscleMesh = (body) => {
+        // The rounded end beyond a ring, going `out` from it.
+        const cap = (ring, out) => {
+          const deep = (ring.w + ring.h) / 6
+          const rings = []
+          for (let k = 1; k <= CAP; k++) {
+            const phi = (k / CAP) * (Math.PI / 2)
+            rings.push({ ...ring, c: ring.c.clone().addScaledVector(ring.d, out * deep * Math.sin(phi)), w: ring.w * Math.cos(phi), h: ring.h * Math.cos(phi) })
+          }
+          return rings
+        }
+        const rings = [...cap(body[0], -1).reverse(), ...body, ...cap(body[RINGS - 1], 1)]
+        const pos = [], idx = []
+        for (const ring of rings) for (let j = 0; j < AROUND; j++) {
+          const a = (j / AROUND) * Math.PI * 2
+          pos.push(...ring.c.clone().addScaledVector(ring.side, Math.cos(a) * ring.w).addScaledVector(ring.up, Math.sin(a) * ring.h).toArray())
+        }
+        for (let r = 0; r < rings.length - 1; r++) for (let j = 0; j < AROUND; j++) {
+          const a = r * AROUND + j, b = r * AROUND + (j + 1) % AROUND
+          idx.push(a, a + AROUND, b, b, a + AROUND, b + AROUND)
+        }
+        const g = new THREE.BufferGeometry()
+        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+        g.setIndex(idx)
+        g.computeVertexNormals()
+        // Its material is set by paint: the chosen muscle is drawn apart from the rest.
+        return new THREE.Mesh(g)
+      }
+      scene.add(new THREE.HemisphereLight('#dfe8f0', '#3a3530', 1.4))
+      const sun = new THREE.DirectionalLight('#ffffff', 2.2)
+      sun.position.set(2, 4, 3)
+      scene.add(sun)
+      // Every muscle: its piece, its values (`e`, the file's own object, which the sliders change), its rings
+      // and its spindle.
+      const muscles = []
+      const spindleMaterial = new THREE.MeshStandardMaterial({ color: '#c8453c', roughness: 0.55, side: THREE.DoubleSide })
+      const chosenMaterial = new THREE.MeshStandardMaterial({ color: '#e9c46a', roughness: 0.5, side: THREE.DoubleSide, emissive: '#5a3a00' })
+      // Over the smoothed skin, the chosen muscle is drawn as lines, so it shows where it sits inside.
+      const chosenLines = new THREE.MeshBasicMaterial({ color: '#ffe08a', wireframe: true, depthTest: false, transparent: true, opacity: 0.6 })
+      const makeSpindle = (m) => {
+        m.body = muscleRings(m.e)
+        const mesh = muscleMesh(m.body)
+        mesh.userData.piece = m.piece
+        mesh.userData.label = m.e.muscle
+        mesh.userData.muscle = m
+        if (m.mesh) { muscleGroups[m.piece.id].remove(m.mesh); m.mesh.geometry.dispose() }
+        m.mesh = mesh
+        muscleGroups[m.piece.id].add(mesh)
+        paint(m)
+      }
+      for (const piece of layout) for (const e of piece.lookConfiguration.muscles) {
+        const m = { piece, e, start: structuredClone(e), body: null, mesh: null }
+        muscles.push(m)
+        muscleRowOf.get(e).onclick = () => choose(m)
+      }
+
+      // The shrink-wrapped skin, built off the page's thread. While one build runs, a newer ask waits, and only
+      // the newest waiting ask is built next.
+      const worker = new Worker(new URL('./shrinkwrap.worker.mjs', import.meta.url), { type: 'module' })
+      const skinMaterial = new THREE.MeshStandardMaterial({ color: '#c8453c', roughness: 0.5, side: THREE.DoubleSide })
+      let skin = null
+      let fill = Number(params.get('fill') ?? 0.04)
+      let cell = Number(params.get('cell') ?? 0.008)
+      let passes = Number(params.get('passes') ?? 12)
+      let soften = Number(params.get('soften') ?? 0.01)
+      const skinInfo = document.getElementById('skinInfo')
+      let building = false, waiting = false, asked = 0
+      const dropSkin = () => { if (skin) { animal.remove(skin); skin.geometry.dispose(); skin = null } }
+      const buildSkin = () => {
+        if (!smoothShown) { dropSkin(); skinInfo.textContent = ''; return }
+        if (building) { waiting = true; return }
+        const shownMuscles = muscles.filter((m) => shown[m.piece.id])
+        if (!shownMuscles.length) { dropSkin(); skinInfo.textContent = 'no muscles shown'; return }
+        const bodies = shownMuscles.map((m) => m.body.map((r) => ({ c: r.c.toArray(), side: r.side.toArray(), up: r.up.toArray(), w: r.w, h: r.h })))
+        building = true
+        skinInfo.textContent = `building ${bodies.length} muscles…`
+        worker.postMessage({ id: ++asked, bodies, fill, cell, smooth: passes, soften })
+        worker.onmessage = ({ data: made }) => {
+          building = false
+          if (waiting || !smoothShown) { waiting = false; buildSkin(); return }
+          dropSkin()
+          const g = new THREE.BufferGeometry()
+          g.setAttribute('position', new THREE.BufferAttribute(made.positions, 3))
+          g.setAttribute('normal', new THREE.BufferAttribute(made.normals, 3))
+          g.setIndex(new THREE.BufferAttribute(made.index, 1))
+          skin = new THREE.Mesh(g, skinMaterial)
+          skin.userData.label = 'the shown muscles, shrink-wrapped'
+          animal.add(skin)
+          const ms = Object.entries(made.ms).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(', ')
+          skinInfo.textContent = `${bodies.length} muscles, grid ${made.grid.join('×')}, ${made.index.length / 3} triangles; ms: ${ms}`
+        }
+      }
+
+      // The chosen muscle, its spindle drawn gold (or as lines over the skin), and the panel of its sliders.
+      let chosen = null
+      const editor = document.getElementById('editor')
+      const paint = (m) => {
+        const on = m === chosen
+        m.mesh.material = on ? (smoothShown ? chosenLines : chosenMaterial) : spindleMaterial
+        // Over the skin only the chosen spindle shows, through it.
+        m.mesh.visible = !smoothShown || on
+        m.mesh.renderOrder = on && smoothShown ? 5 : 0
+        muscleRowOf.get(m.e).classList.toggle('on', on)
+      }
+      const boneNames = Object.keys(boneAt)
+      // A slider for one number of the muscle: its label, its range and step, how it reads and writes the value.
+      const slider = (label, min, max, step, get, set) => {
+        const row = document.createElement('div')
+        row.className = 'row'
+        const range = Object.assign(document.createElement('input'), { type: 'range', min, max, step, value: get() })
+        const box = Object.assign(document.createElement('input'), { type: 'number', min, max, step, value: get() })
+        box.style.width = '58px'
+        const take = (v) => { set(Number(v)); range.value = v; box.value = v; reshape() }
+        range.oninput = () => take(range.value)
+        box.onchange = () => take(box.value)
+        row.append(Object.assign(document.createElement('span'), { textContent: label }), range, box)
+        return row
+      }
+      const heading = (text) => Object.assign(document.createElement('h4'), { textContent: text })
+      // A place, [bone, along, left, up, ahead]: the bone it is on, then a slider for each number.
+      const placeSliders = (title, p) => {
+        const out = [heading(title)]
+        const pick = document.createElement('select')
+        for (const b of boneNames) pick.append(new Option(b, b, false, b === p[0]))
+        pick.onchange = () => { p[0] = pick.value; reshape() }
+        out.push(pick)
+        out.push(slider('along', 0, 1, 0.005, () => p[1], (v) => { p[1] = v }))
+        out.push(slider('left', -0.3, 0.3, 0.001, () => p[2], (v) => { p[2] = v }))
+        out.push(slider('up', -0.3, 0.3, 0.001, () => p[3], (v) => { p[3] = v }))
+        out.push(slider('ahead', -0.3, 0.3, 0.001, () => p[4], (v) => { p[4] = v }))
+        return out
+      }
+      // The chosen muscle's spindle made again from its values, and the skin after it.
+      const reshape = () => { makeSpindle(chosen); buildSkin() }
+      const showEditor = () => {
+        editor.replaceChildren()
+        if (!chosen) { editor.style.display = 'none'; return }
+        const { e } = chosen
+        editor.style.display = 'block'
+        const top = document.createElement('div')
+        top.innerHTML = `<b>${e.muscle}</b> <i style="opacity:.6">${chosen.piece.id}</i>`
+        const reset = Object.assign(document.createElement('button'), { textContent: 'reset' })
+        reset.style.float = 'right'
+        reset.onclick = () => {
+          for (const k of Object.keys(e)) delete e[k]
+          Object.assign(e, structuredClone(chosen.start))
+          reshape()
+          showEditor()
+        }
+        const close = Object.assign(document.createElement('button'), { textContent: '×' })
+        close.style.float = 'right'
+        close.style.marginLeft = '4px'
+        close.onclick = () => choose(null)
+        top.prepend(close, reset)
+        editor.append(top, heading('shape'))
+        // The widths' sliders reach at least 20 cm, and twice what the file starts with.
+        const reach = (v) => Math.max(0.2, Math.ceil(v * 2 * 100) / 100)
+        editor.append(slider('wide', 0.001, reach(chosen.start.wide), 0.0005, () => e.wide, (v) => { e.wide = v }))
+        editor.append(slider('thick', 0.001, reach(chosen.start.thick), 0.0005, () => e.thick, (v) => { e.thick = v }))
+        editor.append(slider('peak', 0.05, 0.95, 0.01, () => e.peak, (v) => { e.peak = v }))
+        editor.append(slider('tendon', 0, 1, 0.01, () => e.tendon, (v) => { e.tendon = v }))
+        editor.append(heading('flat (which way it is wide)'))
+        for (const [k, axis] of [[0, 'x'], [1, 'y'], [2, 'z']]) editor.append(slider(axis, -1, 1, 0.01, () => e.flat[k], (v) => { e.flat[k] = v }))
+        editor.append(...placeSliders('from', e.from))
+        e.via.forEach((p, i) => editor.append(...placeSliders(`via ${i + 1}`, p)))
+        editor.append(...placeSliders('to', e.to))
+      }
+      const choose = (m) => {
+        const was = chosen
+        chosen = m
+        if (was) paint(was)
+        if (m) paint(m)
+        showEditor()
+      }
+      for (const m of muscles) makeSpindle(m)
+
+      document.getElementById('bones').onchange = (e) => { bonesShown = e.target.checked; refresh() }
+      document.getElementById('smooth').onchange = (e) => { smoothShown = e.target.checked; refresh(); for (const m of muscles) paint(m); buildSkin() }
+      const fillInput = document.getElementById('fill'), cellInput = document.getElementById('cell'), passesInput = document.getElementById('passes')
+      fillInput.value = Math.round(fill * 1000)
+      cellInput.value = Math.round(cell * 1000)
+      passesInput.value = passes
+      fillInput.onchange = () => { fill = Number(fillInput.value) / 1000; buildSkin() }
+      cellInput.onchange = () => { cell = Number(cellInput.value) / 1000; buildSkin() }
+      passesInput.onchange = () => { passes = Number(passesInput.value); buildSkin() }
+      const softenInput = document.getElementById('soften')
+      softenInput.value = Math.round(soften * 1000)
+      softenInput.onchange = () => { soften = Number(softenInput.value) / 1000; buildSkin() }
+      for (const piece of layout) rows[piece.id].onclick = () => { shown[piece.id] = !shown[piece.id]; refresh(); buildSkin() }
+
+      // Stand the animal on the grid by its lowest bone, then frame what is shown.
+      animal.position.y = -new THREE.Box3().setFromObject(animal).min.y
+      refresh()
+      buildSkin()
+      const box = new THREE.Box3()
+      animal.updateMatrixWorld(true)
+      // Measured with every shown piece's spindles, whether they are drawn or the smoothed skin is.
+      for (const id of Object.keys(shown)) if (shown[id]) { box.expandByObject(boneGroups[id]); box.expandByObject(muscleGroups[id], true) }
+      const mid = box.getCenter(new THREE.Vector3())
+      const size = box.getSize(new THREE.Vector3()).length()
+      controls.target.copy(mid)
+      const from = { side: [1, 0, 0], top: [0, 1, 0.001], front: [0, 0, 1] }[view] ?? [1, 0.3, 0.3]
+      camera.position.copy(mid).add(new THREE.Vector3(...from).normalize().multiplyScalar(size * 1.4))
+      controls.update()
+      // Hovering a bone shows the id of the layout item it belongs to.
+      const tip = document.getElementById('tip')
+      const ray = new THREE.Raycaster()
+      const pointer = new THREE.Vector2()
+      renderer.domElement.addEventListener('pointermove', (e) => {
+        pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1)
+        ray.setFromCamera(pointer, camera)
+        const seen = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true }
+        const hit = ray.intersectObject(animal, true).find((h) => seen(h.object))
+        if (!hit) { tip.style.display = 'none'; return }
+        const piece = hit.object.userData.piece
+        tip.textContent = piece ? `${piece.id}: ${hit.object.userData.label}` : hit.object.userData.label
+        tip.style.left = `${e.clientX + 12}px`
+        tip.style.top = `${e.clientY + 12}px`
+        tip.style.display = 'block'
+      })
+      renderer.domElement.addEventListener('pointerleave', () => { tip.style.display = 'none' })
+      // Clicking (a press and release without dragging the camera) a muscle chooses it; over the skin, the
+      // nearest spindle under it, drawn or not, of a shown piece. Clicking nothing lets the chosen one go.
+      let pressed = null
+      renderer.domElement.addEventListener('pointerdown', (e) => { pressed = [e.clientX, e.clientY] })
+      renderer.domElement.addEventListener('pointerup', (e) => {
+        if (!pressed || Math.hypot(e.clientX - pressed[0], e.clientY - pressed[1]) > 4) return
+        pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1)
+        ray.setFromCamera(pointer, camera)
+        const spindles = muscles.filter((m) => shown[m.piece.id]).map((m) => m.mesh)
+        const hit = ray.intersectObjects(spindles, false)[0]
+        choose(hit ? hit.object.userData.muscle : null)
+      })
+      addEventListener('resize', () => {
+        camera.aspect = innerWidth / innerHeight
+        camera.updateProjectionMatrix()
+        renderer.setSize(innerWidth, innerHeight)
+      })
+      renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera) })
+    </script>
+  </body>
+</html>

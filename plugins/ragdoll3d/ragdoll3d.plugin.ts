@@ -17,8 +17,8 @@
 //   land      `land(plugins)`, the ground the body lies on, `{ height(x, z) }`, or undefined until
 //             there is one (terrain3d's, `terrain3d.ragdoll3d.ts`). Until there is a ground no body
 //             steps, and a scene that names none has none: its bodies lie as they died.
-//   solids    `solids(plugins, x, z, r)`, the solids the body is pushed out of (scatter3d's,
-//             `scatter3d.ragdoll3d.ts`): circles `{ x, z, radius }`, each a solid upright without end.
+//   solids    `solids(plugins, x, z, r)`, the solids the body is pushed out of (lod3d's,
+//             `lod3d.ragdoll3d.ts`): circles `{ x, z, radius }`, each a solid upright without end.
 //             A scene that names none has no solids.
 //   gravity   `gravity(world, kind)`, the m/s² a body of that kind falls at, or undefined for a kind
 //             it has none for (walker's `world.walker.kinds[kind].gravity`, `walker.ragdoll3d.ts`). A
@@ -73,7 +73,7 @@
 //   Building it: the model is drawn at `pose` by the `pose` mod, every other copy takes that copy's
 //   local rotations, bone by bone of the same name, and each point is set at its bone. The gravity
 //   is read then, from the `gravity` mod for the row's kind, so a body falls at the gravity it walked
-//   under and a gravity the editor changes reaches the next body; a kind it gives no gravity throws,
+//   under and a gravity a dev page's panel changes reaches the next body; a kind it gives no gravity throws,
 //   naming the kind.
 //   The blow is given as a velocity, where each point was a step ago: the point whose height is
 //   nearest `pos[1] + height` (the first in role order, on a tie) at `speed`, the rest at
@@ -350,10 +350,31 @@ type Held = {
   copies: [THREE.Object3D, THREE.Object3D][]
 }
 
+// Whether two values are the same: the same number (NaN the same as NaN), string, boolean or null, or
+// arrays and plain objects of the same, item by item and field by field, a field holding undefined the
+// same as one not there. Read every frame against the copy of world.ragdoll3d last checked, so it walks
+// the two and makes nothing.
+function same(a: unknown, b: unknown): boolean {
+  if (a === b || (a !== a && b !== b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a)) {
+    const c = b as unknown[]
+    if (a.length !== c.length) return false
+    for (let i = 0; i < a.length; i++) if (!same(a[i], c[i])) return false
+    return true
+  }
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>
+  for (const k in x) if (!same(x[k], y[k])) return false
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false
+  return true
+}
+
 export function ragdoll3d() {
   const bodies = new Map<number, Body>()
   const held = new Map<number, Held>()
-  let text: string | undefined
+  // A copy of world.ragdoll3d as it was last checked, taken when it changes, in place or not.
+  let checked: Numbers | undefined
 
   // The physics mode: each limp row of `kinds` has its model follow its box3d bodies.
   function follow(plugins: Plugins, kinds: string[]) {
@@ -569,10 +590,9 @@ export function ragdoll3d() {
         follow(plugins, p.kinds)
         return
       }
-      const now = JSON.stringify(p)
-      if (now !== text) {
+      if (!same(p, checked)) {
         check(p)
-        text = now
+        checked = structuredClone(p)
       }
       const world = scene.world!
       const model = mod<Model>(world, 'ragdoll3d', 'model'), pose = mod<Pose>(world, 'ragdoll3d', 'pose')
@@ -622,7 +642,7 @@ export function ragdoll3d() {
     close() {
       bodies.clear()
       held.clear()
-      text = undefined
+      checked = undefined
     },
   }
 }

@@ -1,0 +1,21 @@
+{
+  "world": {
+    "particle3d": {
+      "effects": "effects",
+      "mods": { "sources": "fx" },
+      "attach": [
+        { "on": "wheel", "effect": "smoke", "when": "skid > 0" },
+        { "on": "wheel", "effect": "burnout", "when": "burnout > 0.1" },
+        { "on": "side", "effect": "sparks", "when": "racer" },
+        { "on": "side", "effect": "wallsparks", "when": "not racer" },
+        { "on": "tail", "effect": "pop", "when": "paid" }
+      ]
+    },
+    "supershader3d": {
+      "looks": "kit.looks"
+    },
+    "drive": {
+      "mods": { "models": "supershader3d" }
+    }
+  }
+}

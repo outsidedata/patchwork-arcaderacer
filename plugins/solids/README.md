@@ -17,9 +17,11 @@ reach it because every paint is dressed by render3d.
 solids has no row, no prefab and no server half. It does two things:
 
 - **It draws still rows.** Each row of a kind `world.solids.kinds` names (`{ <kind>: <model> }`, the
-  model a loader `json` entry), or a kind a `models` mod hands a model for (`world.solids.mods.models`,
-  one plugin or a list, each `models(plugins) → { <kind>: <model> }`, laid over `kinds` in the list's
-  order: shapes3d's plain shapes), is drawn from its model at the row's `pos`, turned by its `rot`
+  model a loader `json` entry), and each row a `models` mod hands over (`world.solids.mods.models`,
+  one plugin or a list, each `models(plugins) → { models: { <kind>: <model> }, rows }`, its models laid
+  over `kinds` in the list's order, and `rows` each `{ id, kind, data: { pos, yaw?, rot? } }`, which the
+  mod translates from what it knows: shapes3d's every shape, the rows' and its files'; a kind a mod hands
+  a model for is drawn only at the mods' rows), is drawn from its model at the row's `pos`, turned by its `rot`
   (a quaternion `[x, y, z, w]`) where it carries one, as shapes3d's tilting shapes do, else facing its
   `yaw`, standing on the land the `land` mod hands. When a model changes, every row of that kind is made
   again. `group(id)` is a row's three.js group.
@@ -65,7 +67,7 @@ by node; `blink(blinks, now)` lights blinking paints by the page's clock.
 - **shapes3d**: the mod `shapes3d.solids.ts` (`mods: { models: 'shapes3d' }`) hands a plain model of
   each of its kinds that gives a `look`.
 - **loader**: the model files, and the pictures paints lay.
-- **lights3d**: draws the point lights a model hangs, however many.
+- **lights3d**: draws the point and spot lights a model hangs, however many, and their shadows.
 
 ## Keywords
 

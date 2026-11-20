@@ -1,10 +1,31 @@
 // A game's server on node, started as `yarn serve` starts it, starts again on its new code when one of
 // its files changes.
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { expect, test } from 'vitest'
-import { restarts, Servers } from './servers.ts'
+import { inRepo, restarts, Servers } from './servers.ts'
+
+test('a build written and cleared through a game\'s link out of the repo is not the repo\'s, and the game\'s own files are', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'servers-repo-'))
+  const out = mkdtempSync(path.join(tmpdir(), 'servers-builds-'))
+  try {
+    mkdirSync(path.join(root, 'games', 'g', 'assets'), { recursive: true })
+    symlinkSync(out, path.join(root, 'games', 'g', 'assets', 'builds'))
+    const built = path.join(root, 'games', 'g', 'assets', 'builds', 'barrel', 'barrel.glb')
+    mkdirSync(path.join(out, 'barrel'))
+    writeFileSync(path.join(out, 'barrel', 'barrel.glb'), '')
+    expect(inRepo(root, built)).toBe(false)
+    // the build clears its folder before it writes again: the removed file's folder is gone too
+    rmSync(path.join(out, 'barrel'), { recursive: true })
+    expect(inRepo(root, built)).toBe(false)
+    writeFileSync(path.join(root, 'games', 'g', 'g.sim.ts'), '')
+    expect(inRepo(root, path.join(root, 'games', 'g', 'g.sim.ts'))).toBe(true)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(out, { recursive: true, force: true })
+  }
+})
 
 const alive = (says: string) => `console.log(${JSON.stringify(says)})\nsetInterval(() => {}, 1000)\n`
 

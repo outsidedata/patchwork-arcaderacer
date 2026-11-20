@@ -1,0 +1,9 @@
+[
+  {"name":"front-8","file":"waterfallConfig.json","effect":"waterfall","sheets":{"packet":"packet.json","spray":"spray.json","veil":"veil.json"},"at":[0,0,0],"target":[0,6,1],"camera":[0,5,26],"preroll":8,"sky":1579563},
+  {"name":"three-quarter-8","file":"waterfallConfig.json","effect":"waterfall","sheets":{"packet":"packet.json","spray":"spray.json","veil":"veil.json"},"at":[0,0,0],"target":[0,6,1],"camera":[14,4.5,21],"preroll":8,"sky":1579563},
+  {"name":"side-8","file":"waterfallConfig.json","effect":"waterfall","sheets":{"packet":"packet.json","spray":"spray.json","veil":"veil.json"},"at":[0,0,0],"target":[0,6,1],"camera":[24,5,5],"preroll":8,"sky":1579563},
+  {"name":"top-8","file":"waterfallConfig.json","effect":"waterfall","sheets":{"packet":"packet.json","spray":"spray.json","veil":"veil.json"},"at":[0,0,0],"target":[0,11.2,0.3],"camera":[3,12.5,9],"preroll":8,"sky":1579563},
+  {"name":"base-8","file":"waterfallConfig.json","effect":"waterfall","sheets":{"packet":"packet.json","spray":"spray.json","veil":"veil.json"},"at":[0,0,0],"target":[0,2,1.5],"camera":[5,2.2,13],"preroll":8,"sky":1579563},
+  {"name":"bright-8","file":"waterfallConfig.json","effect":"waterfall","sheets":{"packet":"packet.json","spray":"spray.json","veil":"veil.json"},"at":[0,0,0],"target":[0,6,1],"camera":[14,4.5,21],"preroll":8,"sky":10930398},
+  {"name":"start-0.8","file":"waterfallConfig.json","effect":"waterfall","sheets":{"packet":"packet.json","spray":"spray.json","veil":"veil.json"},"at":[0,0,0],"target":[0,6,1],"camera":[14,4.5,21],"preroll":0.8,"sky":1579563}
+]

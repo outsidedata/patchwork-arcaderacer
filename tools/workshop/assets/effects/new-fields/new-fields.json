@@ -1,0 +1,5 @@
+{
+  "cap": 40000,
+  "files": ["life.json", "throwing.json", "push.json", "noise.json", "air.json", "shapes.json"],
+  "effects": {}
+}

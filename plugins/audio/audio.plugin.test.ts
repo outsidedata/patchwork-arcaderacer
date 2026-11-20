@@ -670,27 +670,6 @@ test('where there is no Web Audio there is no context, and a page plays nothing 
   expect([...on.keys()]).toEqual([])
 })
 
-test('an audition plays a catalogue sound, or a cue as an entry of it sounds, once, unplaced, at its gain, resuming a locked context', async () => {
-  Ctx.state = 'suspended'
-  const { truth } = rig()
-  const p = page(truth)
-  const asked: string[] = []
-  p.plugins.loader.load = (name: string) => { asked.push(name); return Promise.resolve({ name }) }
-  await p.me.audition(p.plugins, 'far')
-  expect(p.ctx.resumed).toBe(1)
-  expect(heard(p.ctx)).toEqual([['far', null]])
-  expect(sounds(p.ctx)[0].gain.gain.value).toBe(1)
-  expect(sounds(p.ctx)[0].playbackRate.value).toBe(1)
-  await p.me.audition(p.plugins, TABLE.cues.ding as never)
-  const s = sounds(p.ctx)[1]
-  expect(['ding1', 'ding2', 'ding3']).toContain(s.name)
-  expect(s.startedAt).toBeNull()
-  expect(s.gain.gain.value).toBe(0.5)
-  expect(s.playbackRate.value).toBeGreaterThanOrEqual(0.8)
-  expect(s.playbackRate.value).toBeLessThanOrEqual(1.2)
-  expect(asked).toEqual(['far', s.name])
-})
-
 // ---------------------------------------------------------------- the listener under render2d, and none
 
 // A 2D scene's numbers: `screen` in place of `space`, fading over 100 canvas pixels off the view.

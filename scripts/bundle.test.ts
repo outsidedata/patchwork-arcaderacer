@@ -87,6 +87,35 @@ test('the page is one module script of the bundle, and its scenes, sims and look
   expect(typeof a.setup).toBe('function')
 })
 
+test('a page that enters the entry scene of a game showing a loading screen draws it in its first bytes, ahead of the code; the testbed, and a game showing none, do not', async () => {
+  await newGame('shown', root)
+  const file = path.join(root, 'games/shown/main.scene.json')
+  const scene = JSON.parse(readFileSync(file, 'utf8'))
+  scene.plugins.push('ui')
+  scene.world.loader.assets.splash = { type: 'texture', url: '/games/shown/assets/splash.png', for: 'ui', preload: true }
+  scene.world.ui = { mods: { behaviors: ['loader'] }, panels: { loading: { anchor: 'center', size: [320, 180], layer: 9, modal: true, loading: { pictures: [{ picture: 'splash', at: [0, 0], size: [320, 180] }], fade: 0.5 } } } }
+  writeFileSync(file, JSON.stringify(scene))
+  writeFileSync(path.join(root, 'games/shown/dev.html'), readFileSync(path.join(root, 'games/shown/index.html'), 'utf8'))
+  const page = (game: string, name: string) => bundler({ root, page: `games/${game}/${name}`, url: r => `/${r}`, out: '/b/' })
+  const built = new Map<string, string>()
+  for (const [game, name] of [['shown', 'index.html'], ['shown', 'client.html'], ['shown', 'dev.html'], ['fresh', 'index.html']]) {
+    const it = page(game, name)
+    built.set(`${game}/${name}`, (await it.build()).html)
+    await it.dispose()
+  }
+  for (const key of ['shown/index.html', 'shown/client.html']) {
+    const html = built.get(key)!
+    const body = html.slice(html.search(/<body\b[^>]*>/))
+    // The cover, then its script, both ahead of the page's module.
+    expect(body.indexOf('<div id="loader-cover"></div>'), key).toBeGreaterThan(0)
+    expect(body.indexOf('<div id="loader-cover"></div>')).toBeLessThan(body.indexOf('<script type="module"'))
+    expect(body).toContain('"pictures":[{"url":"/games/shown/assets/splash.png","at":[0,0],"size":[320,180]}]')
+    expect(body).toContain('"/games/shown/assets/shown.json"')
+  }
+  expect(built.get('shown/dev.html')).not.toContain('loader-cover')
+  expect(built.get('fresh/index.html')).not.toContain('loader-cover')
+})
+
 test('built again, the bundle holds a look written since', async () => {
   writeFileSync(path.join(root, 'games/fresh/spark.client.ts'), 'export function setup() {}\nexport function tick() {}\nexport function remove() {}\n')
   const { list } = await run(await b.build(), 'two')

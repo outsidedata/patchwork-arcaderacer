@@ -7,8 +7,8 @@
 //            where the profiler times the rules; render3d's renderer is made, where it draws);
 //   loaded   every plugin of the client that says it is still loading is done: terrain3d's rings are on
 //            the scene (with `preload`, that is the land prepared whole where the camera stands, its maps
-//            landed and scatter3d's share placed), no rebuild is in hand and every bake has nothing
-//            left; scatter3d's share of the prepared place is placed. A scene whose land is built in
+//            landed and lod3d's share held), no rebuild is in hand and every bake has nothing
+//            left; lod3d's share of the prepared place is done (its `ready()`). A scene whose land is built in
 //            workers draws at its full rate until it is, and is measured only once it is.
 //            `--loading` waits on none of it, to measure the loading itself;
 //   ready    `--ready`, a page expression, is true, when given;
@@ -207,7 +207,7 @@ export async function open({ base, game, scene, presses, settle, ready, after, d
         const k = t.baked()
         if (k && k.some(x => x.left > 0)) still.push('terrain3d: bakes, ' + k.map(x => x.left).join(', ') + ' left')
       }
-      if (P.scatter3d && !P.scatter3d.ready()) still.push('scatter3d: its share of the prepared place')
+      if (P.lod3d && !P.lod3d.ready()) still.push('lod3d: its share of the prepared place')
       return still.length ? still.join('; ') : true
     })()`)
   }

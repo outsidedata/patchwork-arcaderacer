@@ -47,10 +47,18 @@ const SPREAD = 0.6, BAND = 0.15, FLASH = 0.08
 // A card's canvas: its width and height, and the metres of the world a pixel spans.
 const WIDE = 256, HIGH = 56, METRE = 0.8 / WIDE
 
-type Fan = { cone: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>; edge: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>; shape: string }
+// A sight's fan, its cone and its edge, and the four numbers they were made from: the sight's cone and
+// range and its edge's cone and range.
+type Fan = {
+  cone: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>; edge: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>
+  coneOf: number; rangeOf: number; edgeConeOf: number; edgeRangeOf: number
+}
 type Ring = THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>
 type Line = THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>
 type Card = { sprite: THREE.Sprite; canvas: HTMLCanvasElement; texture: THREE.CanvasTexture; shows: string }
+
+// Whether two numbers are the same, NaN the same as NaN. Read for every NPC every frame.
+const same = (a: number, b: number) => a === b || (a !== a && b !== b)
 
 export function npc3d() {
   const fans = new Map<number, Fan>()
@@ -141,18 +149,18 @@ export function npc3d() {
       if (me.cones) for (const row of npcs) {
         const s = defs[row.kind].sight
         if (!s.kinds.length) continue
-        const shape = JSON.stringify([s.cone, s.range, s.edge?.cone ?? 0, s.edge?.range ?? 0])
+        const edgeCone = s.edge?.cone ?? 0, edgeRange = s.edge?.range ?? 0
         fanned.add(row.id)
         let fan = fans.get(row.id)
-        if (fan && fan.shape !== shape) {
+        if (fan && !(same(fan.coneOf, s.cone) && same(fan.rangeOf, s.range) && same(fan.edgeConeOf, edgeCone) && same(fan.edgeRangeOf, edgeRange))) {
           gone(plugins, fan.cone)
           gone(plugins, fan.edge)
           fan = undefined
         }
         if (!fan) {
           const cone = new T.Mesh(fanGeometry(T, s.cone, s.range), new T.MeshBasicMaterial({ color: CONE, transparent: true, opacity: SHADE, depthWrite: false }))
-          const edge = new T.Mesh(fanGeometry(T, s.edge?.cone ?? 0, s.edge?.range ?? 0), new T.MeshBasicMaterial({ color: CONE, transparent: true, opacity: EDGE, depthWrite: false }))
-          fan = { cone: put(plugins, cone), edge: put(plugins, edge), shape }
+          const edge = new T.Mesh(fanGeometry(T, edgeCone, edgeRange), new T.MeshBasicMaterial({ color: CONE, transparent: true, opacity: EDGE, depthWrite: false }))
+          fan = { cone: put(plugins, cone), edge: put(plugins, edge), coneOf: s.cone, rangeOf: s.range, edgeConeOf: edgeCone, edgeRangeOf: edgeRange }
           fans.set(row.id, fan)
         }
         const body = bodyOf(row.kind, defs[row.kind])

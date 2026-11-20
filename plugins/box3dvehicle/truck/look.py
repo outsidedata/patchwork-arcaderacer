@@ -23,6 +23,17 @@
 #     its solid height; and each axle's STRAP length against the farthest its ends are pulled apart;
 #     and renders the axles worked, crossed, pushed in at full lock and at full droop
 #     (<vehicle>-solid.png). The corners' checks below are then left out: the solid axles replace them;
+#   - with `look.independent`, reads what box3dvehicle draws of the independent suspension in every
+#     state from the same JSON (`parts.ts` writes it off `independentParts`), whose wheels are drawn
+#     where their arms put them (the drawn middle and turn, camber, toe and steer), and prints, each
+#     at its worst state: the CLEAR of every drawn wheel against the model in every state, in place of
+#     the physics wheels'; each part's ROOM against the model; its TYRE gap against its axle's two
+#     drawn wheels (the dish hollow, where the knuckles, hubs, brakes and ball joints sit); its PART gap
+#     to every other part of its axle that it neither moves with nor is joined to (the bodies and
+#     joints the JSON names); each coilover's SHOCK, the room left between its shaft's eye and its
+#     body's foot at its shortest and the shaft still in its body at its longest, and each spring over
+#     its solid height; and renders the corners worked, crossed, pushed in at full lock and at full
+#     droop (<vehicle>-independent.png). The corners' checks below are then left out;
 #   - prints the ROOM left for what box3dvehicle draws round the model at every corner, at rest and
 #     at full bump, and on a steered axle at full lock each way too: the coil spring (`coilRadius`
 #     round and `wire` thick, drawn `look.inboard` in from the wheel's inner face, from the wheel's inner face up to the spring's mount), the upper arm (from the body's
@@ -444,12 +455,174 @@ def solid_rooms(pts):
     return min(worst)
 
 
+# The signed distance from points `q` to the drawn wheel `wh` at `centre` turned by `turn` (rows, its
+# turn from rest in the chassis's frame), the wheel a solid cylinder of its radius and width with its
+# steel wheel's dish hollow, as `into_dished` takes it for a wheel steered about y.
+def into_turned(q, wh, centre, turn):
+    loc = (q - np.array(centre)) @ np.array(turn)
+    x, y, z = loc[:, 0], loc[:, 1], loc[:, 2]
+    rho, out = np.hypot(x, y), wh['side'] * z
+    R, H = wh['r'] + 0.01, wh['w'] / 2 + 0.01
+    solid = np.where((rho <= R) & (np.abs(z) <= H), -np.minimum(R - rho, H - np.abs(z)),
+                     np.hypot(np.maximum(rho - R, 0), np.maximum(np.abs(z) - H, 0)))
+    rr, h = wh['r'] * LOOK['rim'], wh['w'] / 2
+    P = rr * np.interp(-out / h, [0.3, 0.82], [0.85, 0.97])
+    wall, floor = P - rho, -out - 0.3 * h
+    hollow = np.where((wall >= 0) & (floor >= 0), -np.minimum(wall, floor),
+                      np.hypot(np.maximum(-wall, 0), np.maximum(-floor, 0)))
+    return np.maximum(solid, -hollow)
+
+
+# The signed distance from points `q` to the solid drawn wheel (no dish) at `centre` turned by `turn`.
+def into_drawn(q, wh, centre, turn):
+    loc = (q - np.array(centre)) @ np.array(turn)
+    rho, ax = np.hypot(loc[:, 0], loc[:, 1]), np.abs(loc[:, 2])
+    R, H = wh['r'] + 0.01, wh['w'] / 2 + 0.01
+    out = np.hypot(np.maximum(rho - R, 0), np.maximum(ax - H, 0))
+    return np.where((rho <= R) & (ax <= H), -np.minimum(R - rho, H - ax), out)
+
+
+# The least distance between the segments p1–q1 and p2–q2.
+def segments(p1, q1, p2, q2):
+    d1, d2, r = q1 - p1, q2 - p2, p1 - p2
+    a, e, f = d1 @ d1, d2 @ d2, d2 @ r
+    if a < 1e-12 and e < 1e-12:
+        return float(np.linalg.norm(r))
+    if a < 1e-12:
+        s, t = 0.0, min(max(f / e, 0.0), 1.0)
+    else:
+        c = d1 @ r
+        if e < 1e-12:
+            t, s = 0.0, min(max(-c / a, 0.0), 1.0)
+        else:
+            b = d1 @ d2
+            den = a * e - b * b
+            s = min(max((b * f - c * e) / den, 0.0), 1.0) if den > 1e-12 else 0.0
+            t = (b * s + f) / e
+            if t < 0:
+                t, s = 0.0, min(max(-c / a, 0.0), 1.0)
+            elif t > 1:
+                t, s = 1.0, min(max((b - c) / a, 0.0), 1.0)
+    return float(np.linalg.norm(p1 + d1 * s - p2 - d2 * t))
+
+
+# A part's outside radius: a coil's to its wire's outside, a cone's at its wider end.
+def outside(p):
+    return max(p['r'], p.get('r2') or 0) + (p.get('wire') or 0)
+
+
+# What box3dvehicle draws of the independent suspension (`look.independent`), read off `parts.ts`'s
+# JSON, checked in every state (the header above): the drawn wheels' CLEAR of the model, and each
+# part's ROOM, TYRE and PART gaps, each at its worst state, each coilover's SHOCK lines.
+def independent_rooms(pts):
+    data = json.load(open(os.path.join(OUT, f'{VIEW}-parts.json')))
+    wheels = wheels_of()
+    worst = []
+    clears = {}
+    for st in data['states']:
+        for dw in st['wheels']:
+            wh = next(w for w in wheels if w['axle'] == st['axle'] and w['side'] == dw['side'])
+            d = into_drawn(pts, wh, dw['drawn'], dw['turn'])
+            k = int(np.argmin(d))
+            key = (st['axle'], dw['side'])
+            if key not in clears or d[k] < clears[key][0]:
+                clears[key] = (d[k], st['name'], pts[k])
+    for (axle, side), (d, name, at) in sorted(clears.items()):
+        worst.append(d)
+        print(f'  CLEAR axle={axle} {"L" if side < 0 else "R"} drawn worst={name:<12} gap={d:+.3f} at=[{at[0]:.2f}, {at[1]:.2f}, {at[2]:.2f}] {"PASS" if d >= 0 else "FAIL"}')
+    rows, pairs = {}, {}
+    for st in data['states']:
+        mine = [w for w in wheels if w['axle'] == st['axle']]
+        joined = {tuple(sorted(j)) for j in st['joints']}
+        parts = st['parts']
+        for p in parts:
+            a, b = np.array(p['a'], dtype=float), np.array(p['b'], dtype=float)
+            if p['shape'] == 'ball':
+                k = np.linalg.norm(pts - a, axis=1) - p['r']
+                i = int(np.argmin(k))
+                d, at = k[i], pts[i]
+            else:
+                if p.get('mount'):
+                    a = a + 0.03 * (b - a) / np.linalg.norm(b - a)
+                d, at = room(pts, a, b, outside(p))
+            q = part_points(dict(p, r=outside(p) - (p.get('wire') or 0)))
+            tyre, near = 1e9, None
+            for w in mine:
+                dw = next(x for x in st['wheels'] if x['side'] == w['side'])
+                t = into_turned(q, w, dw['drawn'], dw['turn'])
+                k = int(np.argmin(t))
+                if t[k] < tyre:
+                    tyre, near = t[k], q[k]
+            key = (st['axle'], p['name'])
+            row = rows.setdefault(key, {'room': (1e9, '', None), 'tyre': (1e9, '', None)})
+            if d < row['room'][0]:
+                row['room'] = (d, st['name'], at)
+            if tyre < row['tyre'][0]:
+                row['tyre'] = (tyre, st['name'], near)
+        # every two parts of the axle that neither move together nor are joined
+        for i, p in enumerate(parts):
+            for q in parts[i + 1:]:
+                if p['body'] == q['body'] or tuple(sorted((p['body'], q['body']))) in joined:
+                    continue
+                d = segments(np.array(p['a'], dtype=float), np.array(p['b'], dtype=float), np.array(q['a'], dtype=float), np.array(q['b'], dtype=float)) - outside(p) - outside(q)
+                key = (st['axle'], p['name'], q['name'])
+                if key not in pairs or d < pairs[key][0]:
+                    pairs[key] = (d, st['name'])
+    for (axle, name), row in rows.items():
+        d, sname, at = row['room']
+        t, tname, near = row['tyre']
+        worst += [d, t]
+        print(f'  ROOM axle={axle} {name:<20} gap={d:+.3f} worst={sname:<12} at=[{at[0]:.2f}, {at[1]:.2f}, {at[2]:.2f}] {"PASS" if d >= 0 else "FAIL"}')
+        print(f'  TYRE axle={axle} {name:<20} gap={t:+.3f} worst={tname:<12} at=[{near[0]:.2f}, {near[1]:.2f}, {near[2]:.2f}] {"PASS" if t >= 0 else "FAIL"}')
+    # one PART line a part: its nearest other part, at its worst state
+    nearest = {}
+    for (axle, a, b), (d, sname) in pairs.items():
+        for me, other in ((a, b), (b, a)):
+            if (axle, me) not in nearest or d < nearest[(axle, me)][0]:
+                nearest[(axle, me)] = (d, other, sname)
+    for (axle, me), (d, other, sname) in sorted(nearest.items()):
+        worst.append(d)
+        print(f'  PART axle={axle} {me:<20} gap={d:+.3f} to={other:<20} worst={sname:<12} {"PASS" if d >= 0 else "FAIL"}')
+    # each coilover: its shaft's eye clear of the body's foot at its shortest, its shaft still in the
+    # body at its longest (4 cm of it), and each spring over its solid height
+    for axle, a in enumerate(LOOK['independent']['axles']):
+        sh = (a.get('wishbones') or a.get('trailing'))['shock']
+        for side in ('L', 'R'):
+            short, long_, coils = (1e9, ''), (-1e9, ''), {}
+            for st in data['states']:
+                if st['axle'] != axle:
+                    continue
+                got = {p['name']: p for p in st['parts']}
+                body = got[f'shock.body.{side}']
+                eye = np.array(got[f'shock.eye.{side}']['a'])
+                n = np.linalg.norm(np.array(body['a']) - eye)
+                if n < short[0]:
+                    short = (n, st['name'])
+                if n > long_[0]:
+                    long_ = (n, st['name'])
+                for spring in ('main', 'tender'):
+                    c = got[f'shock.{spring}.{side}']
+                    left = np.linalg.norm(np.array(c['b']) - np.array(c['a'])) - c['turns'] * 2 * c['wire']
+                    if spring not in coils or left < coils[spring][0]:
+                        coils[spring] = (left, st['name'])
+            body, eye = sh['body'][1], sh['eye']
+            gap = short[0] - body - eye
+            inside = body - (long_[0] - body) - 0.04
+            worst += [gap, inside]
+            print(f'  SHOCK axle={axle} {side} eye below the body={gap:+.3f} shortest={short[0]:.3f} worst={short[1]:<12} {"PASS" if gap >= 0 else "FAIL"}')
+            print(f'  SHOCK axle={axle} {side} shaft left in the body={inside + 0.04:.3f} need=0.040 longest={long_[0]:.3f} worst={long_[1]:<12} {"PASS" if inside >= 0 else "FAIL"}')
+            for spring, (left, sname) in coils.items():
+                worst.append(left)
+                print(f'  SHOCK axle={axle} {side} {spring} over its solid height={left:+.3f} worst={sname:<12} {"PASS" if left >= 0 else "FAIL"}')
+    return min(worst)
+
+
 def rooms(pts):
     L = V['body']
     W, H = L['width'], L['height']
     inboard = LOOK.get('inboard', 0.0)
     worst = []
-    for wh in [] if 'solid' in LOOK else wheels_of():
+    for wh in [] if 'solid' in LOOK or 'independent' in LOOK else wheels_of():
         side = 'L' if wh['side'] < 0 else 'R'
         s = wh['side']
         # box3dvehicle draws the coil's top `inboard` in from the mount, and its foot on the wheel's
@@ -490,7 +663,7 @@ def rooms(pts):
         d, p = room(pts, tip - 0.3 * dv, tip, ex['pipe'])
         worst.append(d)
         print(f'  ROOM pipe {i} gap={d:+.3f} at=[{p[0]:.2f}, {p[1]:.2f}, {p[2]:.2f}] {"PASS" if d >= 0 else "FAIL"}')
-    return min(worst)
+    return min(worst, default=0.0)
 
 
 WHEEL_MAT = None
@@ -548,11 +721,14 @@ for i, ax in enumerate('xyz'):
 coplanar(objs)
 pts = samples(objs)
 print(f'SAMPLES {len(pts)}')
-for w in wheels:
-    clear(pts, w)
+if 'independent' not in LOOK:
+    for w in wheels:
+        clear(pts, w)
 rooms(pts)
 if 'solid' in LOOK:
     solid_rooms(pts)
+if 'independent' in LOOK:
+    independent_rooms(pts)
 
 # ------------------------------------------------------------------------------------ the stage
 
@@ -698,6 +874,10 @@ def draw_parts(parts):
                 bpy.ops.mesh.primitive_cube_add(size=1, location=(a + b) / 2)
                 o = bpy.context.active_object
                 o.scale = (p['r'] * 2, p['thick'], max(d.length, 1e-4))
+            elif p.get('r2') is not None:
+                # a cone, `r` round at `a` (Blender's −Z end, turned onto a) and `r2` at `b`
+                bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=p['r'], radius2=p['r2'], depth=max(d.length, 1e-4), location=(a + b) / 2)
+                o = bpy.context.active_object
             else:
                 bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=p['r'], depth=max(d.length, 1e-4), location=(a + b) / 2)
                 o = bpy.context.active_object
@@ -714,7 +894,30 @@ def remove(objs):
 
 
 SOLID = json.load(open(os.path.join(OUT, f'{VIEW}-parts.json')))['states'] if 'solid' in LOOK else []
-resting = draw_parts([p for st in SOLID if st['name'] == 'rest' for p in st['parts']])
+ARMS = json.load(open(os.path.join(OUT, f'{VIEW}-parts.json')))['states'] if 'independent' in LOOK else []
+resting = draw_parts([p for st in SOLID + ARMS if st['name'] == 'rest' for p in st['parts']])
+
+
+# A wheel drawn where the independent suspension puts it: at `centre`, turned by `turn` (rows, game
+# frame) from the way it stands at rest.
+def drawn_marker(wh, centre, turn, m):
+    from mathutils import Matrix
+    bpy.ops.mesh.primitive_cylinder_add(vertices=40, radius=wh['r'], depth=wh['w'])
+    o = bpy.context.active_object
+    o.name = 'marker'
+    to_b = Matrix(((1, 0, 0), (0, 0, -1), (0, 1, 0)))
+    R = to_b @ Matrix(turn) @ to_b.inverted()
+    o.matrix_world = Matrix.Translation(B(centre)) @ R.to_4x4() @ Euler((math.pi / 2, 0, 0)).to_matrix().to_4x4()
+    o.data.materials.append(m)
+    return o
+
+
+# The resting wheels drawn where the arms hold them (at rest that is the physics wheel's place).
+if ARMS:
+    for m in markers:
+        m.hide_render = True
+    resting += [drawn_marker(next(w for w in wheels if w['axle'] == st['axle'] and w['side'] == dw['side']), dw['drawn'], dw['turn'], rest)
+                for st in ARMS if st['name'] == 'rest' for dw in st['wheels']]
 
 cam_data.lens = 35
 radius = (hi - lo).length / 2
@@ -792,3 +995,46 @@ if SOLID:
         for m in markers:
             m.hide_render = False
     sheet(paths, os.path.join(OUT, f'{VIEW}-solid.png'))
+
+# The independent suspension worked, each axle's wheels drawn where that state's arms put them and the
+# other axle as it rests: the front crossed (its left pushed in full, its right at full droop) from
+# ahead and low, the front pushed in full at full lock from ahead, the rear crossed the other way from
+# behind, and the front at full droop from the left (<vehicle>-independent.png); then each corner up
+# close, the front left pushed in at full lock and at full droop, the rear left pushed in and at full
+# droop, from outside and a little behind (<vehicle>-corners.png).
+if ARMS:
+    remove(resting)
+    for g in ghosts:
+        g.hide_render = True
+    for m in markers:
+        m.hide_render = True
+    cam_data.type = 'PERSP'
+    front, rear = (0, 1) if V['axles'][0]['at'] > V['axles'][1]['at'] else (1, 0)
+    fx, rx = V['axles'][front]['at'], V['axles'][rear]['at']
+    hub = ground + V['axles'][front]['wheel']['radius']
+    lock = '+lock' if V['axles'][front]['steered'] else ''
+    sheets = [
+        ('independent', 30, [(front, 'crossL', (fx + 4.2, hub + 0.2, 2.2), (fx, hub - 0.2, 0)),
+                             (front, 'bump' + lock, (fx + 4.6, hub + 0.9, -1.0), (fx, hub - 0.2, 0)),
+                             (rear, 'crossR', (rx - 4.2, hub + 0.2, -2.2), (rx, hub - 0.2, 0)),
+                             (front, 'droop', (fx - 0.4, hub - 0.2, -4.6), (fx, hub - 0.2, 0))]),
+        ('corners', 40, [(front, 'bump' + lock, (fx + 1.2, hub + 0.3, -2.4), (fx, hub, -0.6)),
+                         (front, 'droop', (fx + 0.9, hub - 0.05, -2.4), (fx, hub - 0.1, -0.6)),
+                         (rear, 'bump', (rx - 1.1, hub + 0.3, -2.4), (rx, hub, -0.6)),
+                         (rear, 'droop', (rx - 0.9, hub - 0.05, -2.4), (rx, hub - 0.1, -0.6))]),
+    ]
+    # up close the tyres are see-through, so what is inside them shows
+    seethrough = mat('ghost.tyre', (0.03, 0.03, 0.03), alpha=0.3)
+    for label, lens, views in sheets:
+        cam_data.lens = lens
+        paths = []
+        for k, (axle, name, eye, target) in enumerate(views):
+            st = next(s for s in ARMS if s['axle'] == axle and s['name'] == name)
+            other = next(s for s in ARMS if s['axle'] != axle and s['name'] == 'rest')
+            made = draw_parts(st['parts'] + other['parts'])
+            moved = [drawn_marker(next(w for w in wheels if w['axle'] == s['axle'] and w['side'] == dw['side']), dw['drawn'], dw['turn'], seethrough if label == 'corners' else rest)
+                     for s in (st, other) for dw in s['wheels']]
+            aim(eye, target)
+            paths.append(shot(os.path.join(OUT, f'_{VIEW}-{label}{k}.png')))
+            remove(made + moved)
+        sheet(paths, os.path.join(OUT, f'{VIEW}-{label}.png'))

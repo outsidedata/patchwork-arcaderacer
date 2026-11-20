@@ -207,10 +207,14 @@ test('while the loader lends node a document to decode a model, the player lets 
     player.bind({ pointer: (dx: number, dy: number) => ['aim', dx, dy] })
     on.get('click')!({ ...click, target: { requestPointerLock() {} } })
     let seen: unknown, threw: unknown
-    class Decoding { setMeshoptDecoder() { return this } parse(_b: unknown, _p: string, ok: (g: unknown) => void) { seen = g.document; try { player.unbind() } catch (e) { threw = e } ok({ scene: {}, animations: [] }) } }
+    class Decoding { setMeshoptDecoder() { return this } parse(_b: unknown, _p: string, ok: (g: unknown) => void) { seen = g.document; try { player.unbind() } catch (e) { threw = e } ok({ scene: { traverse() {} }, animations: [] }) } }
     const me = loader()
-    me.tick({ wire: { rows: [{ id: 1, kind: 'loader', data: {} }], scene: { world: { loader: { assets: { x: { type: 'model', url: '/' + relative(process.cwd(), path(dir, 'x.glb')) } } } } } }, render3d: { GLTFLoader: Decoding } } as any)
-    await me.load('x')
+    const w = { wire: { rows: [{ id: 1, kind: 'loader', data: {} }], scene: { world: { loader: { assets: { x: { type: 'model', url: '/' + relative(process.cwd(), path(dir, 'x.glb')) } } } } } }, render3d: { GLTFLoader: Decoding } } as any
+    me.tick(w)
+    const got = me.load('x')
+    // What decodes lands on a tick, so the loader is ticked as a page ticks it until the model is in.
+    await vi.waitFor(() => { me.tick(w); expect(me.ready('x')).toBe(true) })
+    await got
     expect(seen).toMatchObject({ createElementNS: expect.any(Function) })
     expect(threw).toBeUndefined()
     expect(g.document).toBeUndefined()

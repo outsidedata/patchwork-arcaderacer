@@ -1,6 +1,6 @@
 // hitscan3d's server half on a range the test writes: a manager and one child, `range`, which `load`
 // boots as a game's would, so the mods its `world.hitscan3d.mods` names are loaded before the first
-// step: terrain3d's ground, level at 0; scatter3d's rocks, which stand `tall`, and trunks, which stand
+// step: terrain3d's ground, level at 0; lod3d's rocks, which stand `tall`, and trunks, which stand
 // without end, none within 30 m of the origin; walker's bodies, three soldiers and a crate, a kind
 // hitscan3d does not list. A shot's meeting with the ground and the solids, a kind it does not list and
 // `off`, `skip` and `bodies: false`, the rewind the `hitscan3d` row keeps, and `sees`. Its `probe` hands
@@ -15,7 +15,8 @@ import { load } from '#addons/scenemanager/scenemanager.addon.ts'
 import { scenemanager } from '#plugins/scenemanager/scenemanager.sim.ts'
 import { written } from '#plugins/loader/loader.sim.ts'
 import type { Field } from '#plugins/terrain3d/terrain3d.sim.ts'
-import { placed, solids, type Scatter, type Solid } from '#plugins/scatter3d/scatter3d.sim.ts'
+import type { Lod3d } from '#plugins/lod3d/lod3d.sim.ts'
+import { solids, type Solid } from '#plugins/lod3d/lod3d.walker.ts'
 import type { Numbers as Walker } from '#plugins/walker/walker.sim.ts'
 import { sees, shoot, type Numbers } from './hitscan3d.sim.ts'
 
@@ -30,13 +31,14 @@ const field: Field = {
 const url = '/hitscan3d-test/range.json'
 written(url, JSON.stringify(field))
 
-const scatter: Scatter & { mods: Record<string, string> } = {
-  cutout: 0.45, coverage: 0.25, budget: 1e9, remember: 100000, mods: { ground: 'terrain3d' },
-  packs: {
+const lod3d: Lod3d & { widest: number; remember: number } = {
+  mods: { surfaces: ['terrain3d'], seen: ['terrain3d'], behaviors: ['terrain3d', 'instances3d'] },
+  rings: [100], budget: 2, remember: 100000, widest: 0.9,
+  layers: {
     stones: {
-      shape: { detail: 1, lumpy: [0.7, 0.3], squash: 0.7 }, colour: '#6a655e',
-      rows: { rock: { weight: 1, solid: 0.6, tall: 0.8 }, trunk: { weight: 1, solid: 0.3 } },
-      cell: 10, reach: 100, seed: 17, lods: [40], shadow: 50, leaf: 0.5, density: 0.4, rules: [], clearing: 30, size: [1, 0.5], vary: 0.1,
+      on: ['land'], rows: { rock: { weight: 1, solid: 0.6, tall: 0.8 }, trunk: { weight: 1, solid: 0.3 } },
+      cell: 10, spacing: 10, seed: 17, density: 0.4, clearing: 30, size: [1, 0.5], vary: 0.1,
+      mesh: { shape: { detail: 1, lumpy: [0.7, 0.3], squash: 0.7 }, colour: '#6a655e', lods: [0], shadow: 50, leaf: 0.5 },
     },
   },
 }
@@ -45,7 +47,7 @@ const WALKER: Walker = {
   step: 0.6, maxSlope: 0.7, slopeBand: 0.05, slide: 2, wade: 0.5, span: 0.5, probe: 1.5, seekSpeed: 1.5,
 }
 const hitscan: Numbers & { mods: Record<string, string> } = {
-  mods: { ground: 'terrain3d', solids: 'scatter3d', bodies: 'walker' },
+  mods: { ground: 'terrain3d', solids: 'lod3d', bodies: 'walker' },
   kinds: { soldier: { tall: 'tall', off: 'limp' } },
   rewind: 5,
 }
@@ -60,7 +62,7 @@ const range = {
   world: {
     loader: { assets: { land: { type: 'json', url, preload: true } } },
     terrain3d: { field: 'land' },
-    scatter3d: scatter,
+    lod3d,
     walker: { kinds: { soldier: WALKER, crate: { ...WALKER, radius: 0.4, height: 1 } } },
     hitscan3d: hitscan,
   },
@@ -103,7 +105,7 @@ async function booted() {
 const close = (got: number[], want: number[], digits = 6) => got.forEach((g, i) => expect(g).toBeCloseTo(want[i], digits))
 // A rock and a trunk with no other solid within 4 m of their circles, so a short line at one meets it alone.
 function alone(w: W) {
-  const all = solids(w, 0, 0, 120, placed(w))
+  const all = solids(w, 0, 0, 120)
   const lone = (s: Solid) => all.every(o => o === s || Math.hypot(o.x - s.x, o.z - s.z) > o.radius + s.radius + 4)
   return { rock: all.find(s => s.tall !== undefined && lone(s))!, trunk: all.find(s => s.tall === undefined && lone(s))! }
 }

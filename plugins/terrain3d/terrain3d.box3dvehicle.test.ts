@@ -1,8 +1,8 @@
 // terrain3d's mods for box3dvehicle, named by the scene's `world.box3dvehicle.mods`: `grip` and `drag` on
 // the server, `land` on the page. The test writes a manager and two children, which `load` boots as a
 // game's would: flat ground, box3d standing on it through terrain3d's own mod, with a wide patch of mud
-// painted on it. The land the page hands box3dvehicle says what the mud sprays and how dark a track it
-// takes.
+// painted on it. The land the page hands box3dvehicle says what drivers the mud hands what is on it and
+// how dark a track it takes.
 import { afterAll, expect, test } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -24,7 +24,7 @@ const fieldOf = (strokes: Stroke[]): Field => ({
   program: { world: 600, hscale: 10, sea: 0.5, flood: false, out: 'flat', nodes: [{ id: 'flat', op: 'const', value: 0.5 }] },
   analysis: { slopeStep: 1.5, curveStep: 4, positionRadius: 18, occlusionRadius: 30, occlusionSteps: 5, cliffProbe: 12, cliffSlope: 0.5, cliffDrop: 7, flatAngle: 0.03, records: 50000 },
   ground: { layers: [{ name: 'grass', map: 'grass', scale: 30 }] },
-  surfaces: { mud: { colour: '#4a3a28', cover: 0.3, grip: 0.5, drag: 0.3, spray: 'clods', mark: 0.9 } },
+  surfaces: { mud: { colour: '#4a3a28', cover: 0.3, grip: 0.5, drag: 0.3, drivers: { tint: 4864552, wet: 1 }, mark: 0.9 } },
   layers: [{ at: [30, 0], size: 160, px: 80, strokes }],
 })
 const FIELDS = { mud: fieldOf([MUD]), plain: fieldOf([]) }
@@ -90,7 +90,7 @@ async function yard(name: keyof typeof FIELDS) {
   const child = (await load(boot(top, { scenemanager }), pathToFileURL(dir + '/').href)).get(name)!
   return { child, w: () => (globalThis as { terrain3dBox3dvehicle?: W }).terrain3dBox3dvehicle! }
 }
-test('the land the page hands box3dvehicle says what the mud sprays and how dark a track it takes, and nothing off it', async () => {
+test('the land the page hands box3dvehicle says what drivers the mud hands what is on it and how dark a track it takes, and nothing off it', async () => {
   const { child } = await yard('mud')
   const plugins: any = {
     wire: { rows: [], scene: { world: { terrain3d: { field: 'land', rings: [{ reach: 40, seg: 10 }], shadowReach: 100, budget: 1e9, seabed: false } }, prefabs: { engine: { width: 320, height: 200 }, render3d: { camera: { fov: 60, near: 0.15, far: 3000, at: [0, 20, 0], look: [10, 0, 10] } } } } },
@@ -103,6 +103,6 @@ test('the land the page hands box3dvehicle says what the mud sprays and how dark
   plugins.render3d.tick(plugins)
   plugins.terrain3d.afterTick(plugins)
   const ground = landOf(plugins)!
-  expect([ground.spray(20, 0), ground.mark(20, 0)]).toEqual(['clods', 0.9])
-  expect([ground.spray(20, 60), ground.mark(20, 60)]).toEqual([undefined, undefined])
+  expect([ground.drivers(20, 0), ground.mark(20, 0)]).toEqual([{ tint: 4864552, wet: 1 }, 0.9])
+  expect([ground.drivers(20, 60), ground.mark(20, 60)]).toEqual([undefined, undefined])
 })

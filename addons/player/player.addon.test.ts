@@ -277,7 +277,7 @@ test('an enemy building\'s queue, left and rally and an enemy unit\'s orders are
 
 test('a slot a player row sits in is taken, though no seat holds it, and that row holds of its own what a seat\'s does', () => {
   const truth = boot(scene(), sim)
-  // a player row for slot 0 spawned as the editor fields a side, owning itself as join has a row own itself
+  // a player row for slot 0 spawned by a rule fielding a side, owning itself as join has a row own itself
   const fielded = truth.spawn('player', { seat: 0 })
   Object.assign(fielded.data, own(fielded.id, fielded.data.masks))
   expect(fielded.data).toMatchObject({ owner: fielded.id, masks: [`me/${fielded.id}`] })

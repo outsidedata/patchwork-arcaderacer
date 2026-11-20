@@ -1,0 +1,13 @@
+{
+  "name": "ORIGINAL",
+  "form": "model",
+  "model": "supercar",
+  "metadata": { "paint": "#c8102e", "paintMaterial": "sc_paint" },
+  "lamp": "sc_lens_red",
+  "heads": ["sc_lens_white", "sc_lens_clear"],
+  "hubs": { "fl": "carhub_fl", "fr": "carhub_fr", "rl": "carhub_rl", "rr": "carhub_rr" },
+  "wheels": { "fl": "carwheel_fl", "fr": "carwheel_fr", "rl": "carwheel_rl", "rr": "carwheel_rr" },
+  "tyre": 0.3,
+  "steer": 0.45,
+  "tracks": [[0.78, -1.25], [-0.78, -1.25]]
+}

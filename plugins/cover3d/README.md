@@ -36,16 +36,16 @@ Each spot is `{ at: [x, z], tall, far }`: where to stand, how tall the cover is,
 
 ## Using it
 
-1. Name the solids' plugin: `world.cover3d.mods: { solids: 'scatter3d' }`.
+1. Name the solids' plugin: `world.cover3d.mods: { solids: 'lod3d' }`.
 2. In a kind's rule: `const [best] = spots(w, [me.data.pos[0], me.data.pos[2]], [enemy.pos[0],
    enemy.pos[2]], { reach, radius, low })`, then walk there (walker's `seek`, or the kind's own
    steering). Give `reach`, `radius` and `low` from the kind's definition.
 
 ## Plugins it works with
 
-- **scatter3d**: the mod `scatter3d.cover3d.ts` hands scatter3d's solid instances (trunks, boulders),
-  standing on the ground `world.scatter3d.mods.ground` names, each as tall as its `tall` times its
-  size.
+- **lod3d**: the mod `lod3d.cover3d.ts` hands lod3d's solid instances (trunks, boulders), the ones
+  of every row that gives `solid`, standing on the surfaces `world.lod3d.mods.surfaces` names, each
+  as tall as its row's `tall` times its size, or without end.
 - **shapes3d**: the mod `shapes3d.cover3d.ts` (`mods: { solids: 'shapes3d', behaviors: 'shapes3d' }`)
   hands its cylinders and boxes, delivering `box`.
 - **math**: the deterministic maths it measures with.

@@ -35,7 +35,7 @@
 //   cues                each `{ at, do, ... }`, `at` on the cue clock.
 // `check(name, file)` throws a sentence naming the file and the cue for a file it cannot play: every
 // number above is required, and each cue's fields by its `do` (`CUES`, each field's rule one of
-// `RULES`, which the editor holds a call's fields to as well):
+// `RULES`, which the cutscene panel holds a delivered step's fields to as well):
 //   play     who, clip, holds, rate      a whole-body clip, `direct.play` on the member
 //   gesture  who, clip                   an upper-body clip, `direct.gesture`
 //   walk     who, to, gear, limit?       walked to `to`, `direct.walk`; `gear` a clip or null for
@@ -149,8 +149,7 @@
 // where they stood when they fired to `to` over `over` (`level`).
 //
 // Start and end. The act `start`, which is closed so only the game's rule calls it, or `auto`, starts
-// the scene; so does the row's `starts`, true, on the first step every cast member's row is there,
-// which the editor sets through its recorder to play a scene whatever the game's rule does: the cast matched, `direct` `{}` on each member, the clocks at 0. It does nothing while
+// the scene: the cast matched, `direct` `{}` on each member, the clocks at 0. It does nothing while
 // the scene runs or once it is done, so a scene plays once. The act `reset`, closed too, puts the row
 // back as it stood before it ever started, wherever it is: a scene that runs stops where it is, its
 // cast's `direct` null, and every clock, ramp, shot, line, walk, face and wait cleared, `running`,
@@ -356,7 +355,7 @@ type Read = { file: Script; order: number[]; steps: Steps }
 
 // The file a row plays, checked against the scene's delivered steps, and its cues in `at` order: kept
 // per `cues` list and the steps it was checked with. The loader parses a file once, and when the
-// editor writes it refills that parse in place with a new value for every top-level field, so a
+// file is written, by the cutscene panel say, it refills that parse in place with a new value for every top-level field, so a
 // written file brings a new `cues` list and is checked again; so is one file played by a scene that
 // delivers other steps.
 const read = new WeakMap<object, { steps: Steps; order: number[] }>()
@@ -542,8 +541,6 @@ export function strangers(file: Script, marks: Iterable<string>, steps: Steps = 
   return out
 }
 
-// Whether every cast member of the file has its row.
-const present = (file: Script, w: W) => Object.values(file.cast).every(m => w.all(m.kind).some(r => r.data.name === m.name))
 
 function begin(me: Row, w: W) {
   const d = me.data
@@ -752,7 +749,7 @@ export const cutscene = (height: (w: W, x: number, z: number) => number): Kind =
     fill(d)
     const numbers = w.world.cutscene as Numbers
     const script = scriptOf(w, numbers.script)
-    if (!d.running && !d.done && (script.file.auto || (d.starts === true && present(script.file, w)))) begin(me, w)
+    if (!d.running && !d.done && script.file.auto) begin(me, w)
     if (!d.running) return
     if (!d.skip) {
       own(me, w, dt, script, true, h)

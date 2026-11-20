@@ -1,0 +1,1487 @@
+{
+ "about": "the shader of body.kit.looks.json, put together from its materials' looks by the library's pro-ng/material/compose.js",
+ "picture": 1024,
+ "materials": [
+  {
+   "name": "steel",
+   "look": "steel",
+   "call": "solid",
+   "colour": [
+    0.019382360956935723,
+    0.22696587351009836,
+    0.7912979403326302
+   ]
+  },
+  {
+   "name": "plastic_black",
+   "look": "plastic",
+   "call": "solid",
+   "colour": [
+    0.02315336617811041,
+    0.013702083047289686,
+    0.033104766570885055
+   ]
+  },
+  {
+   "name": "rubber_black",
+   "look": "rubber",
+   "call": "solid",
+   "colour": [
+    0.033104766570885055,
+    0.033104766570885055,
+    0.026241221894849898
+   ]
+  },
+  {
+   "name": "chrome",
+   "look": "chrome",
+   "call": "solid",
+   "colour": [
+    0.7912979403326302,
+    0.8713671191987972,
+    1
+   ]
+  },
+  {
+   "name": "mirror",
+   "look": "chrome",
+   "call": "solid",
+   "colour": [
+    0.7156935005064807,
+    0.8307698767746546,
+    1
+   ]
+  },
+  {
+   "name": "jeep_paint_red",
+   "look": "auto_paint",
+   "call": "solid",
+   "colour": [
+    0.43415363617474895,
+    0.006995410187265387,
+    0.006995410187265387
+   ]
+  },
+  {
+   "name": "jeep_wheel_silver",
+   "look": "auto_paint",
+   "call": "solid",
+   "colour": [
+    0.467783796112159,
+    0.4910208498478356,
+    0.5271151257058131
+   ]
+  },
+  {
+   "name": "jeep_trim_black",
+   "look": "textured_plastic",
+   "call": "solid",
+   "colour": [
+    0.019382360956935723,
+    0.019382360956935723,
+    0.02315336617811041
+   ]
+  },
+  {
+   "name": "jeep_interior_plastic",
+   "look": "textured_plastic",
+   "call": "solid",
+   "colour": [
+    0.027320891639074894,
+    0.027320891639074894,
+    0.03189603307301153
+   ]
+  },
+  {
+   "name": "jeep_tyre",
+   "look": "tyre_rubber",
+   "call": "solid",
+   "colour": [
+    0.02315336617811041,
+    0.019382360956935723,
+    0.01599629336550963
+   ]
+  },
+  {
+   "name": "jeep_frame",
+   "look": "undercoat",
+   "call": "solid",
+   "colour": [
+    0.011612245179743885,
+    0.011612245179743885,
+    0.014443843596092545
+   ]
+  },
+  {
+   "name": "jeep_axle",
+   "look": "undercoat",
+   "call": "solid",
+   "colour": [
+    0.017641954488384078,
+    0.01599629336550963,
+    0.012983032342173012
+   ]
+  },
+  {
+   "name": "jeep_exhaust",
+   "look": "undercoat",
+   "call": "solid",
+   "colour": [
+    0.10224173308810132,
+    0.042311410620809675,
+    0.017641954488384078
+   ]
+  },
+  {
+   "name": "jeep_spring",
+   "look": "undercoat",
+   "call": "solid",
+   "colour": [
+    0.009134058702220787,
+    0.009134058702220787,
+    0.010329823029626936
+   ]
+  },
+  {
+   "name": "jeep_mat",
+   "look": "rubber_mat",
+   "call": "solid",
+   "colour": [
+    0.012983032342173012,
+    0.012983032342173012,
+    0.012983032342173012
+   ]
+  },
+  {
+   "name": "jeep_seat_cloth",
+   "look": "upholstery",
+   "call": "solid",
+   "colour": [
+    0.042311410620809675,
+    0.042311410620809675,
+    0.04817182422688942
+   ]
+  },
+  {
+   "name": "jeep_seat_vinyl",
+   "look": "upholstery",
+   "call": "solid",
+   "colour": [
+    0.011612245179743885,
+    0.011612245179743885,
+    0.012983032342173012
+   ]
+  },
+  {
+   "name": "jeep_headlamp",
+   "look": "sealed_beam",
+   "call": "solid",
+   "colour": [
+    0.6866853124353135,
+    0.7156935005064807,
+    0.7454042095403874
+   ]
+  },
+  {
+   "name": "jeep_lens_red",
+   "look": "signal_lens",
+   "call": "solid",
+   "colour": [
+    0.10224173308810132,
+    0.0024282158683907,
+    0.001821161901293025
+   ]
+  },
+  {
+   "name": "jeep_lens_amber",
+   "look": "signal_lens",
+   "call": "solid",
+   "colour": [
+    0.43415363617474895,
+    0.10224173308810132,
+    0.0024282158683907
+   ]
+  },
+  {
+   "name": "jeep_lens_clear",
+   "look": "signal_lens",
+   "call": "solid",
+   "colour": [
+    0.6866853124353135,
+    0.6866853124353135,
+    0.6583748172794485
+   ]
+  },
+  {
+   "name": "jeep_gauge",
+   "look": "gauge_face",
+   "call": "solid",
+   "colour": [
+    0.005181516702338386,
+    0.005181516702338386,
+    0.006048833022857054
+   ]
+  },
+  {
+   "name": "jeep_cast_aluminium",
+   "look": "undercoat",
+   "call": "solid",
+   "colour": [
+    0.25415209433082675,
+    0.25415209433082675,
+    0.238397573812271
+   ]
+  },
+  {
+   "name": "jeep_reservoir",
+   "look": "plastic",
+   "call": "solid",
+   "colour": [
+    0.6724431569576875,
+    0.6583748172794485,
+    0.5775804404296506
+   ]
+  },
+  {
+   "name": "jeep_glass",
+   "look": "glass",
+   "call": "seeThrough",
+   "colour": [
+    0.38132601143253014,
+    0.5520114015120001,
+    0.6038273388553378
+   ]
+  }
+ ],
+ "vertexPars": "\nattribute float lookId;\nattribute vec3 lookInfo;\nattribute vec3 s0;\nattribute vec3 s1;\nattribute vec4 s2;\nattribute vec2 s3;\nflat varying float vLookId;\nvarying vec3 vLookInfo;\nvarying vec2 vLookUv;\nvarying vec3 vLookWorld;\nvarying vec3 vLookWN;\nvarying vec3 vS0;\nvarying vec3 vS1;\nvarying vec4 vS2;\nvarying vec2 vS3;\n",
+ "vertexMain": "\nvLookId = lookId;\nvLookInfo = lookInfo;\nvLookUv = uv;\nvLookWorld = (modelMatrix * vec4(position, 1.0)).xyz;\nvLookWN = normalize(mat3(modelMatrix) * normal);\nvS0 = s0;\nvS1 = s1;\nvS2 = s2;\nvS3 = s3;\n",
+ "calls": {
+  "solid": {
+   "ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23
+   ],
+   "fragmentPars": "\nflat varying float vLookId;\nvarying vec3 vLookInfo;\nvarying vec2 vLookUv;\nvarying vec3 vLookWorld;\nvarying vec3 vLookWN;\nvarying vec3 vS0;\nvarying vec3 vS1;\nvarying vec4 vS2;\nvarying vec2 vS3;\n#define s0 vS0\n#define s1 vS1\n#define s2 vS2\n#define s3 vS3\nuniform float lookView;\nuniform float lookDebug;\n// the looks' clock: seconds, one for every look of the scene, set each frame by the page (install.js's `time`) or the\n// game (core's supershader3d). It grows without end, and a hash of a large number is no longer random, so a look never\n// feeds it to its noise as it is: it takes it through kcycle or kloop, whose numbers stay inside one period.\nuniform float lookTime;\n// the uv's change across the pixel, worked out once where every pixel of the quad runs it, so a picture read inside a\n// look's branch still knows its sharpness\nvec2 lookGx, lookGy;\n\nfloat kh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }\nfloat kh1(float x) { return fract(sin(x * 91.7) * 43758.5453); }\nfloat kn(vec2 p) {\n  vec2 i = floor(p), f = fract(p);\n  vec2 u = f * f * (3.0 - 2.0 * f);\n  return mix(mix(kh(i), kh(i + vec2(1, 0)), u.x), mix(kh(i + vec2(0, 1)), kh(i + vec2(1, 1)), u.x), u.y);\n}\nfloat kfbm(vec2 p) {\n  float a = 0.5, s = 0.0;\n  for (int i = 0; i < 5; i++) { s += a * kn(p); p = p * 2.03 + 17.1; a *= 0.5; }\n  return s / 0.97;\n}\nfloat kfbm4(vec2 p) {\n  float a = 0.5, s = 0.0;\n  for (int i = 0; i < 4; i++) { s += a * kn(p); p = p * 2.03 + 17.1; a *= 0.5; }\n  return s;\n}\n// a feature f metres across fades to its mean where it is finer than a pixel\nfloat kfade(float f) { vec2 fw = abs(lookGx) + abs(lookGy); return clamp(1.5 - (fw.x + fw.y) / f, 0.0, 1.0); }\n// cells of jittered seeds: the distance to the nearest, its number (0 to 1), and how far the second is past it\nfloat kvor(vec2 p, out float id, out float edge) {\n  vec2 i = floor(p), f = fract(p);\n  float d1 = 8.0, d2 = 8.0;\n  vec2 best = vec2(0.0);\n  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {\n    vec2 o = vec2(x, y);\n    vec2 c = i + o;\n    vec2 r = o + vec2(kh(c), kh(c + 7.3)) - f;\n    float d = dot(r, r);\n    if (d < d1) { d2 = d1; d1 = d; best = c; } else if (d < d2) { d2 = d; }\n  }\n  id = kh(best + 3.7);\n  edge = sqrt(d2) - sqrt(d1);\n  return sqrt(d1);\n}\n// a dimple field: the distance to the nearest of jittered cells' seeds\nfloat kcell(vec2 p) {\n  vec2 i = floor(p), f = fract(p);\n  float d = 8.0;\n  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {\n    vec2 o = vec2(x, y);\n    vec2 r = o + vec2(kh(i + o), kh(i + o + 7.3)) - f;\n    d = min(d, dot(r, r));\n  }\n  return sqrt(d);\n}\n// courses: the row along v, the piece in it along u (each row offset), where in the piece (0 to 1 each way)\nvec4 kcourse(vec2 uv, float row, float wide, float jitter, float seed, out vec2 id) {\n  float r = floor(uv.y / row);\n  float shift = kh1(r + seed) * wide;\n  float w = wide * (1.0 - jitter * 0.5 + jitter * kh(vec2(r, floor((uv.x + shift) / wide) + seed)));\n  float x = (uv.x + shift) / w;\n  id = vec2(r, floor(x));\n  return vec4(fract(x), fract(uv.y / row), r, w);\n}\n// marble's veins: thin lines wandering through a warped field, the main ones and finer ones across them\nfloat kveins(vec2 p, float seed) {\n  float w = kfbm(p * 1.3 + seed) * 4.0;\n  float a = pow(1.0 - abs(sin((p.x * 1.6 + p.y * 0.6 + w) * 3.14159)), 22.0);\n  float b = pow(1.0 - abs(sin((p.y * 2.7 - p.x * 1.1 + kfbm(p * 2.6 + seed + 7.0) * 3.0) * 3.14159)), 50.0);\n  return clamp(a + 0.6 * b, 0.0, 1.0);\n}\n// wood's grain along u: its rings' lines (late wood 1, early 0) wandering across v, and its fibres\nfloat kring(vec2 uv, float seed, float rings) {\n  float w = kfbm(vec2(uv.x * 0.35, uv.y * 2.0) + seed) * 1.6;\n  return smoothstep(0.5, 0.95, fract(uv.y * rings + w + uv.x * 0.04));\n}\nfloat kfibre(vec2 uv, float seed) { return kn(vec2(uv.x * 3.0, uv.y * 420.0) + seed) * kfade(0.003); }\n// how strongly a cloth's weave shows: a plain weave of threads t metres across, over and under\nfloat kweave(vec2 uv, float t) {\n  vec2 q = uv / t;\n  float warp = sin(q.x * 3.14159), weft = sin(q.y * 3.14159);\n  float over = step(0.0, warp * weft);\n  return mix(0.5, mix(0.8, 1.08, over) * (0.85 + 0.15 * abs(over > 0.5 ? weft : warp)), kfade(t * 2.0));\n}\n// a cycle of `period` seconds: how far through it the clock is, 0 to 1, for a look that pulses or goes round (anything\n// of 6.28318 times it, a sin or a turn, comes back to where it began with no seam)\nfloat kcycle(float period) { return fract(lookTime / period); }\n// a drift that never repeats, for a look that flows, boils or creeps: two phases of one cycle of `period` seconds, half\n// a cycle apart, each 0 to 1 (x and y), and the share of the first (z). A look moves its pattern on by each phase, reads\n// it at both and mixes them by z; each phase jumps back to 0 only where its share is 0, so the drift shows no seam\nvec3 kloop(float period) { float a = fract(lookTime / period); return vec3(a, fract(a + 0.5), 1.0 - abs(2.0 * a - 1.0)); }\n// value noise in three numbers whose third repeats every `n` cells (a whole number): a pattern that churns in place,\n// for what boils, breathes or glows and fades, never sliding as a drift does. Given p.z = kcycle(period) * n it changes\n// n cells' worth over the period and comes back to where it began at its end with no seam, so nothing is mixed and\n// nothing shows twice\nfloat kh3(vec3 c) { return fract(sin(dot(c, vec3(127.1, 311.7, 74.7))) * 43758.5453123); }\nfloat kn3(vec3 p, float n) {\n  vec3 i = floor(p), f = fract(p);\n  vec3 u = f * f * (3.0 - 2.0 * f);\n  float z0 = mod(i.z, n), z1 = mod(i.z + 1.0, n);\n  float a0 = mix(mix(kh3(vec3(i.xy, z0)), kh3(vec3(i.xy + vec2(1, 0), z0)), u.x),\n                 mix(kh3(vec3(i.xy + vec2(0, 1), z0)), kh3(vec3(i.xy + vec2(1, 1), z0)), u.x), u.y);\n  float a1 = mix(mix(kh3(vec3(i.xy, z1)), kh3(vec3(i.xy + vec2(1, 0), z1)), u.x),\n                 mix(kh3(vec3(i.xy + vec2(0, 1), z1)), kh3(vec3(i.xy + vec2(1, 1), z1)), u.x), u.y);\n  return mix(a0, a1, u.z);\n}\n// four sizes of it, each finer one churning twice as fast and still repeating on the same cycle\nfloat kfbm3(vec3 p, float n) {\n  float a = 0.5, s = 0.0;\n  for (int i = 0; i < 4; i++) { s += a * kn3(p, n); p = vec3(p.xy * 2.03 + 17.1, p.z * 2.0); n *= 2.0; a *= 0.5; }\n  return s / 0.9375;\n}\n// the normal bent by a height field, as three's bump map bends it (perturbNormalArb)\nvec3 kitBump(vec3 pos, vec3 n, float h, float faceDirection) {\n  vec3 sx = dFdx(pos), sy = dFdy(pos);\n  vec3 r1 = cross(sy, n), r2 = cross(n, sx);\n  float det = dot(sx, r1) * faceDirection;\n  vec2 dh = vec2(dFdx(h), dFdy(h));\n  vec3 grad = sign(det) * (dh.x * r1 + dh.y * r2);\n  return normalize(abs(det) * n - grad);\n}\n// a normal in the surface's own ways (u, v, out) turned into the view's, the ways found from the uv's change across\n// the pixel, as three's normal map without tangents finds them (getTangentFrame)\nvec3 lookPerturb(vec3 n, vec3 nts, float faceDirection) {\n  vec3 q0 = dFdx(-vViewPosition), q1 = dFdy(-vViewPosition);\n  vec3 q1perp = cross(q1, n), q0perp = cross(n, q0);\n  vec3 T = q1perp * lookGx.x + q0perp * lookGy.x;\n  vec3 B = q1perp * lookGx.y + q0perp * lookGy.y;\n  float det = max(dot(T, T), dot(B, B));\n  float scale = det == 0.0 ? 0.0 : faceDirection * inversesqrt(det);\n  return normalize(T * (nts.x * scale) + B * (nts.y * scale) + n * nts.z);\n}\n\nstruct Look {\n  vec3 colour; float rough; float metal; float height; vec3 nts; vec3 normal; bool ownNormal;\n  float ao; float aoDirect; float alpha; vec3 glow;\n  float clearcoat; float clearcoatRough; vec3 sheen; float sheenRough; float iridescence; float iridIor; float iridThick;\n  float transmission; float thickness; vec3 attColour; float attDist; float ior; float dispersion;\n};\nLook lookStart() {\n  Look k;\n  k.colour = vec3(0.5); k.rough = 0.8; k.metal = 0.0; k.height = 0.0; k.nts = vec3(0.0, 0.0, 1.0);\n  k.normal = vec3(0.0, 0.0, 1.0); k.ownNormal = false; k.ao = 1.0; k.aoDirect = 0.0; k.alpha = 1.0; k.glow = vec3(0.0);\n  k.clearcoat = 0.0; k.clearcoatRough = 0.1; k.sheen = vec3(0.0); k.sheenRough = 0.5;\n  k.iridescence = 0.0; k.iridIor = 1.3; k.iridThick = 400.0;\n  k.transmission = 0.0; k.thickness = 0.0; k.attColour = vec3(1.0); k.attDist = 1e9; k.ior = 1.5; k.dispersion = 0.0;\n  return k;\n}\n\n\nvec3 p_stColour;\nfloat p_stMetal;\nfloat p_stRough;\nfloat p_stOil;\nvec3 p_stOilColour;\nvec3 p_stOilBrown;\nfloat p_stOilSize;\nfloat p_stOilRough;\nfloat p_stFinPitch;\nfloat p_stFinShare;\nfloat p_stFinDepth;\nvec3 p_plColour;\nfloat p_plStipple;\nfloat p_plRelief;\nfloat p_plRough;\nfloat p_plRoughVar;\nfloat p_plTone;\nfloat p_plThrough;\nvec3 p_rbColour;\nvec3 p_rbBloom;\nfloat p_rbBloomAmount;\nfloat p_rbGrit;\nfloat p_rbRelief;\nfloat p_rbRough;\nvec3 p_rbSheen;\nfloat p_rbSheenRough;\nvec3 p_chColour;\nfloat p_chRough;\nfloat p_chSwirl;\nvec3 p_apColour;\nfloat p_apFlake;\nvec3 p_apFlakeColour;\nfloat p_apFlakeSize;\nfloat p_apRough;\nfloat p_apCoat;\nfloat p_apCoatRough;\nfloat p_apPeel;\nfloat p_apPeelDepth;\nfloat p_apDust;\nvec3 p_apDustColour;\nfloat p_apDustHeight;\nvec3 p_tpColour;\nvec3 p_tpFaded;\nfloat p_tpFade;\nfloat p_tpGrain;\nfloat p_tpGrainDepth;\nfloat p_tpRough;\nfloat p_tpDust;\nvec3 p_tpDustColour;\nfloat p_tpDustHeight;\nvec3 p_trColour;\nvec3 p_trScrub;\nvec3 p_trDust;\nfloat p_trDustAmount;\nfloat p_trGrit;\nfloat p_trRelief;\nfloat p_trRough;\nfloat p_trSheen;\nvec3 p_ucColour;\nfloat p_ucRough;\nfloat p_ucGrime;\nvec3 p_ucGrimeColour;\nfloat p_ucDust;\nvec3 p_ucDustColour;\nfloat p_ucChips;\nvec3 p_ucRust;\nfloat p_ucOil;\nvec3 p_rmColour;\nvec3 p_rmWorn;\nvec3 p_rmDirt;\nfloat p_rmDirtAmount;\nfloat p_rmRibs;\nfloat p_rmDepth;\nfloat p_rmRough;\nfloat p_upKind;\nvec3 p_upColour;\nvec3 p_upColour2;\nfloat p_upThread;\nfloat p_upFleck;\nfloat p_upPrint;\nfloat p_upMotif;\nfloat p_upRelief;\nfloat p_upSheen;\nfloat p_upRough;\nvec3 p_sbColour;\nfloat p_sbCells;\nfloat p_sbDepth;\nfloat p_sbGlow;\nvec3 p_sbGlowColour;\nvec3 p_lnColour;\nvec3 p_lnGlow;\nfloat p_lnSize;\nfloat p_lnRings;\nfloat p_lnRingAmount;\nfloat p_lnFall;\nfloat p_lnRelief;\nvec3 p_gfFace;\nvec3 p_gfMark;\nvec3 p_gfRed;\nfloat p_gfRadius;\nfloat p_gfTicks;\nfloat p_gfSweep;\nfloat p_gfRead;\nvec3 p_gfNeedle;\nfloat p_gfGlow;\nfloat p_gfTachSteps;\nfloat p_gfTachRed;\nfloat p_gfNumerals;\nfloat p_gfSpeedTop;\nfloat p_gfSpeedStep;\nvec3 p_glTint;\nvec3 p_glTint2;\nfloat p_glWaves;\nfloat p_glWaveDepth;\nfloat p_glSeeds;\nfloat p_glRough;\nfloat p_glAlpha;\nfloat p_glAlphaVar;\nfloat p_glRibs;\nfloat p_glRibWide;\nfloat p_glRibAlpha;\nvec3 p_glGlow;\nfloat p_glCrease;\nfloat p_glCreaseFreq;\nfloat p_glBands;\nfloat p_glBandHigh;\n\n\nuniform vec3 L0_stColour;\nuniform float L0_stMetal;\nuniform float L0_stRough;\nuniform float L0_stOil;\nuniform vec3 L0_stOilColour;\nuniform vec3 L0_stOilBrown;\nuniform float L0_stOilSize;\nuniform float L0_stOilRough;\nuniform float L0_stFinPitch;\nuniform float L0_stFinShare;\nuniform float L0_stFinDepth;\nuniform vec3 L1_plColour;\nuniform float L1_plStipple;\nuniform float L1_plRelief;\nuniform float L1_plRough;\nuniform float L1_plRoughVar;\nuniform float L1_plTone;\nuniform float L1_plThrough;\nuniform vec3 L2_rbColour;\nuniform vec3 L2_rbBloom;\nuniform float L2_rbBloomAmount;\nuniform float L2_rbGrit;\nuniform float L2_rbRelief;\nuniform float L2_rbRough;\nuniform vec3 L2_rbSheen;\nuniform float L2_rbSheenRough;\nuniform vec3 L3_chColour;\nuniform float L3_chRough;\nuniform float L3_chSwirl;\nuniform vec3 L4_chColour;\nuniform float L4_chRough;\nuniform float L4_chSwirl;\nuniform vec3 L5_apColour;\nuniform float L5_apFlake;\nuniform vec3 L5_apFlakeColour;\nuniform float L5_apFlakeSize;\nuniform float L5_apRough;\nuniform float L5_apCoat;\nuniform float L5_apCoatRough;\nuniform float L5_apPeel;\nuniform float L5_apPeelDepth;\nuniform float L5_apDust;\nuniform vec3 L5_apDustColour;\nuniform float L5_apDustHeight;\nuniform vec3 L6_apColour;\nuniform float L6_apFlake;\nuniform vec3 L6_apFlakeColour;\nuniform float L6_apFlakeSize;\nuniform float L6_apRough;\nuniform float L6_apCoat;\nuniform float L6_apCoatRough;\nuniform float L6_apPeel;\nuniform float L6_apPeelDepth;\nuniform float L6_apDust;\nuniform vec3 L6_apDustColour;\nuniform float L6_apDustHeight;\nuniform vec3 L7_tpColour;\nuniform vec3 L7_tpFaded;\nuniform float L7_tpFade;\nuniform float L7_tpGrain;\nuniform float L7_tpGrainDepth;\nuniform float L7_tpRough;\nuniform float L7_tpDust;\nuniform vec3 L7_tpDustColour;\nuniform float L7_tpDustHeight;\nuniform vec3 L8_tpColour;\nuniform vec3 L8_tpFaded;\nuniform float L8_tpFade;\nuniform float L8_tpGrain;\nuniform float L8_tpGrainDepth;\nuniform float L8_tpRough;\nuniform float L8_tpDust;\nuniform vec3 L8_tpDustColour;\nuniform float L8_tpDustHeight;\nuniform vec3 L9_trColour;\nuniform vec3 L9_trScrub;\nuniform vec3 L9_trDust;\nuniform float L9_trDustAmount;\nuniform float L9_trGrit;\nuniform float L9_trRelief;\nuniform float L9_trRough;\nuniform float L9_trSheen;\nuniform vec3 L10_ucColour;\nuniform float L10_ucRough;\nuniform float L10_ucGrime;\nuniform vec3 L10_ucGrimeColour;\nuniform float L10_ucDust;\nuniform vec3 L10_ucDustColour;\nuniform float L10_ucChips;\nuniform vec3 L10_ucRust;\nuniform float L10_ucOil;\nuniform vec3 L11_ucColour;\nuniform float L11_ucRough;\nuniform float L11_ucGrime;\nuniform vec3 L11_ucGrimeColour;\nuniform float L11_ucDust;\nuniform vec3 L11_ucDustColour;\nuniform float L11_ucChips;\nuniform vec3 L11_ucRust;\nuniform float L11_ucOil;\nuniform vec3 L12_ucColour;\nuniform float L12_ucRough;\nuniform float L12_ucGrime;\nuniform vec3 L12_ucGrimeColour;\nuniform float L12_ucDust;\nuniform vec3 L12_ucDustColour;\nuniform float L12_ucChips;\nuniform vec3 L12_ucRust;\nuniform float L12_ucOil;\nuniform vec3 L13_ucColour;\nuniform float L13_ucRough;\nuniform float L13_ucGrime;\nuniform vec3 L13_ucGrimeColour;\nuniform float L13_ucDust;\nuniform vec3 L13_ucDustColour;\nuniform float L13_ucChips;\nuniform vec3 L13_ucRust;\nuniform float L13_ucOil;\nuniform vec3 L14_rmColour;\nuniform vec3 L14_rmWorn;\nuniform vec3 L14_rmDirt;\nuniform float L14_rmDirtAmount;\nuniform float L14_rmRibs;\nuniform float L14_rmDepth;\nuniform float L14_rmRough;\nuniform float L15_upKind;\nuniform vec3 L15_upColour;\nuniform vec3 L15_upColour2;\nuniform float L15_upThread;\nuniform float L15_upFleck;\nuniform float L15_upPrint;\nuniform float L15_upMotif;\nuniform float L15_upRelief;\nuniform float L15_upSheen;\nuniform float L15_upRough;\nuniform float L16_upKind;\nuniform vec3 L16_upColour;\nuniform vec3 L16_upColour2;\nuniform float L16_upThread;\nuniform float L16_upFleck;\nuniform float L16_upPrint;\nuniform float L16_upMotif;\nuniform float L16_upRelief;\nuniform float L16_upSheen;\nuniform float L16_upRough;\nuniform vec3 L17_sbColour;\nuniform float L17_sbCells;\nuniform float L17_sbDepth;\nuniform float L17_sbGlow;\nuniform vec3 L17_sbGlowColour;\nuniform vec3 L18_lnColour;\nuniform vec3 L18_lnGlow;\nuniform float L18_lnSize;\nuniform float L18_lnRings;\nuniform float L18_lnRingAmount;\nuniform float L18_lnFall;\nuniform float L18_lnRelief;\nuniform vec3 L19_lnColour;\nuniform vec3 L19_lnGlow;\nuniform float L19_lnSize;\nuniform float L19_lnRings;\nuniform float L19_lnRingAmount;\nuniform float L19_lnFall;\nuniform float L19_lnRelief;\nuniform vec3 L20_lnColour;\nuniform vec3 L20_lnGlow;\nuniform float L20_lnSize;\nuniform float L20_lnRings;\nuniform float L20_lnRingAmount;\nuniform float L20_lnFall;\nuniform float L20_lnRelief;\nuniform vec3 L21_gfFace;\nuniform vec3 L21_gfMark;\nuniform vec3 L21_gfRed;\nuniform float L21_gfRadius;\nuniform float L21_gfTicks;\nuniform float L21_gfSweep;\nuniform float L21_gfRead;\nuniform vec3 L21_gfNeedle;\nuniform float L21_gfGlow;\nuniform float L21_gfTachSteps;\nuniform float L21_gfTachRed;\nuniform float L21_gfNumerals;\nuniform float L21_gfSpeedTop;\nuniform float L21_gfSpeedStep;\nuniform vec3 L22_ucColour;\nuniform float L22_ucRough;\nuniform float L22_ucGrime;\nuniform vec3 L22_ucGrimeColour;\nuniform float L22_ucDust;\nuniform vec3 L22_ucDustColour;\nuniform float L22_ucChips;\nuniform vec3 L22_ucRust;\nuniform float L22_ucOil;\nuniform vec3 L23_plColour;\nuniform float L23_plStipple;\nuniform float L23_plRelief;\nuniform float L23_plRough;\nuniform float L23_plRoughVar;\nuniform float L23_plTone;\nuniform float L23_plThrough;\n\n\n\n\n\n\n\n\n\n\n\n// the cloth's height (0 low to 1 high) and its yarn's lightness (0 to 1) at p, in metres, for the build kind\nvec2 upCloth(vec2 p, float kind, float t, float seed) {\n  vec2 q = p / t;\n  if (kind < 0.5) {\n    float warp = sin(q.x * 3.14159), weft = sin(q.y * 3.14159);\n    float over = step(0.0, warp * weft);\n    float h = mix(abs(weft), abs(warp), over);\n    return vec2(0.3 + 0.7 * h, over);\n  } else if (kind < 1.5) {\n    // twill: floats two over, one under, stepping each row\n    float row = floor(q.y);\n    float d = fract((q.x + row) / 3.0);\n    float over = step(0.34, d);\n    float h = abs(sin(fract(q.y) * 3.14159)) * mix(0.6, 1.0, over);\n    return vec2(h, over);\n  } else if (kind < 2.5) {\n    // bouclé: small loops crowded in jittered cells, each a ring of yarn\n    float id, e;\n    float d = kvor(q, id, e);\n    float loopR = 0.32 + 0.1 * fract(id * 13.7);\n    float ringH = 1.0 - smoothstep(0.0, 0.16, abs(d - loopR));\n    float hump = 1.0 - smoothstep(0.0, 0.62, d);\n    return vec2(0.55 * hump + 0.6 * ringH, fract(id * 31.3));\n  } else if (kind < 3.5) {\n    // mesh: oval holes in offset rows, the knit's bars between them\n    vec2 m = vec2(q.x * 0.5, q.y * 0.8);\n    m.x += 0.5 * mod(floor(m.y), 2.0);\n    vec2 f = fract(m) - 0.5;\n    float hole = length(f * vec2(1.0, 1.35));\n    return vec2(smoothstep(0.26, 0.4, hole), 1.0 - smoothstep(0.24, 0.3, hole));\n  } else if (kind < 4.5) {\n    // terry: loops standing up, each a soft tuft in jittered cells, the ground weave between them\n    float id, e;\n    float d = kvor(q, id, e);\n    float tuft = 1.0 - smoothstep(0.1, 0.55, d);\n    return vec2(0.25 + 0.75 * tuft, 0.6 + 0.4 * fract(id * 17.1));\n  }\n  // braid: plaited yarns, a herringbone along u\n  float side = sign(fract(q.y * 0.5) - 0.5);\n  float s = fract(q.x * 0.7 + side * q.y * 0.7);\n  float h = abs(sin(s * 3.14159));\n  return vec2(h, step(0.0, side));\n}\n// a small leaf printed on cotton, repeated rep metres apart, each turned its own way: 1 on the leaf\nfloat upLeaf(vec2 p, float rep, float seed) {\n  vec2 cell = floor(p / rep);\n  vec2 f = fract(p / rep) - 0.5;\n  float a = kh(cell + seed) * 6.2831853;\n  vec2 r = vec2(cos(a) * f.x + sin(a) * f.y, -sin(a) * f.x + cos(a) * f.y);\n  r += (vec2(kh(cell + 3.1), kh(cell + 5.7)) - 0.5) * 0.15;\n  float blade = length(vec2(r.x * 2.6, r.y * 1.0 + 0.4 * r.x * r.x * 8.0));\n  float leafM = 1.0 - smoothstep(0.26, 0.29, blade);\n  float rib = 1.0 - smoothstep(0.0, 0.02, abs(r.x));\n  return leafM * (1.0 - 0.6 * rib * step(abs(r.y), 0.25));\n}\n\n\n\n\n// 1 on a tick ring: a the angle from the sweep's start in degrees, step the degrees between marks, r the point's radius\n// in the dial's radii from r0 to r1, e the pixel's width in radii\nfloat gfRing(float a, float stepDeg, float r, float r0, float r1, float half_, float e) {\n  float k = a / stepDeg;\n  float d = abs(fract(k + 0.5) - 0.5) * stepDeg * 0.0174533 * r;\n  return (1.0 - smoothstep(half_, half_ + e, d)) * smoothstep(r0 - e, r0, r) * (1.0 - smoothstep(r1, r1 + e, r));\n}\n// the distance from p to the stroke a to b\nfloat gfStroke(vec2 p, vec2 a, vec2 b) {\n  vec2 pa = p - a, ba = b - a;\n  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);\n  return length(pa - ba * h);\n}\n// the distance from p to the digit d drawn in seven strokes, in a cell 0.8 wide and 1.6 high about its middle\nfloat gfDigit(vec2 p, int d) {\n  int m = d == 0 ? 63 : d == 1 ? 6 : d == 2 ? 91 : d == 3 ? 79 : d == 4 ? 102 : d == 5 ? 109 : d == 6 ? 125 :\n          d == 7 ? 7 : d == 8 ? 127 : 111;\n  float r = 1e3;\n  if ((m & 1) != 0) r = min(r, gfStroke(p, vec2(-0.4, 0.8), vec2(0.4, 0.8)));\n  if ((m & 2) != 0) r = min(r, gfStroke(p, vec2(0.4, 0.8), vec2(0.4, 0.0)));\n  if ((m & 4) != 0) r = min(r, gfStroke(p, vec2(0.4, 0.0), vec2(0.4, -0.8)));\n  if ((m & 8) != 0) r = min(r, gfStroke(p, vec2(-0.4, -0.8), vec2(0.4, -0.8)));\n  if ((m & 16) != 0) r = min(r, gfStroke(p, vec2(-0.4, 0.0), vec2(-0.4, -0.8)));\n  if ((m & 32) != 0) r = min(r, gfStroke(p, vec2(-0.4, 0.8), vec2(-0.4, 0.0)));\n  if ((m & 64) != 0) r = min(r, gfStroke(p, vec2(-0.4, 0.0), vec2(0.4, 0.0)));\n  return r;\n}\n// 1 on the whole number n written upright about c, its digits size half high, e the pixel's width (in the same units)\nfloat gfNumber(vec2 p, vec2 c, float n, float size, float e) {\n  float v = floor(n + 0.5);\n  int count = v < 9.5 ? 1 : v < 99.5 ? 2 : 3;\n  vec2 q = (p - c) / (size * 0.5);\n  float x0 = -float(count - 1) * 0.6;\n  if (abs(q.x) > float(count) * 0.6 + 0.4 || abs(q.y) > 1.2) return 0.0;\n  float best = 1e3;\n  for (int k = 0; k < 3; k++) {\n    if (k >= count) break;\n    float place = pow(10.0, float(count - 1 - k));\n    int d = int(mod(floor((v + 0.5) / place), 10.0));\n    best = min(best, gfDigit(q - vec2(x0 + 1.2 * float(k), 0.0), d));\n  }\n  float w = 0.13;\n  float ew = e / (size * 0.5);\n  return 1.0 - smoothstep(w, w + ew, best);\n}\n// where a numeral stands: from degrees along a sweep of sw centred on straight up, at radius r, about pivot\nvec2 gfAt(float from, float sw, float r, vec2 pivot) {\n  float a = radians(-sw * 0.5 + from);\n  return pivot + vec2(sin(a), cos(a)) * r;\n}\n\nvoid look_0(inout Look k) {\n  p_stColour = L0_stColour;\n  p_stMetal = L0_stMetal;\n  p_stRough = L0_stRough;\n  p_stOil = L0_stOil;\n  p_stOilColour = L0_stOilColour;\n  p_stOilBrown = L0_stOilBrown;\n  p_stOilSize = L0_stOilSize;\n  p_stOilRough = L0_stOilRough;\n  p_stFinPitch = L0_stFinPitch;\n  p_stFinShare = L0_stFinShare;\n  p_stFinDepth = L0_stFinDepth;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float brush = kn(vec2(uv.x * 4.0, uv.y * 900.0) + seed) * kfade(0.002);\n    float wear = kfbm(uv * 3.0 + seed);\n    vec3 stC = p_stColour * (0.9 + 0.12 * brush) * (0.9 + 0.15 * wear);\n    float stM = p_stMetal;\n    float stR = p_stRough + 0.15 * brush + 0.1 * wear;\n    float stH = 0.00005 * brush;\n    // fins: a rounded ridge of share stFinShare in each pitch along s3.x, the groove between them the depth down and\n    // dark (the normal they bend is worked out below); fading to the fins' mean where a pitch is under a few pixels\n    float stOn = step(0.5, s3.y);\n    float stFade = kfade(p_stFinPitch * 4.0);\n    float stF = fract(s3.x / p_stFinPitch);\n    float stRidge = smoothstep(1.0 - 2.0 * p_stFinShare, 1.0, 0.5 + 0.5 * cos(6.28318 * stF));\n    // far off, the fins' mean: the ridges' share lit, the rest groove\n    float stShade = mix(p_stFinShare, stRidge, stFade);\n    stC *= mix(1.0, 0.55 + 0.45 * stShade, stOn);\n    // burnt castor oil: blotches and runs of a brown-black varnish; thick (glossy, brown in its highlight) or thin\n    float stBlot = kfbm(uv * p_stOilSize + seed * 1.7);\n    float stRun = kn(vec2(uv.x * p_stOilSize * 0.6, uv.y * p_stOilSize * 9.0) + seed + 11.0);\n    float stThick = smoothstep(0.35, 0.75, 0.65 * stBlot + 0.35 * stRun);\n    float stO = clamp(p_stOil * (0.75 + 0.35 * stThick), 0.0, 1.0);\n    vec3 stOilC = mix(p_stOilColour, p_stOilBrown, stThick * (0.5 + 0.5 * kn(uv * 60.0 + seed)));\n    stC = mix(stC, stOilC * mix(1.0, 0.6 + 0.4 * stShade, stOn), stO);\n    stM = mix(stM, 0.12, stO);\n    stR = mix(stR, mix(0.75, p_stOilRough, stThick), stO);\n    stH += p_stOil * 0.00004 * stThick;\n    k.colour = stC;\n    k.metal = stM;\n    k.rough = stR;\n    k.height = stH;\n    if (stOn > 0.5) {\n      // the fins bend the normal from their profile's slope worked out exactly, not from the pixels' neighbours (whose\n      // steps break thin rings into dots): the way s3.x grows across the surface, in the view's ways, from its change\n      // between pixels (it is even across a face, so this is clean), times the profile's slope along it\n      vec3 stN = normalize(vNormal);\n      vec3 stPx = dFdx(-vViewPosition), stPy = dFdy(-vViewPosition);\n      vec3 stR1 = cross(stPy, stN), stR2 = cross(stN, stPx);\n      float stDet = dot(stPx, stR1);\n      vec3 stG = (dFdx(s3.x) * stR1 + dFdy(s3.x) * stR2) / (abs(stDet) > 1e-14 ? stDet : 1e-14);\n      float stPhi = 6.28318 * stF;\n      float stA = 1.0 - 2.0 * p_stFinShare;\n      float stT = clamp((0.5 + 0.5 * cos(stPhi) - stA) / (1.0 - stA), 0.0, 1.0);\n      float stSlope = p_stFinDepth * 6.0 * stT * (1.0 - stT) / (1.0 - stA) * (-0.5 * sin(stPhi) * 6.28318 / p_stFinPitch);\n      k.normal = normalize(stN - stFade * stSlope * stG);\n      k.ownNormal = true;\n    }\n\n}\n\nvoid look_1(inout Look k) {\n  p_plColour = L1_plColour;\n  p_plStipple = L1_plStipple;\n  p_plRelief = L1_plRelief;\n  p_plRough = L1_plRough;\n  p_plRoughVar = L1_plRoughVar;\n  p_plTone = L1_plTone;\n  p_plThrough = L1_plThrough;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float plS = kn(uv * p_plStipple + seed) * kfade(2.0 / p_plStipple);\n    float plS2 = kn(uv * p_plStipple * 0.37 + seed + 9.0) * kfade(5.0 / p_plStipple);\n    float plW = kfbm4(uv * 3.0 + seed);\n    k.colour = p_plColour * (1.0 + p_plTone * (plW - 0.5) * 2.0);\n    k.rough = clamp(p_plRough + p_plRoughVar * (plW - 0.5) * 2.0 + 0.05 * plS, 0.0, 1.0);\n    k.height = p_plRelief * (0.6 * plS + 0.4 * plS2);\n    if (p_plThrough > 0.0) {\n      float plFace = clamp(abs(dot(normalize(cameraPosition - wp), normalize(wn))), 0.0, 1.0);\n      k.glow = p_plThrough * k.colour * (0.45 + 0.55 * plFace) * (0.9 + 0.2 * plW);\n    }\n\n}\n\nvoid look_2(inout Look k) {\n  p_rbColour = L2_rbColour;\n  p_rbBloom = L2_rbBloom;\n  p_rbBloomAmount = L2_rbBloomAmount;\n  p_rbGrit = L2_rbGrit;\n  p_rbRelief = L2_rbRelief;\n  p_rbRough = L2_rbRough;\n  p_rbSheen = L2_rbSheen;\n  p_rbSheenRough = L2_rbSheenRough;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float rbG = kn(uv * p_rbGrit + seed) * kfade(2.0 / p_rbGrit);\n    float rbP = 1.0 - smoothstep(0.0, 0.25, kcell(uv * p_rbGrit * 0.25 + seed)) ;\n    rbP *= kfade(6.0 / p_rbGrit);\n    float rbB = smoothstep(0.35, 0.8, kfbm4(uv * 4.0 + seed)) * p_rbBloomAmount;\n    k.colour = mix(p_rbColour, p_rbBloom, rbB) * (0.95 + 0.1 * rbG) * (1.0 - 0.3 * rbP);\n    k.rough = clamp(p_rbRough + 0.08 * rbB + 0.05 * rbG, 0.0, 1.0);\n    k.height = p_rbRelief * (rbG - 0.6 * rbP);\n    k.sheen = p_rbSheen;\n    k.sheenRough = p_rbSheenRough;\n\n}\n\nvoid look_3(inout Look k) {\n  p_chColour = L3_chColour;\n  p_chRough = L3_chRough;\n  p_chSwirl = L3_chSwirl;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    // polishing swirls: faint arcs a few millimetres across, gone to their mean where a pixel is as wide\n    float chSw = mix(0.5, kn(uv * 900.0 + seed), kfade(0.002));\n    float chT = kfbm4(uv * 6.0 + seed);\n    k.colour = p_chColour * (0.97 + 0.06 * chT);\n    k.metal = 1.0;\n    k.rough = clamp(p_chRough + p_chSwirl * 0.06 * (chSw - 0.5), 0.02, 1.0);\n    k.height = 0.000004 * p_chSwirl * (chSw - 0.5);\n\n}\n\nvoid look_4(inout Look k) {\n  p_chColour = L4_chColour;\n  p_chRough = L4_chRough;\n  p_chSwirl = L4_chSwirl;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    // polishing swirls: faint arcs a few millimetres across, gone to their mean where a pixel is as wide\n    float chSw = mix(0.5, kn(uv * 900.0 + seed), kfade(0.002));\n    float chT = kfbm4(uv * 6.0 + seed);\n    k.colour = p_chColour * (0.97 + 0.06 * chT);\n    k.metal = 1.0;\n    k.rough = clamp(p_chRough + p_chSwirl * 0.06 * (chSw - 0.5), 0.02, 1.0);\n    k.height = 0.000004 * p_chSwirl * (chSw - 0.5);\n\n}\n\nvoid look_5(inout Look k) {\n  p_apColour = L5_apColour;\n  p_apFlake = L5_apFlake;\n  p_apFlakeColour = L5_apFlakeColour;\n  p_apFlakeSize = L5_apFlakeSize;\n  p_apRough = L5_apRough;\n  p_apCoat = L5_apCoat;\n  p_apCoatRough = L5_apCoatRough;\n  p_apPeel = L5_apPeel;\n  p_apPeelDepth = L5_apPeelDepth;\n  p_apDust = L5_apDust;\n  p_apDustColour = L5_apDustColour;\n  p_apDustHeight = L5_apDustHeight;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    // flake: one fleck a cell, each its own brightness and its own tilt, fading to its mean where a fleck is under a pixel\n    vec2 apC = floor(uv / p_apFlakeSize);\n    float apS = kh(apC + seed);\n    float apSee = kfade(p_apFlakeSize * 3.0);\n    float apFleck = mix(0.5, step(0.55, apS) * (0.4 + 0.6 * kh(apC + seed + 17.0)), apSee) * p_apFlake;\n    vec3 apBase = p_apColour * (0.97 + 0.06 * kfbm4(uv * 1.5 + seed));\n    k.colour = mix(apBase, apBase * 0.4 + p_apFlakeColour * 0.6, apFleck * 0.35);\n    k.metal = p_apFlake * 0.6;\n    k.rough = clamp(p_apRough - 0.15 * apFleck, 0.0, 1.0);\n    float apPeelF = kfade(2.0 / p_apPeel);\n    float apP = (1.0 - kcell(uv * p_apPeel + seed)) * apPeelF;\n    k.height = p_apPeelDepth * apP + 0.000004 * (apS - 0.5) * apSee * p_apFlake;\n    k.clearcoat = p_apCoat;\n    k.clearcoatRough = p_apCoatRough;\n    // road dust: thick at the ground, gone by apDustHeight, broken up so it reads as spray, not a band\n    float apLow = 1.0 - smoothstep(0.0, p_apDustHeight, wp.y);\n    float apSpray = smoothstep(0.25, 0.85, kfbm(uv * 6.0 + seed + 3.0) + 0.35 * apLow);\n    float apD = clamp(p_apDust * apLow * apSpray * 1.4, 0.0, 1.0);\n    k.colour = mix(k.colour, p_apDustColour * (0.85 + 0.3 * kn(uv * 60.0 + seed)), apD);\n    k.rough = mix(k.rough, 0.85, apD);\n    k.metal = mix(k.metal, 0.0, apD);\n    k.clearcoat = mix(k.clearcoat, 0.0, apD);\n\n}\n\nvoid look_6(inout Look k) {\n  p_apColour = L6_apColour;\n  p_apFlake = L6_apFlake;\n  p_apFlakeColour = L6_apFlakeColour;\n  p_apFlakeSize = L6_apFlakeSize;\n  p_apRough = L6_apRough;\n  p_apCoat = L6_apCoat;\n  p_apCoatRough = L6_apCoatRough;\n  p_apPeel = L6_apPeel;\n  p_apPeelDepth = L6_apPeelDepth;\n  p_apDust = L6_apDust;\n  p_apDustColour = L6_apDustColour;\n  p_apDustHeight = L6_apDustHeight;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    // flake: one fleck a cell, each its own brightness and its own tilt, fading to its mean where a fleck is under a pixel\n    vec2 apC = floor(uv / p_apFlakeSize);\n    float apS = kh(apC + seed);\n    float apSee = kfade(p_apFlakeSize * 3.0);\n    float apFleck = mix(0.5, step(0.55, apS) * (0.4 + 0.6 * kh(apC + seed + 17.0)), apSee) * p_apFlake;\n    vec3 apBase = p_apColour * (0.97 + 0.06 * kfbm4(uv * 1.5 + seed));\n    k.colour = mix(apBase, apBase * 0.4 + p_apFlakeColour * 0.6, apFleck * 0.35);\n    k.metal = p_apFlake * 0.6;\n    k.rough = clamp(p_apRough - 0.15 * apFleck, 0.0, 1.0);\n    float apPeelF = kfade(2.0 / p_apPeel);\n    float apP = (1.0 - kcell(uv * p_apPeel + seed)) * apPeelF;\n    k.height = p_apPeelDepth * apP + 0.000004 * (apS - 0.5) * apSee * p_apFlake;\n    k.clearcoat = p_apCoat;\n    k.clearcoatRough = p_apCoatRough;\n    // road dust: thick at the ground, gone by apDustHeight, broken up so it reads as spray, not a band\n    float apLow = 1.0 - smoothstep(0.0, p_apDustHeight, wp.y);\n    float apSpray = smoothstep(0.25, 0.85, kfbm(uv * 6.0 + seed + 3.0) + 0.35 * apLow);\n    float apD = clamp(p_apDust * apLow * apSpray * 1.4, 0.0, 1.0);\n    k.colour = mix(k.colour, p_apDustColour * (0.85 + 0.3 * kn(uv * 60.0 + seed)), apD);\n    k.rough = mix(k.rough, 0.85, apD);\n    k.metal = mix(k.metal, 0.0, apD);\n    k.clearcoat = mix(k.clearcoat, 0.0, apD);\n\n}\n\nvoid look_7(inout Look k) {\n  p_tpColour = L7_tpColour;\n  p_tpFaded = L7_tpFaded;\n  p_tpFade = L7_tpFade;\n  p_tpGrain = L7_tpGrain;\n  p_tpGrainDepth = L7_tpGrainDepth;\n  p_tpRough = L7_tpRough;\n  p_tpDust = L7_tpDust;\n  p_tpDustColour = L7_tpDustColour;\n  p_tpDustHeight = L7_tpDustHeight;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float tpSee = kfade(2.0 / p_tpGrain);\n    float tpId, tpEdge;\n    kvor(uv * p_tpGrain + seed, tpId, tpEdge);\n    float tpRim = (1.0 - smoothstep(0.0, 0.18, tpEdge)) * tpSee;\n    float tpCell = (kh1(tpId) - 0.5) * tpSee;\n    float tpUp = smoothstep(0.2, 0.9, wn.y);\n    float tpF = p_tpFade * tpUp * (0.7 + 0.3 * kfbm4(uv * 3.0 + seed));\n    k.colour = mix(p_tpColour, p_tpFaded, tpF) * (1.0 + 0.12 * tpCell - 0.15 * tpRim);\n    k.rough = clamp(p_tpRough + 0.1 * tpF - 0.08 * tpRim, 0.0, 1.0);\n    k.height = p_tpGrainDepth * (0.6 * tpRim + 0.4 * tpCell);\n    float tpLow = 1.0 - smoothstep(0.0, p_tpDustHeight, wp.y);\n    float tpD = clamp(p_tpDust * tpLow * smoothstep(0.3, 0.8, kfbm(uv * 5.0 + seed + 7.0) + 0.3 * tpLow) * 1.4, 0.0, 1.0);\n    k.colour = mix(k.colour, p_tpDustColour, tpD);\n    k.rough = mix(k.rough, 0.9, tpD);\n\n}\n\nvoid look_8(inout Look k) {\n  p_tpColour = L8_tpColour;\n  p_tpFaded = L8_tpFaded;\n  p_tpFade = L8_tpFade;\n  p_tpGrain = L8_tpGrain;\n  p_tpGrainDepth = L8_tpGrainDepth;\n  p_tpRough = L8_tpRough;\n  p_tpDust = L8_tpDust;\n  p_tpDustColour = L8_tpDustColour;\n  p_tpDustHeight = L8_tpDustHeight;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float tpSee = kfade(2.0 / p_tpGrain);\n    float tpId, tpEdge;\n    kvor(uv * p_tpGrain + seed, tpId, tpEdge);\n    float tpRim = (1.0 - smoothstep(0.0, 0.18, tpEdge)) * tpSee;\n    float tpCell = (kh1(tpId) - 0.5) * tpSee;\n    float tpUp = smoothstep(0.2, 0.9, wn.y);\n    float tpF = p_tpFade * tpUp * (0.7 + 0.3 * kfbm4(uv * 3.0 + seed));\n    k.colour = mix(p_tpColour, p_tpFaded, tpF) * (1.0 + 0.12 * tpCell - 0.15 * tpRim);\n    k.rough = clamp(p_tpRough + 0.1 * tpF - 0.08 * tpRim, 0.0, 1.0);\n    k.height = p_tpGrainDepth * (0.6 * tpRim + 0.4 * tpCell);\n    float tpLow = 1.0 - smoothstep(0.0, p_tpDustHeight, wp.y);\n    float tpD = clamp(p_tpDust * tpLow * smoothstep(0.3, 0.8, kfbm(uv * 5.0 + seed + 7.0) + 0.3 * tpLow) * 1.4, 0.0, 1.0);\n    k.colour = mix(k.colour, p_tpDustColour, tpD);\n    k.rough = mix(k.rough, 0.9, tpD);\n\n}\n\nvoid look_9(inout Look k) {\n  p_trColour = L9_trColour;\n  p_trScrub = L9_trScrub;\n  p_trDust = L9_trDust;\n  p_trDustAmount = L9_trDustAmount;\n  p_trGrit = L9_trGrit;\n  p_trRelief = L9_trRelief;\n  p_trRough = L9_trRough;\n  p_trSheen = L9_trSheen;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float trG = kn(uv * p_trGrit + seed) * kfade(2.0 / p_trGrit);\n    float trBlot = kfbm4(uv * 8.0 + seed);\n    float trD = clamp(p_trDustAmount * smoothstep(0.35, 0.85, trBlot), 0.0, 1.0);\n    k.colour = mix(p_trColour, p_trScrub, 0.4 * smoothstep(0.4, 0.8, kfbm4(uv * 30.0 + seed + 2.0)));\n    k.colour = mix(k.colour, p_trDust, trD) * (0.94 + 0.12 * trG);\n    k.rough = clamp(p_trRough + 0.06 * trG + 0.06 * trD, 0.0, 1.0);\n    k.height = p_trRelief * trG;\n    k.sheen = vec3(p_trSheen) * (1.0 - trD);\n    k.sheenRough = 0.5;\n\n}\n\nvoid look_10(inout Look k) {\n  p_ucColour = L10_ucColour;\n  p_ucRough = L10_ucRough;\n  p_ucGrime = L10_ucGrime;\n  p_ucGrimeColour = L10_ucGrimeColour;\n  p_ucDust = L10_ucDust;\n  p_ucDustColour = L10_ucDustColour;\n  p_ucChips = L10_ucChips;\n  p_ucRust = L10_ucRust;\n  p_ucOil = L10_ucOil;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float ucDown = smoothstep(0.0, -0.8, wn.y);\n    float ucUp = smoothstep(0.3, 0.95, wn.y);\n    float ucB = kfbm(uv * 4.0 + seed);\n    float ucG = clamp(p_ucGrime * (0.3 + 0.9 * ucDown) * smoothstep(0.3, 0.75, ucB + 0.25 * ucDown), 0.0, 1.0);\n    float ucD = clamp(p_ucDust * ucUp * smoothstep(0.35, 0.8, kfbm4(uv * 7.0 + seed + 4.0)), 0.0, 1.0);\n    // chips gather in patches (a slow field) and are each a small blot (a fast one), so they cluster on a part\n    float ucPatch = smoothstep(0.55, 0.8, kfbm4(uv * 1.5 + seed + 21.0));\n    float ucChipN = (kn(uv * 70.0 + seed + 9.0) + 0.15 * kn(uv * 300.0 + seed)) * kfade(0.02);\n    float ucChip = ucPatch * smoothstep(1.06 - 0.12 * p_ucChips, 1.1 - 0.12 * p_ucChips, ucChipN);\n    float ucO = p_ucOil * smoothstep(0.55, 0.85, kfbm4(uv * 2.0 + seed + 11.0));\n    k.colour = mix(p_ucColour, p_ucGrimeColour, ucG);\n    k.colour = mix(k.colour, p_ucDustColour, ucD);\n    k.colour = mix(k.colour, p_ucRust * (0.7 + 0.6 * kn(uv * 200.0 + seed)), ucChip);\n    k.colour = mix(k.colour, vec3(0.01, 0.008, 0.006), ucO);\n    k.rough = clamp(p_ucRough + 0.35 * ucG + 0.3 * ucD + 0.35 * ucChip - 0.4 * ucO, 0.05, 1.0);\n    k.metal = 0.0;\n    k.height = 0.00015 * ucG * ucB - 0.0001 * ucChip;\n\n}\n\nvoid look_11(inout Look k) {\n  p_ucColour = L11_ucColour;\n  p_ucRough = L11_ucRough;\n  p_ucGrime = L11_ucGrime;\n  p_ucGrimeColour = L11_ucGrimeColour;\n  p_ucDust = L11_ucDust;\n  p_ucDustColour = L11_ucDustColour;\n  p_ucChips = L11_ucChips;\n  p_ucRust = L11_ucRust;\n  p_ucOil = L11_ucOil;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float ucDown = smoothstep(0.0, -0.8, wn.y);\n    float ucUp = smoothstep(0.3, 0.95, wn.y);\n    float ucB = kfbm(uv * 4.0 + seed);\n    float ucG = clamp(p_ucGrime * (0.3 + 0.9 * ucDown) * smoothstep(0.3, 0.75, ucB + 0.25 * ucDown), 0.0, 1.0);\n    float ucD = clamp(p_ucDust * ucUp * smoothstep(0.35, 0.8, kfbm4(uv * 7.0 + seed + 4.0)), 0.0, 1.0);\n    // chips gather in patches (a slow field) and are each a small blot (a fast one), so they cluster on a part\n    float ucPatch = smoothstep(0.55, 0.8, kfbm4(uv * 1.5 + seed + 21.0));\n    float ucChipN = (kn(uv * 70.0 + seed + 9.0) + 0.15 * kn(uv * 300.0 + seed)) * kfade(0.02);\n    float ucChip = ucPatch * smoothstep(1.06 - 0.12 * p_ucChips, 1.1 - 0.12 * p_ucChips, ucChipN);\n    float ucO = p_ucOil * smoothstep(0.55, 0.85, kfbm4(uv * 2.0 + seed + 11.0));\n    k.colour = mix(p_ucColour, p_ucGrimeColour, ucG);\n    k.colour = mix(k.colour, p_ucDustColour, ucD);\n    k.colour = mix(k.colour, p_ucRust * (0.7 + 0.6 * kn(uv * 200.0 + seed)), ucChip);\n    k.colour = mix(k.colour, vec3(0.01, 0.008, 0.006), ucO);\n    k.rough = clamp(p_ucRough + 0.35 * ucG + 0.3 * ucD + 0.35 * ucChip - 0.4 * ucO, 0.05, 1.0);\n    k.metal = 0.0;\n    k.height = 0.00015 * ucG * ucB - 0.0001 * ucChip;\n\n}\n\nvoid look_12(inout Look k) {\n  p_ucColour = L12_ucColour;\n  p_ucRough = L12_ucRough;\n  p_ucGrime = L12_ucGrime;\n  p_ucGrimeColour = L12_ucGrimeColour;\n  p_ucDust = L12_ucDust;\n  p_ucDustColour = L12_ucDustColour;\n  p_ucChips = L12_ucChips;\n  p_ucRust = L12_ucRust;\n  p_ucOil = L12_ucOil;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float ucDown = smoothstep(0.0, -0.8, wn.y);\n    float ucUp = smoothstep(0.3, 0.95, wn.y);\n    float ucB = kfbm(uv * 4.0 + seed);\n    float ucG = clamp(p_ucGrime * (0.3 + 0.9 * ucDown) * smoothstep(0.3, 0.75, ucB + 0.25 * ucDown), 0.0, 1.0);\n    float ucD = clamp(p_ucDust * ucUp * smoothstep(0.35, 0.8, kfbm4(uv * 7.0 + seed + 4.0)), 0.0, 1.0);\n    // chips gather in patches (a slow field) and are each a small blot (a fast one), so they cluster on a part\n    float ucPatch = smoothstep(0.55, 0.8, kfbm4(uv * 1.5 + seed + 21.0));\n    float ucChipN = (kn(uv * 70.0 + seed + 9.0) + 0.15 * kn(uv * 300.0 + seed)) * kfade(0.02);\n    float ucChip = ucPatch * smoothstep(1.06 - 0.12 * p_ucChips, 1.1 - 0.12 * p_ucChips, ucChipN);\n    float ucO = p_ucOil * smoothstep(0.55, 0.85, kfbm4(uv * 2.0 + seed + 11.0));\n    k.colour = mix(p_ucColour, p_ucGrimeColour, ucG);\n    k.colour = mix(k.colour, p_ucDustColour, ucD);\n    k.colour = mix(k.colour, p_ucRust * (0.7 + 0.6 * kn(uv * 200.0 + seed)), ucChip);\n    k.colour = mix(k.colour, vec3(0.01, 0.008, 0.006), ucO);\n    k.rough = clamp(p_ucRough + 0.35 * ucG + 0.3 * ucD + 0.35 * ucChip - 0.4 * ucO, 0.05, 1.0);\n    k.metal = 0.0;\n    k.height = 0.00015 * ucG * ucB - 0.0001 * ucChip;\n\n}\n\nvoid look_13(inout Look k) {\n  p_ucColour = L13_ucColour;\n  p_ucRough = L13_ucRough;\n  p_ucGrime = L13_ucGrime;\n  p_ucGrimeColour = L13_ucGrimeColour;\n  p_ucDust = L13_ucDust;\n  p_ucDustColour = L13_ucDustColour;\n  p_ucChips = L13_ucChips;\n  p_ucRust = L13_ucRust;\n  p_ucOil = L13_ucOil;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float ucDown = smoothstep(0.0, -0.8, wn.y);\n    float ucUp = smoothstep(0.3, 0.95, wn.y);\n    float ucB = kfbm(uv * 4.0 + seed);\n    float ucG = clamp(p_ucGrime * (0.3 + 0.9 * ucDown) * smoothstep(0.3, 0.75, ucB + 0.25 * ucDown), 0.0, 1.0);\n    float ucD = clamp(p_ucDust * ucUp * smoothstep(0.35, 0.8, kfbm4(uv * 7.0 + seed + 4.0)), 0.0, 1.0);\n    // chips gather in patches (a slow field) and are each a small blot (a fast one), so they cluster on a part\n    float ucPatch = smoothstep(0.55, 0.8, kfbm4(uv * 1.5 + seed + 21.0));\n    float ucChipN = (kn(uv * 70.0 + seed + 9.0) + 0.15 * kn(uv * 300.0 + seed)) * kfade(0.02);\n    float ucChip = ucPatch * smoothstep(1.06 - 0.12 * p_ucChips, 1.1 - 0.12 * p_ucChips, ucChipN);\n    float ucO = p_ucOil * smoothstep(0.55, 0.85, kfbm4(uv * 2.0 + seed + 11.0));\n    k.colour = mix(p_ucColour, p_ucGrimeColour, ucG);\n    k.colour = mix(k.colour, p_ucDustColour, ucD);\n    k.colour = mix(k.colour, p_ucRust * (0.7 + 0.6 * kn(uv * 200.0 + seed)), ucChip);\n    k.colour = mix(k.colour, vec3(0.01, 0.008, 0.006), ucO);\n    k.rough = clamp(p_ucRough + 0.35 * ucG + 0.3 * ucD + 0.35 * ucChip - 0.4 * ucO, 0.05, 1.0);\n    k.metal = 0.0;\n    k.height = 0.00015 * ucG * ucB - 0.0001 * ucChip;\n\n}\n\nvoid look_14(inout Look k) {\n  p_rmColour = L14_rmColour;\n  p_rmWorn = L14_rmWorn;\n  p_rmDirt = L14_rmDirt;\n  p_rmDirtAmount = L14_rmDirtAmount;\n  p_rmRibs = L14_rmRibs;\n  p_rmDepth = L14_rmDepth;\n  p_rmRough = L14_rmRough;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float rmSee = kfade(2.0 / p_rmRibs);\n    float rmT = fract(uv.y * p_rmRibs);\n    float rmRib = smoothstep(0.15, 0.3, rmT) * (1.0 - smoothstep(0.7, 0.85, rmT));\n    float rmR = mix(0.5, rmRib, rmSee);\n    float rmD = p_rmDirtAmount * (1.0 - rmR) * smoothstep(0.3, 0.8, kfbm4(uv * 5.0 + seed));\n    k.colour = mix(p_rmColour, p_rmWorn, rmR * 0.6 * kfbm4(uv * 12.0 + seed + 3.0));\n    k.colour = mix(k.colour, p_rmDirt, clamp(rmD * 1.6, 0.0, 1.0));\n    k.rough = clamp(p_rmRough - 0.15 * rmR + 0.1 * rmD, 0.0, 1.0);\n    k.height = p_rmDepth * rmR;\n\n}\n\nvoid look_15(inout Look k) {\n  p_upKind = L15_upKind;\n  p_upColour = L15_upColour;\n  p_upColour2 = L15_upColour2;\n  p_upThread = L15_upThread;\n  p_upFleck = L15_upFleck;\n  p_upPrint = L15_upPrint;\n  p_upMotif = L15_upMotif;\n  p_upRelief = L15_upRelief;\n  p_upSheen = L15_upSheen;\n  p_upRough = L15_upRough;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    // a loop's or a thread's own detail (its ring, its crossing) is half of it across: faded out before it aliases\n    float upF = kfade(p_upThread * 0.5);\n    vec2 cl = upCloth(uv, p_upKind, p_upThread, seed);\n    float h = mix(0.5, cl.x, upF);\n    float lite = mix(0.5, cl.y, upF);\n    // heather: fibres of the second colour twisted into the yarn, finer than a thread\n    float fleck = smoothstep(0.55, 0.85, kn(uv / (p_upThread * 0.7) + seed * 3.0));\n    float fleckMean = 0.18;\n    float heather = p_upFleck * mix(fleckMean, fleck, kfade(p_upThread * 0.7));\n    vec3 col = mix(p_upColour, p_upColour2, heather);\n    // the dye's slow unevenness over the cloth\n    col *= 0.94 + 0.1 * kfbm4(uv * 4.0 + seed);\n    // the print: leaves in the second colour, then the weave over it\n    float leaf = upLeaf(uv, p_upMotif, seed) * kfade(p_upMotif * 0.2);\n    float leafMean = 0.12;\n    col = mix(col, p_upColour2, p_upPrint * mix(leafMean, leaf, kfade(p_upMotif * 0.2)));\n    // low places in shadow of the yarn round them, high places catch the light; a mesh's holes dark\n    // (a loop pile, bouclé or terry, is soft: its loops shade one another only a little)\n    bool upLoops = (p_upKind > 1.5 && p_upKind < 2.5) || (p_upKind > 3.5 && p_upKind < 4.5);\n    float shade = p_upKind > 2.5 && p_upKind < 3.5 ? mix(0.25, 1.0, h) : upLoops ? 0.88 + 0.15 * h : 0.78 + 0.3 * h;\n    col *= shade * (upLoops ? 0.95 + 0.07 * lite : 0.92 + 0.12 * lite);\n    // a loop pile's yarn bunches: clumps of loops a few loops across, standing proud or sinking, seen from across a room\n    float clump = upLoops ? kfbm4(uv / (p_upThread * 3.0) + seed) : 0.5;\n    float clumpF = kfade(p_upThread * 1.5);\n    clump = mix(0.5, clump, clumpF);\n    col *= 0.86 + 0.28 * clump;\n    h = mix(h, clump, upLoops ? 0.6 : 0.0);\n    k.colour = col;\n    k.rough = p_upRough;\n    k.height = p_upRelief * h;\n    k.ao = mix(0.75, 1.0, h);\n    k.sheen = mix(p_upColour, vec3(1.0), 0.35) * p_upSheen;\n    k.sheenRough = 0.7;\n\n}\n\nvoid look_16(inout Look k) {\n  p_upKind = L16_upKind;\n  p_upColour = L16_upColour;\n  p_upColour2 = L16_upColour2;\n  p_upThread = L16_upThread;\n  p_upFleck = L16_upFleck;\n  p_upPrint = L16_upPrint;\n  p_upMotif = L16_upMotif;\n  p_upRelief = L16_upRelief;\n  p_upSheen = L16_upSheen;\n  p_upRough = L16_upRough;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    // a loop's or a thread's own detail (its ring, its crossing) is half of it across: faded out before it aliases\n    float upF = kfade(p_upThread * 0.5);\n    vec2 cl = upCloth(uv, p_upKind, p_upThread, seed);\n    float h = mix(0.5, cl.x, upF);\n    float lite = mix(0.5, cl.y, upF);\n    // heather: fibres of the second colour twisted into the yarn, finer than a thread\n    float fleck = smoothstep(0.55, 0.85, kn(uv / (p_upThread * 0.7) + seed * 3.0));\n    float fleckMean = 0.18;\n    float heather = p_upFleck * mix(fleckMean, fleck, kfade(p_upThread * 0.7));\n    vec3 col = mix(p_upColour, p_upColour2, heather);\n    // the dye's slow unevenness over the cloth\n    col *= 0.94 + 0.1 * kfbm4(uv * 4.0 + seed);\n    // the print: leaves in the second colour, then the weave over it\n    float leaf = upLeaf(uv, p_upMotif, seed) * kfade(p_upMotif * 0.2);\n    float leafMean = 0.12;\n    col = mix(col, p_upColour2, p_upPrint * mix(leafMean, leaf, kfade(p_upMotif * 0.2)));\n    // low places in shadow of the yarn round them, high places catch the light; a mesh's holes dark\n    // (a loop pile, bouclé or terry, is soft: its loops shade one another only a little)\n    bool upLoops = (p_upKind > 1.5 && p_upKind < 2.5) || (p_upKind > 3.5 && p_upKind < 4.5);\n    float shade = p_upKind > 2.5 && p_upKind < 3.5 ? mix(0.25, 1.0, h) : upLoops ? 0.88 + 0.15 * h : 0.78 + 0.3 * h;\n    col *= shade * (upLoops ? 0.95 + 0.07 * lite : 0.92 + 0.12 * lite);\n    // a loop pile's yarn bunches: clumps of loops a few loops across, standing proud or sinking, seen from across a room\n    float clump = upLoops ? kfbm4(uv / (p_upThread * 3.0) + seed) : 0.5;\n    float clumpF = kfade(p_upThread * 1.5);\n    clump = mix(0.5, clump, clumpF);\n    col *= 0.86 + 0.28 * clump;\n    h = mix(h, clump, upLoops ? 0.6 : 0.0);\n    k.colour = col;\n    k.rough = p_upRough;\n    k.height = p_upRelief * h;\n    k.ao = mix(0.75, 1.0, h);\n    k.sheen = mix(p_upColour, vec3(1.0), 0.35) * p_upSheen;\n    k.sheenRough = 0.7;\n\n}\n\nvoid look_17(inout Look k) {\n  p_sbColour = L17_sbColour;\n  p_sbCells = L17_sbCells;\n  p_sbDepth = L17_sbDepth;\n  p_sbGlow = L17_sbGlow;\n  p_sbGlowColour = L17_sbGlowColour;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float sbSee = kfade(2.0 / p_sbCells);\n    vec2 sbF = fract(uv * p_sbCells) - 0.5;\n    float sbBump = (1.0 - dot(sbF, sbF) * 3.0) * sbSee;\n    float sbFlute = (1.0 - smoothstep(0.38, 0.5, max(abs(sbF.x), abs(sbF.y)))) * sbSee;\n    k.colour = p_sbColour * (0.85 + 0.15 * sbFlute);\n    k.metal = 0.85;\n    k.rough = 0.06 + 0.12 * (1.0 - sbFlute) * sbSee;\n    k.height = p_sbDepth * sbBump;\n    k.clearcoat = 1.0;\n    k.clearcoatRough = 0.02;\n    k.glow = p_sbGlowColour * p_sbGlow * (0.75 + 0.25 * sbFlute);\n\n}\n\nvoid look_18(inout Look k) {\n  p_lnColour = L18_lnColour;\n  p_lnGlow = L18_lnGlow;\n  p_lnSize = L18_lnSize;\n  p_lnRings = L18_lnRings;\n  p_lnRingAmount = L18_lnRingAmount;\n  p_lnFall = L18_lnFall;\n  p_lnRelief = L18_lnRelief;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    vec2 lnQ = (fract(uv / p_lnSize) - 0.5) * 2.0;\n    float lnR = clamp(length(lnQ), 0.0, 1.0);\n    // the rings, soft: a smooth wave in r, faded where a ring is finer than a pixel\n    float lnRingF = kfade(p_lnSize * 0.5 / p_lnRings);\n    float lnRing = (0.5 + 0.5 * cos(lnR * p_lnRings * 6.2832)) * lnRingF + 0.5 * (1.0 - lnRingF);\n    float lnCore = 1.0 - p_lnFall * smoothstep(0.0, 1.0, lnR);\n    float lnBand = 1.0 - p_lnRingAmount + p_lnRingAmount * 2.0 * lnRing * (1.0 - 0.5 * lnR);\n    k.colour = p_lnColour;\n    k.glow = p_lnGlow * lnCore * lnBand;\n    k.rough = 0.06;\n    k.height = p_lnRelief * lnRing * lnRingF;\n    k.clearcoat = 0.3;\n    k.clearcoatRough = 0.05;\n\n}\n\nvoid look_19(inout Look k) {\n  p_lnColour = L19_lnColour;\n  p_lnGlow = L19_lnGlow;\n  p_lnSize = L19_lnSize;\n  p_lnRings = L19_lnRings;\n  p_lnRingAmount = L19_lnRingAmount;\n  p_lnFall = L19_lnFall;\n  p_lnRelief = L19_lnRelief;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    vec2 lnQ = (fract(uv / p_lnSize) - 0.5) * 2.0;\n    float lnR = clamp(length(lnQ), 0.0, 1.0);\n    // the rings, soft: a smooth wave in r, faded where a ring is finer than a pixel\n    float lnRingF = kfade(p_lnSize * 0.5 / p_lnRings);\n    float lnRing = (0.5 + 0.5 * cos(lnR * p_lnRings * 6.2832)) * lnRingF + 0.5 * (1.0 - lnRingF);\n    float lnCore = 1.0 - p_lnFall * smoothstep(0.0, 1.0, lnR);\n    float lnBand = 1.0 - p_lnRingAmount + p_lnRingAmount * 2.0 * lnRing * (1.0 - 0.5 * lnR);\n    k.colour = p_lnColour;\n    k.glow = p_lnGlow * lnCore * lnBand;\n    k.rough = 0.06;\n    k.height = p_lnRelief * lnRing * lnRingF;\n    k.clearcoat = 0.3;\n    k.clearcoatRough = 0.05;\n\n}\n\nvoid look_20(inout Look k) {\n  p_lnColour = L20_lnColour;\n  p_lnGlow = L20_lnGlow;\n  p_lnSize = L20_lnSize;\n  p_lnRings = L20_lnRings;\n  p_lnRingAmount = L20_lnRingAmount;\n  p_lnFall = L20_lnFall;\n  p_lnRelief = L20_lnRelief;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    vec2 lnQ = (fract(uv / p_lnSize) - 0.5) * 2.0;\n    float lnR = clamp(length(lnQ), 0.0, 1.0);\n    // the rings, soft: a smooth wave in r, faded where a ring is finer than a pixel\n    float lnRingF = kfade(p_lnSize * 0.5 / p_lnRings);\n    float lnRing = (0.5 + 0.5 * cos(lnR * p_lnRings * 6.2832)) * lnRingF + 0.5 * (1.0 - lnRingF);\n    float lnCore = 1.0 - p_lnFall * smoothstep(0.0, 1.0, lnR);\n    float lnBand = 1.0 - p_lnRingAmount + p_lnRingAmount * 2.0 * lnRing * (1.0 - 0.5 * lnR);\n    k.colour = p_lnColour;\n    k.glow = p_lnGlow * lnCore * lnBand;\n    k.rough = 0.06;\n    k.height = p_lnRelief * lnRing * lnRingF;\n    k.clearcoat = 0.3;\n    k.clearcoatRough = 0.05;\n\n}\n\nvoid look_21(inout Look k) {\n  p_gfFace = L21_gfFace;\n  p_gfMark = L21_gfMark;\n  p_gfRed = L21_gfRed;\n  p_gfRadius = L21_gfRadius;\n  p_gfTicks = L21_gfTicks;\n  p_gfSweep = L21_gfSweep;\n  p_gfRead = L21_gfRead;\n  p_gfNeedle = L21_gfNeedle;\n  p_gfGlow = L21_gfGlow;\n  p_gfTachSteps = L21_gfTachSteps;\n  p_gfTachRed = L21_gfTachRed;\n  p_gfNumerals = L21_gfNumerals;\n  p_gfSpeedTop = L21_gfSpeedTop;\n  p_gfSpeedStep = L21_gfSpeedStep;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    vec2 gfP;\n    float gfRad, gfKind, gfReadAt;\n    if (s2.x > 0.001) {\n      gfRad = s2.x * 0.5;\n      gfP = s3 / gfRad;\n      gfKind = floor(s2.z + 0.5);\n      gfReadAt = clamp(s2.w, 0.0, 1.0);\n    } else {\n      gfRad = p_gfRadius;\n      gfP = uv / gfRad;\n      gfKind = 0.0;\n      gfReadAt = p_gfRead;\n    }\n    if (gfKind > 8.5 || gfKind < -0.5) gfKind = 0.0;\n    if (gfKind > 2.5 && gfKind < 3.5) {\n      // a warning lamp, unlit: its lens's colour by s2.w, deep and dark; the bulb behind it a faint brightening in its\n      // middle; the frame's shadow round its square edge\n      float gfWhich = floor(s2.w + 0.5);\n      vec3 gfLens = gfWhich < 0.5 ? vec3(0.09, 0.006, 0.004) : gfWhich < 1.5 ? vec3(0.1, 0.045, 0.003) :\n                    gfWhich < 2.5 ? vec3(0.008, 0.06, 0.012) : vec3(0.006, 0.02, 0.09);\n      vec2 gfSq = abs(gfP);\n      float gfEdge = max(gfSq.x, gfSq.y);\n      float gfEw = fwidth(gfEdge) + 0.002;\n      float gfBulb = 1.0 - smoothstep(0.0, 0.75, length(gfP));\n      vec3 gfL = gfLens * (0.7 + 0.6 * gfBulb);\n      gfL *= 1.0 - 0.6 * smoothstep(0.78 - gfEw, 0.95, gfEdge);\n      k.colour = gfL;\n      k.metal = 0.0;\n      k.rough = 0.25;\n      k.glow = vec3(0.0);\n    } else {\n    bool gfSmall = gfKind > 1.5;\n    float gfR = length(gfP);\n    float gfE = fwidth(gfR) * 0.75 + 0.002;\n    // the angle from straight up, degrees, clockwise; the sweep is centred on straight up\n    float gfA = degrees(atan(gfP.x, gfP.y));\n    float gfSw = gfSmall ? 90.0 : p_gfSweep;\n    float gfHalf = gfSw * 0.5;\n    float gfFrom = gfA + gfHalf;\n    float gfIn = step(-0.5, gfFrom) * step(gfFrom, gfSw + 0.5);\n    float gfInk = 0.0;\n    float gfRedInk = 0.0;\n    float gfNumInk = 0.0;\n    float gfNe = fwidth(gfP.x) + fwidth(gfP.y);\n    bool gfNum = p_gfNumerals > 0.5;\n    if (gfKind < 0.5) {\n      float gfStep = gfSw / p_gfTicks;\n      gfInk = gfIn * max(gfRing(gfFrom, gfStep, gfR, 0.8, 0.93, 0.012, gfE), gfRing(gfFrom, gfStep * 5.0, gfR, 0.68, 0.93, 0.024, gfE));\n      if (gfNum) {\n        float gfCount = floor(p_gfSpeedTop / p_gfSpeedStep + 0.5);\n        for (int i = 0; i <= 40; i++) {\n          if (float(i) > gfCount) break;\n          float v = float(i) * p_gfSpeedStep;\n          gfNumInk = max(gfNumInk, gfNumber(gfP, gfAt(gfSw * v / p_gfSpeedTop, gfSw, 0.52, vec2(0.0)), v, 0.11, gfNe));\n        }\n      }\n    } else if (gfKind < 1.5) {\n      // gfTachSteps steps of 500 rpm, long at each thousand; red from gfTachRed of the sweep, with a red arc inside\n      // the marks\n      float gfStep = gfSw / p_gfTachSteps;\n      float gfMarks = gfIn * max(gfRing(gfFrom, gfStep, gfR, 0.8, 0.93, 0.014, gfE), gfRing(gfFrom, gfStep * 2.0, gfR, 0.68, 0.93, 0.026, gfE));\n      float gfHot = step(gfSw * p_gfTachRed, gfFrom) * gfIn;\n      float gfArc = gfHot * smoothstep(0.62 - gfE, 0.62, gfR) * (1.0 - smoothstep(0.68, 0.68 + gfE, gfR));\n      gfInk = gfMarks * (1.0 - gfHot);\n      gfRedInk = max(gfMarks * gfHot, gfArc);\n      if (gfNum) {\n        float gfTop = p_gfTachSteps * 0.5;\n        for (int i = 0; i <= 12; i++) {\n          if (float(i) > gfTop) break;\n          gfNumInk = max(gfNumInk, gfNumber(gfP, gfAt(gfSw * float(i) / gfTop, gfSw, 0.48, vec2(0.0)), float(i), 0.15, gfNe));\n        }\n      }\n    } else {\n      // three long marks over the top arc, two short between; the low end's red\n      float gfMarks = gfIn * max(gfRing(gfFrom, gfSw / 4.0, gfR, 0.72, 0.92, 0.03, gfE), gfRing(gfFrom, gfSw / 2.0, gfR, 0.56, 0.92, 0.05, gfE));\n      float gfLow = step(gfFrom, gfSw * 0.12);\n      gfInk = gfMarks * (1.0 - gfLow);\n      gfRedInk = gfMarks * gfLow;\n      if (gfNum && gfKind > 3.5) {\n        // its three numerals inside the arc's ends and middle, about the needle's pivot low on the face\n        vec3 gfVals = gfKind < 4.5 ? vec3(0.0, 1.0, 2.0) : gfKind < 5.5 ? vec3(0.0, 5.0, 10.0) :\n                      gfKind < 6.5 ? vec3(40.0, 80.0, 120.0) : gfKind < 7.5 ? vec3(50.0, 100.0, 150.0) :\n                      vec3(0.0, -1.0, 1.0);\n        float gfSz = gfVals.z > 99.5 ? 0.17 : 0.2;\n        for (int i = 0; i < 3; i++) {\n          float v = gfVals[i];\n          if (v < -0.5) continue;\n          vec2 c = vec2(sin(radians(-48.0 + 48.0 * float(i))), cos(radians(-48.0 + 48.0 * float(i)))) * 0.52;\n          c.y -= 0.14;\n          gfNumInk = max(gfNumInk, gfNumber(gfP, c, v, gfSz, gfNe));\n        }\n      }\n    }\n    // the numerals finer than a pixel fade out\n    gfNumInk *= kfade(0.1 * gfRad);\n    gfInk = max(gfInk, gfNumInk);\n    // the needle from just behind the hub out to the marks, tapering; a small gauge's pivots low, its needle long\n    float gfAn = radians(-gfHalf + gfSw * gfReadAt);\n    vec2 gfDir = vec2(sin(gfAn), cos(gfAn));\n    vec2 gfQ = gfSmall ? gfP + vec2(0.0, 0.55) : gfP;\n    float gfLen = gfSmall ? 1.3 : 0.8;\n    float gfAlong = clamp(dot(gfQ, gfDir), -0.15, gfLen);\n    float gfOff = length(gfQ - gfDir * gfAlong);\n    float gfWide = 0.04 * (1.0 - 0.6 * max(gfAlong, 0.0) / gfLen);\n    float gfNeedle = 1.0 - smoothstep(gfWide, gfWide + gfE, gfOff);\n    gfNeedle *= step(length(gfP), 0.98);\n    float gfHub = 1.0 - smoothstep(0.1, 0.1 + gfE, length(gfQ));\n    gfHub *= step(length(gfP), 0.98);\n    vec3 gfC = mix(p_gfFace, p_gfMark, clamp(gfInk, 0.0, 1.0));\n    gfC = mix(gfC, p_gfRed, clamp(gfRedInk, 0.0, 1.0));\n    gfC = mix(gfC, p_gfNeedle, gfNeedle);\n    gfC = mix(gfC, vec3(0.02), gfHub);\n    // finer than a pixel, the dial is the grey its marks make; and the bezel's shadow at its rim\n    float gfF = kfade(0.1 * gfRad);\n    gfC = mix(mix(p_gfFace, p_gfMark, 0.1), gfC, gfF);\n    gfC *= 1.0 - 0.55 * smoothstep(0.9, 1.0, gfR);\n    k.colour = gfC;\n    k.metal = 0.0;\n    k.rough = 0.5;\n    k.glow = (p_gfMark * clamp(gfInk, 0.0, 1.0) + p_gfRed * clamp(gfRedInk, 0.0, 1.0) + p_gfNeedle * gfNeedle) * p_gfGlow * gfF * (1.0 - gfHub);\n    }\n\n}\n\nvoid look_22(inout Look k) {\n  p_ucColour = L22_ucColour;\n  p_ucRough = L22_ucRough;\n  p_ucGrime = L22_ucGrime;\n  p_ucGrimeColour = L22_ucGrimeColour;\n  p_ucDust = L22_ucDust;\n  p_ucDustColour = L22_ucDustColour;\n  p_ucChips = L22_ucChips;\n  p_ucRust = L22_ucRust;\n  p_ucOil = L22_ucOil;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float ucDown = smoothstep(0.0, -0.8, wn.y);\n    float ucUp = smoothstep(0.3, 0.95, wn.y);\n    float ucB = kfbm(uv * 4.0 + seed);\n    float ucG = clamp(p_ucGrime * (0.3 + 0.9 * ucDown) * smoothstep(0.3, 0.75, ucB + 0.25 * ucDown), 0.0, 1.0);\n    float ucD = clamp(p_ucDust * ucUp * smoothstep(0.35, 0.8, kfbm4(uv * 7.0 + seed + 4.0)), 0.0, 1.0);\n    // chips gather in patches (a slow field) and are each a small blot (a fast one), so they cluster on a part\n    float ucPatch = smoothstep(0.55, 0.8, kfbm4(uv * 1.5 + seed + 21.0));\n    float ucChipN = (kn(uv * 70.0 + seed + 9.0) + 0.15 * kn(uv * 300.0 + seed)) * kfade(0.02);\n    float ucChip = ucPatch * smoothstep(1.06 - 0.12 * p_ucChips, 1.1 - 0.12 * p_ucChips, ucChipN);\n    float ucO = p_ucOil * smoothstep(0.55, 0.85, kfbm4(uv * 2.0 + seed + 11.0));\n    k.colour = mix(p_ucColour, p_ucGrimeColour, ucG);\n    k.colour = mix(k.colour, p_ucDustColour, ucD);\n    k.colour = mix(k.colour, p_ucRust * (0.7 + 0.6 * kn(uv * 200.0 + seed)), ucChip);\n    k.colour = mix(k.colour, vec3(0.01, 0.008, 0.006), ucO);\n    k.rough = clamp(p_ucRough + 0.35 * ucG + 0.3 * ucD + 0.35 * ucChip - 0.4 * ucO, 0.05, 1.0);\n    k.metal = 0.0;\n    k.height = 0.00015 * ucG * ucB - 0.0001 * ucChip;\n\n}\n\nvoid look_23(inout Look k) {\n  p_plColour = L23_plColour;\n  p_plStipple = L23_plStipple;\n  p_plRelief = L23_plRelief;\n  p_plRough = L23_plRough;\n  p_plRoughVar = L23_plRoughVar;\n  p_plTone = L23_plTone;\n  p_plThrough = L23_plThrough;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float plS = kn(uv * p_plStipple + seed) * kfade(2.0 / p_plStipple);\n    float plS2 = kn(uv * p_plStipple * 0.37 + seed + 9.0) * kfade(5.0 / p_plStipple);\n    float plW = kfbm4(uv * 3.0 + seed);\n    k.colour = p_plColour * (1.0 + p_plTone * (plW - 0.5) * 2.0);\n    k.rough = clamp(p_plRough + p_plRoughVar * (plW - 0.5) * 2.0 + 0.05 * plS, 0.0, 1.0);\n    k.height = p_plRelief * (0.6 * plS + 0.4 * plS2);\n    if (p_plThrough > 0.0) {\n      float plFace = clamp(abs(dot(normalize(cameraPosition - wp), normalize(wn))), 0.0, 1.0);\n      k.glow = p_plThrough * k.colour * (0.45 + 0.55 * plFace) * (0.9 + 0.2 * plW);\n    }\n\n}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nLook lookRun(int id) {\n  Look k = lookStart();\n  switch (id) {\n    case 0: look_0(k); break;\n    case 1: look_1(k); break;\n    case 2: look_2(k); break;\n    case 3: look_3(k); break;\n    case 4: look_4(k); break;\n    case 5: look_5(k); break;\n    case 6: look_6(k); break;\n    case 7: look_7(k); break;\n    case 8: look_8(k); break;\n    case 9: look_9(k); break;\n    case 10: look_10(k); break;\n    case 11: look_11(k); break;\n    case 12: look_12(k); break;\n    case 13: look_13(k); break;\n    case 14: look_14(k); break;\n    case 15: look_15(k); break;\n    case 16: look_16(k); break;\n    case 17: look_17(k); break;\n    case 18: look_18(k); break;\n    case 19: look_19(k); break;\n    case 20: look_20(k); break;\n    case 21: look_21(k); break;\n    case 22: look_22(k); break;\n    case 23: look_23(k); break;\n  }\n  if (lookDebug > 0.5) {\n    switch (id) {\n      case 0: k.colour = vec3(0.019382360956935723, 0.22696587351009836, 0.7912979403326302); break;\n      case 1: k.colour = vec3(0.02315336617811041, 0.013702083047289686, 0.033104766570885055); break;\n      case 2: k.colour = vec3(0.033104766570885055, 0.033104766570885055, 0.026241221894849898); break;\n      case 3: k.colour = vec3(0.7912979403326302, 0.8713671191987972, 1.0); break;\n      case 4: k.colour = vec3(0.7156935005064807, 0.8307698767746546, 1.0); break;\n      case 5: k.colour = vec3(0.43415363617474895, 0.006995410187265387, 0.006995410187265387); break;\n      case 6: k.colour = vec3(0.467783796112159, 0.4910208498478356, 0.5271151257058131); break;\n      case 7: k.colour = vec3(0.019382360956935723, 0.019382360956935723, 0.02315336617811041); break;\n      case 8: k.colour = vec3(0.027320891639074894, 0.027320891639074894, 0.03189603307301153); break;\n      case 9: k.colour = vec3(0.02315336617811041, 0.019382360956935723, 0.01599629336550963); break;\n      case 10: k.colour = vec3(0.011612245179743885, 0.011612245179743885, 0.014443843596092545); break;\n      case 11: k.colour = vec3(0.017641954488384078, 0.01599629336550963, 0.012983032342173012); break;\n      case 12: k.colour = vec3(0.10224173308810132, 0.042311410620809675, 0.017641954488384078); break;\n      case 13: k.colour = vec3(0.009134058702220787, 0.009134058702220787, 0.010329823029626936); break;\n      case 14: k.colour = vec3(0.012983032342173012, 0.012983032342173012, 0.012983032342173012); break;\n      case 15: k.colour = vec3(0.042311410620809675, 0.042311410620809675, 0.04817182422688942); break;\n      case 16: k.colour = vec3(0.011612245179743885, 0.011612245179743885, 0.012983032342173012); break;\n      case 17: k.colour = vec3(0.6866853124353135, 0.7156935005064807, 0.7454042095403874); break;\n      case 18: k.colour = vec3(0.10224173308810132, 0.0024282158683907, 0.001821161901293025); break;\n      case 19: k.colour = vec3(0.43415363617474895, 0.10224173308810132, 0.0024282158683907); break;\n      case 20: k.colour = vec3(0.6866853124353135, 0.6866853124353135, 0.6583748172794485); break;\n      case 21: k.colour = vec3(0.005181516702338386, 0.005181516702338386, 0.006048833022857054); break;\n      case 22: k.colour = vec3(0.25415209433082675, 0.25415209433082675, 0.238397573812271); break;\n      case 23: k.colour = vec3(0.6724431569576875, 0.6583748172794485, 0.5775804404296506); break;\n    }\n  }\n  return k;\n}\nfloat lookShadow(int id, vec3 Lview) {\n  \n  return 1.0;\n}\n",
+   "features": {
+    "clearcoat": true,
+    "sheen": true,
+    "iridescence": false,
+    "dispersion": false,
+    "transmission": false
+   }
+  },
+  "relief": null,
+  "seeThrough": {
+   "ids": [
+    24
+   ],
+   "fragmentPars": "\nflat varying float vLookId;\nvarying vec3 vLookInfo;\nvarying vec2 vLookUv;\nvarying vec3 vLookWorld;\nvarying vec3 vLookWN;\nvarying vec3 vS0;\nvarying vec3 vS1;\nvarying vec4 vS2;\nvarying vec2 vS3;\n#define s0 vS0\n#define s1 vS1\n#define s2 vS2\n#define s3 vS3\nuniform float lookView;\nuniform float lookDebug;\n// the looks' clock: seconds, one for every look of the scene, set each frame by the page (install.js's `time`) or the\n// game (core's supershader3d). It grows without end, and a hash of a large number is no longer random, so a look never\n// feeds it to its noise as it is: it takes it through kcycle or kloop, whose numbers stay inside one period.\nuniform float lookTime;\n// the uv's change across the pixel, worked out once where every pixel of the quad runs it, so a picture read inside a\n// look's branch still knows its sharpness\nvec2 lookGx, lookGy;\n\nfloat kh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }\nfloat kh1(float x) { return fract(sin(x * 91.7) * 43758.5453); }\nfloat kn(vec2 p) {\n  vec2 i = floor(p), f = fract(p);\n  vec2 u = f * f * (3.0 - 2.0 * f);\n  return mix(mix(kh(i), kh(i + vec2(1, 0)), u.x), mix(kh(i + vec2(0, 1)), kh(i + vec2(1, 1)), u.x), u.y);\n}\nfloat kfbm(vec2 p) {\n  float a = 0.5, s = 0.0;\n  for (int i = 0; i < 5; i++) { s += a * kn(p); p = p * 2.03 + 17.1; a *= 0.5; }\n  return s / 0.97;\n}\nfloat kfbm4(vec2 p) {\n  float a = 0.5, s = 0.0;\n  for (int i = 0; i < 4; i++) { s += a * kn(p); p = p * 2.03 + 17.1; a *= 0.5; }\n  return s;\n}\n// a feature f metres across fades to its mean where it is finer than a pixel\nfloat kfade(float f) { vec2 fw = abs(lookGx) + abs(lookGy); return clamp(1.5 - (fw.x + fw.y) / f, 0.0, 1.0); }\n// cells of jittered seeds: the distance to the nearest, its number (0 to 1), and how far the second is past it\nfloat kvor(vec2 p, out float id, out float edge) {\n  vec2 i = floor(p), f = fract(p);\n  float d1 = 8.0, d2 = 8.0;\n  vec2 best = vec2(0.0);\n  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {\n    vec2 o = vec2(x, y);\n    vec2 c = i + o;\n    vec2 r = o + vec2(kh(c), kh(c + 7.3)) - f;\n    float d = dot(r, r);\n    if (d < d1) { d2 = d1; d1 = d; best = c; } else if (d < d2) { d2 = d; }\n  }\n  id = kh(best + 3.7);\n  edge = sqrt(d2) - sqrt(d1);\n  return sqrt(d1);\n}\n// a dimple field: the distance to the nearest of jittered cells' seeds\nfloat kcell(vec2 p) {\n  vec2 i = floor(p), f = fract(p);\n  float d = 8.0;\n  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {\n    vec2 o = vec2(x, y);\n    vec2 r = o + vec2(kh(i + o), kh(i + o + 7.3)) - f;\n    d = min(d, dot(r, r));\n  }\n  return sqrt(d);\n}\n// courses: the row along v, the piece in it along u (each row offset), where in the piece (0 to 1 each way)\nvec4 kcourse(vec2 uv, float row, float wide, float jitter, float seed, out vec2 id) {\n  float r = floor(uv.y / row);\n  float shift = kh1(r + seed) * wide;\n  float w = wide * (1.0 - jitter * 0.5 + jitter * kh(vec2(r, floor((uv.x + shift) / wide) + seed)));\n  float x = (uv.x + shift) / w;\n  id = vec2(r, floor(x));\n  return vec4(fract(x), fract(uv.y / row), r, w);\n}\n// marble's veins: thin lines wandering through a warped field, the main ones and finer ones across them\nfloat kveins(vec2 p, float seed) {\n  float w = kfbm(p * 1.3 + seed) * 4.0;\n  float a = pow(1.0 - abs(sin((p.x * 1.6 + p.y * 0.6 + w) * 3.14159)), 22.0);\n  float b = pow(1.0 - abs(sin((p.y * 2.7 - p.x * 1.1 + kfbm(p * 2.6 + seed + 7.0) * 3.0) * 3.14159)), 50.0);\n  return clamp(a + 0.6 * b, 0.0, 1.0);\n}\n// wood's grain along u: its rings' lines (late wood 1, early 0) wandering across v, and its fibres\nfloat kring(vec2 uv, float seed, float rings) {\n  float w = kfbm(vec2(uv.x * 0.35, uv.y * 2.0) + seed) * 1.6;\n  return smoothstep(0.5, 0.95, fract(uv.y * rings + w + uv.x * 0.04));\n}\nfloat kfibre(vec2 uv, float seed) { return kn(vec2(uv.x * 3.0, uv.y * 420.0) + seed) * kfade(0.003); }\n// how strongly a cloth's weave shows: a plain weave of threads t metres across, over and under\nfloat kweave(vec2 uv, float t) {\n  vec2 q = uv / t;\n  float warp = sin(q.x * 3.14159), weft = sin(q.y * 3.14159);\n  float over = step(0.0, warp * weft);\n  return mix(0.5, mix(0.8, 1.08, over) * (0.85 + 0.15 * abs(over > 0.5 ? weft : warp)), kfade(t * 2.0));\n}\n// a cycle of `period` seconds: how far through it the clock is, 0 to 1, for a look that pulses or goes round (anything\n// of 6.28318 times it, a sin or a turn, comes back to where it began with no seam)\nfloat kcycle(float period) { return fract(lookTime / period); }\n// a drift that never repeats, for a look that flows, boils or creeps: two phases of one cycle of `period` seconds, half\n// a cycle apart, each 0 to 1 (x and y), and the share of the first (z). A look moves its pattern on by each phase, reads\n// it at both and mixes them by z; each phase jumps back to 0 only where its share is 0, so the drift shows no seam\nvec3 kloop(float period) { float a = fract(lookTime / period); return vec3(a, fract(a + 0.5), 1.0 - abs(2.0 * a - 1.0)); }\n// value noise in three numbers whose third repeats every `n` cells (a whole number): a pattern that churns in place,\n// for what boils, breathes or glows and fades, never sliding as a drift does. Given p.z = kcycle(period) * n it changes\n// n cells' worth over the period and comes back to where it began at its end with no seam, so nothing is mixed and\n// nothing shows twice\nfloat kh3(vec3 c) { return fract(sin(dot(c, vec3(127.1, 311.7, 74.7))) * 43758.5453123); }\nfloat kn3(vec3 p, float n) {\n  vec3 i = floor(p), f = fract(p);\n  vec3 u = f * f * (3.0 - 2.0 * f);\n  float z0 = mod(i.z, n), z1 = mod(i.z + 1.0, n);\n  float a0 = mix(mix(kh3(vec3(i.xy, z0)), kh3(vec3(i.xy + vec2(1, 0), z0)), u.x),\n                 mix(kh3(vec3(i.xy + vec2(0, 1), z0)), kh3(vec3(i.xy + vec2(1, 1), z0)), u.x), u.y);\n  float a1 = mix(mix(kh3(vec3(i.xy, z1)), kh3(vec3(i.xy + vec2(1, 0), z1)), u.x),\n                 mix(kh3(vec3(i.xy + vec2(0, 1), z1)), kh3(vec3(i.xy + vec2(1, 1), z1)), u.x), u.y);\n  return mix(a0, a1, u.z);\n}\n// four sizes of it, each finer one churning twice as fast and still repeating on the same cycle\nfloat kfbm3(vec3 p, float n) {\n  float a = 0.5, s = 0.0;\n  for (int i = 0; i < 4; i++) { s += a * kn3(p, n); p = vec3(p.xy * 2.03 + 17.1, p.z * 2.0); n *= 2.0; a *= 0.5; }\n  return s / 0.9375;\n}\n// the normal bent by a height field, as three's bump map bends it (perturbNormalArb)\nvec3 kitBump(vec3 pos, vec3 n, float h, float faceDirection) {\n  vec3 sx = dFdx(pos), sy = dFdy(pos);\n  vec3 r1 = cross(sy, n), r2 = cross(n, sx);\n  float det = dot(sx, r1) * faceDirection;\n  vec2 dh = vec2(dFdx(h), dFdy(h));\n  vec3 grad = sign(det) * (dh.x * r1 + dh.y * r2);\n  return normalize(abs(det) * n - grad);\n}\n// a normal in the surface's own ways (u, v, out) turned into the view's, the ways found from the uv's change across\n// the pixel, as three's normal map without tangents finds them (getTangentFrame)\nvec3 lookPerturb(vec3 n, vec3 nts, float faceDirection) {\n  vec3 q0 = dFdx(-vViewPosition), q1 = dFdy(-vViewPosition);\n  vec3 q1perp = cross(q1, n), q0perp = cross(n, q0);\n  vec3 T = q1perp * lookGx.x + q0perp * lookGy.x;\n  vec3 B = q1perp * lookGx.y + q0perp * lookGy.y;\n  float det = max(dot(T, T), dot(B, B));\n  float scale = det == 0.0 ? 0.0 : faceDirection * inversesqrt(det);\n  return normalize(T * (nts.x * scale) + B * (nts.y * scale) + n * nts.z);\n}\n\nstruct Look {\n  vec3 colour; float rough; float metal; float height; vec3 nts; vec3 normal; bool ownNormal;\n  float ao; float aoDirect; float alpha; vec3 glow;\n  float clearcoat; float clearcoatRough; vec3 sheen; float sheenRough; float iridescence; float iridIor; float iridThick;\n  float transmission; float thickness; vec3 attColour; float attDist; float ior; float dispersion;\n};\nLook lookStart() {\n  Look k;\n  k.colour = vec3(0.5); k.rough = 0.8; k.metal = 0.0; k.height = 0.0; k.nts = vec3(0.0, 0.0, 1.0);\n  k.normal = vec3(0.0, 0.0, 1.0); k.ownNormal = false; k.ao = 1.0; k.aoDirect = 0.0; k.alpha = 1.0; k.glow = vec3(0.0);\n  k.clearcoat = 0.0; k.clearcoatRough = 0.1; k.sheen = vec3(0.0); k.sheenRough = 0.5;\n  k.iridescence = 0.0; k.iridIor = 1.3; k.iridThick = 400.0;\n  k.transmission = 0.0; k.thickness = 0.0; k.attColour = vec3(1.0); k.attDist = 1e9; k.ior = 1.5; k.dispersion = 0.0;\n  return k;\n}\n\n\nvec3 p_stColour;\nfloat p_stMetal;\nfloat p_stRough;\nfloat p_stOil;\nvec3 p_stOilColour;\nvec3 p_stOilBrown;\nfloat p_stOilSize;\nfloat p_stOilRough;\nfloat p_stFinPitch;\nfloat p_stFinShare;\nfloat p_stFinDepth;\nvec3 p_plColour;\nfloat p_plStipple;\nfloat p_plRelief;\nfloat p_plRough;\nfloat p_plRoughVar;\nfloat p_plTone;\nfloat p_plThrough;\nvec3 p_rbColour;\nvec3 p_rbBloom;\nfloat p_rbBloomAmount;\nfloat p_rbGrit;\nfloat p_rbRelief;\nfloat p_rbRough;\nvec3 p_rbSheen;\nfloat p_rbSheenRough;\nvec3 p_chColour;\nfloat p_chRough;\nfloat p_chSwirl;\nvec3 p_apColour;\nfloat p_apFlake;\nvec3 p_apFlakeColour;\nfloat p_apFlakeSize;\nfloat p_apRough;\nfloat p_apCoat;\nfloat p_apCoatRough;\nfloat p_apPeel;\nfloat p_apPeelDepth;\nfloat p_apDust;\nvec3 p_apDustColour;\nfloat p_apDustHeight;\nvec3 p_tpColour;\nvec3 p_tpFaded;\nfloat p_tpFade;\nfloat p_tpGrain;\nfloat p_tpGrainDepth;\nfloat p_tpRough;\nfloat p_tpDust;\nvec3 p_tpDustColour;\nfloat p_tpDustHeight;\nvec3 p_trColour;\nvec3 p_trScrub;\nvec3 p_trDust;\nfloat p_trDustAmount;\nfloat p_trGrit;\nfloat p_trRelief;\nfloat p_trRough;\nfloat p_trSheen;\nvec3 p_ucColour;\nfloat p_ucRough;\nfloat p_ucGrime;\nvec3 p_ucGrimeColour;\nfloat p_ucDust;\nvec3 p_ucDustColour;\nfloat p_ucChips;\nvec3 p_ucRust;\nfloat p_ucOil;\nvec3 p_rmColour;\nvec3 p_rmWorn;\nvec3 p_rmDirt;\nfloat p_rmDirtAmount;\nfloat p_rmRibs;\nfloat p_rmDepth;\nfloat p_rmRough;\nfloat p_upKind;\nvec3 p_upColour;\nvec3 p_upColour2;\nfloat p_upThread;\nfloat p_upFleck;\nfloat p_upPrint;\nfloat p_upMotif;\nfloat p_upRelief;\nfloat p_upSheen;\nfloat p_upRough;\nvec3 p_sbColour;\nfloat p_sbCells;\nfloat p_sbDepth;\nfloat p_sbGlow;\nvec3 p_sbGlowColour;\nvec3 p_lnColour;\nvec3 p_lnGlow;\nfloat p_lnSize;\nfloat p_lnRings;\nfloat p_lnRingAmount;\nfloat p_lnFall;\nfloat p_lnRelief;\nvec3 p_gfFace;\nvec3 p_gfMark;\nvec3 p_gfRed;\nfloat p_gfRadius;\nfloat p_gfTicks;\nfloat p_gfSweep;\nfloat p_gfRead;\nvec3 p_gfNeedle;\nfloat p_gfGlow;\nfloat p_gfTachSteps;\nfloat p_gfTachRed;\nfloat p_gfNumerals;\nfloat p_gfSpeedTop;\nfloat p_gfSpeedStep;\nvec3 p_glTint;\nvec3 p_glTint2;\nfloat p_glWaves;\nfloat p_glWaveDepth;\nfloat p_glSeeds;\nfloat p_glRough;\nfloat p_glAlpha;\nfloat p_glAlphaVar;\nfloat p_glRibs;\nfloat p_glRibWide;\nfloat p_glRibAlpha;\nvec3 p_glGlow;\nfloat p_glCrease;\nfloat p_glCreaseFreq;\nfloat p_glBands;\nfloat p_glBandHigh;\n\n\nuniform vec3 L24_glTint;\nuniform vec3 L24_glTint2;\nuniform float L24_glWaves;\nuniform float L24_glWaveDepth;\nuniform float L24_glSeeds;\nuniform float L24_glRough;\nuniform float L24_glAlpha;\nuniform float L24_glAlphaVar;\nuniform float L24_glRibs;\nuniform float L24_glRibWide;\nuniform float L24_glRibAlpha;\nuniform vec3 L24_glGlow;\nuniform float L24_glCrease;\nuniform float L24_glCreaseFreq;\nuniform float L24_glBands;\nuniform float L24_glBandHigh;\n\n\nvoid look_24(inout Look k) {\n  p_glTint = L24_glTint;\n  p_glTint2 = L24_glTint2;\n  p_glWaves = L24_glWaves;\n  p_glWaveDepth = L24_glWaveDepth;\n  p_glSeeds = L24_glSeeds;\n  p_glRough = L24_glRough;\n  p_glAlpha = L24_glAlpha;\n  p_glAlphaVar = L24_glAlphaVar;\n  p_glRibs = L24_glRibs;\n  p_glRibWide = L24_glRibWide;\n  p_glRibAlpha = L24_glRibAlpha;\n  p_glGlow = L24_glGlow;\n  p_glCrease = L24_glCrease;\n  p_glCreaseFreq = L24_glCreaseFreq;\n  p_glBands = L24_glBands;\n  p_glBandHigh = L24_glBandHigh;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float wave = kfbm4(uv * p_glWaves + seed);\n    float seeds = smoothstep(0.08, 0.02, kcell(uv * 60.0 + seed)) * kfade(0.01);\n    // the twin wall's ribs, along u, one every 1 / glRibs metres across v; under a pixel, their mean cover\n    float glRib = 0.0;\n    if (p_glRibs > 0.0) {\n      float glRd = abs(fract(uv.y * p_glRibs) - 0.5) * 2.0;\n      float glRw = fwidth(uv.y * p_glRibs) * 2.0;\n      float glLine = 1.0 - smoothstep(p_glRibWide - glRw, p_glRibWide + glRw, 1.0 - glRd);\n      glRib = mix(p_glRibWide, glLine, kfade(1.5 / p_glRibs));\n    }\n    // the film's creases and wound bands, level round the load (the world's height, and the way along the face)\n    float glFold = 0.0, glBand = 0.0;\n    if (p_glCrease > 0.0 || p_glBands > 0.0) {\n      vec3 glSide = cross(vec3(0.0, 1.0, 0.0), wn);\n      float glAlong = dot(glSide, glSide) > 0.01 ? dot(wp, normalize(glSide)) : wp.x;\n      float glUp = wp.y + 0.03 * kn(vec2(glAlong * 2.0, 0.0) + seed);\n      float glF = kn(vec2(glAlong * 1.6, glUp * p_glCreaseFreq) + seed * 1.7);\n      float glF2 = kn(vec2(glAlong * 3.1, glUp * p_glCreaseFreq * 2.3) + seed + 5.0);\n      glFold = p_glCrease * mix(0.35, pow(1.0 - abs(glF * 2.0 - 1.0), 6.0) * 0.75 + pow(1.0 - abs(glF2 * 2.0 - 1.0), 8.0) * 0.4,\n                                kfade(1.0 / p_glCreaseFreq));\n      float glB = fract(glUp / p_glBandHigh + 0.15 * kn(vec2(glAlong * 0.8, 3.0) + seed));\n      glBand = p_glBands * smoothstep(0.55, 0.62, glB) * (0.8 + 0.4 * kn(vec2(glAlong * 4.0, glUp * 6.0) + seed));\n    }\n    k.colour = mix(p_glTint, p_glTint2, wave) + seeds * p_glSeeds + vec3(0.12 * glRib + 0.25 * glFold + 0.06 * glBand);\n    k.rough = p_glRough + p_glRough * wave;\n    k.metal = 0.0;\n    k.height = p_glWaveDepth * (wave - 0.5) + 0.0003 * glFold;\n    k.alpha = clamp(p_glAlpha + p_glAlphaVar * wave + p_glRibAlpha * glRib + 0.35 * glFold + 0.18 * glBand, 0.0, 1.0);\n    k.glow = p_glGlow * (0.9 + 0.2 * wave) * (1.0 + 0.4 * glRib);\n\n}\n\n\nLook lookRun(int id) {\n  Look k = lookStart();\n  switch (id) {\n    case 24: look_24(k); break;\n  }\n  if (lookDebug > 0.5) {\n    switch (id) {\n      case 24: k.colour = vec3(0.38132601143253014, 0.5520114015120001, 0.6038273388553378); break;\n    }\n  }\n  return k;\n}\nfloat lookShadow(int id, vec3 Lview) {\n  \n  return 1.0;\n}\n",
+   "features": {
+    "clearcoat": false,
+    "sheen": false,
+    "iridescence": false,
+    "dispersion": false,
+    "transmission": false
+   }
+  },
+  "all": {
+   "ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24
+   ],
+   "fragmentPars": "\nflat varying float vLookId;\nvarying vec3 vLookInfo;\nvarying vec2 vLookUv;\nvarying vec3 vLookWorld;\nvarying vec3 vLookWN;\nvarying vec3 vS0;\nvarying vec3 vS1;\nvarying vec4 vS2;\nvarying vec2 vS3;\n#define s0 vS0\n#define s1 vS1\n#define s2 vS2\n#define s3 vS3\nuniform float lookView;\nuniform float lookDebug;\n// the looks' clock: seconds, one for every look of the scene, set each frame by the page (install.js's `time`) or the\n// game (core's supershader3d). It grows without end, and a hash of a large number is no longer random, so a look never\n// feeds it to its noise as it is: it takes it through kcycle or kloop, whose numbers stay inside one period.\nuniform float lookTime;\n// the uv's change across the pixel, worked out once where every pixel of the quad runs it, so a picture read inside a\n// look's branch still knows its sharpness\nvec2 lookGx, lookGy;\n\nfloat kh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }\nfloat kh1(float x) { return fract(sin(x * 91.7) * 43758.5453); }\nfloat kn(vec2 p) {\n  vec2 i = floor(p), f = fract(p);\n  vec2 u = f * f * (3.0 - 2.0 * f);\n  return mix(mix(kh(i), kh(i + vec2(1, 0)), u.x), mix(kh(i + vec2(0, 1)), kh(i + vec2(1, 1)), u.x), u.y);\n}\nfloat kfbm(vec2 p) {\n  float a = 0.5, s = 0.0;\n  for (int i = 0; i < 5; i++) { s += a * kn(p); p = p * 2.03 + 17.1; a *= 0.5; }\n  return s / 0.97;\n}\nfloat kfbm4(vec2 p) {\n  float a = 0.5, s = 0.0;\n  for (int i = 0; i < 4; i++) { s += a * kn(p); p = p * 2.03 + 17.1; a *= 0.5; }\n  return s;\n}\n// a feature f metres across fades to its mean where it is finer than a pixel\nfloat kfade(float f) { vec2 fw = abs(lookGx) + abs(lookGy); return clamp(1.5 - (fw.x + fw.y) / f, 0.0, 1.0); }\n// cells of jittered seeds: the distance to the nearest, its number (0 to 1), and how far the second is past it\nfloat kvor(vec2 p, out float id, out float edge) {\n  vec2 i = floor(p), f = fract(p);\n  float d1 = 8.0, d2 = 8.0;\n  vec2 best = vec2(0.0);\n  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {\n    vec2 o = vec2(x, y);\n    vec2 c = i + o;\n    vec2 r = o + vec2(kh(c), kh(c + 7.3)) - f;\n    float d = dot(r, r);\n    if (d < d1) { d2 = d1; d1 = d; best = c; } else if (d < d2) { d2 = d; }\n  }\n  id = kh(best + 3.7);\n  edge = sqrt(d2) - sqrt(d1);\n  return sqrt(d1);\n}\n// a dimple field: the distance to the nearest of jittered cells' seeds\nfloat kcell(vec2 p) {\n  vec2 i = floor(p), f = fract(p);\n  float d = 8.0;\n  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {\n    vec2 o = vec2(x, y);\n    vec2 r = o + vec2(kh(i + o), kh(i + o + 7.3)) - f;\n    d = min(d, dot(r, r));\n  }\n  return sqrt(d);\n}\n// courses: the row along v, the piece in it along u (each row offset), where in the piece (0 to 1 each way)\nvec4 kcourse(vec2 uv, float row, float wide, float jitter, float seed, out vec2 id) {\n  float r = floor(uv.y / row);\n  float shift = kh1(r + seed) * wide;\n  float w = wide * (1.0 - jitter * 0.5 + jitter * kh(vec2(r, floor((uv.x + shift) / wide) + seed)));\n  float x = (uv.x + shift) / w;\n  id = vec2(r, floor(x));\n  return vec4(fract(x), fract(uv.y / row), r, w);\n}\n// marble's veins: thin lines wandering through a warped field, the main ones and finer ones across them\nfloat kveins(vec2 p, float seed) {\n  float w = kfbm(p * 1.3 + seed) * 4.0;\n  float a = pow(1.0 - abs(sin((p.x * 1.6 + p.y * 0.6 + w) * 3.14159)), 22.0);\n  float b = pow(1.0 - abs(sin((p.y * 2.7 - p.x * 1.1 + kfbm(p * 2.6 + seed + 7.0) * 3.0) * 3.14159)), 50.0);\n  return clamp(a + 0.6 * b, 0.0, 1.0);\n}\n// wood's grain along u: its rings' lines (late wood 1, early 0) wandering across v, and its fibres\nfloat kring(vec2 uv, float seed, float rings) {\n  float w = kfbm(vec2(uv.x * 0.35, uv.y * 2.0) + seed) * 1.6;\n  return smoothstep(0.5, 0.95, fract(uv.y * rings + w + uv.x * 0.04));\n}\nfloat kfibre(vec2 uv, float seed) { return kn(vec2(uv.x * 3.0, uv.y * 420.0) + seed) * kfade(0.003); }\n// how strongly a cloth's weave shows: a plain weave of threads t metres across, over and under\nfloat kweave(vec2 uv, float t) {\n  vec2 q = uv / t;\n  float warp = sin(q.x * 3.14159), weft = sin(q.y * 3.14159);\n  float over = step(0.0, warp * weft);\n  return mix(0.5, mix(0.8, 1.08, over) * (0.85 + 0.15 * abs(over > 0.5 ? weft : warp)), kfade(t * 2.0));\n}\n// a cycle of `period` seconds: how far through it the clock is, 0 to 1, for a look that pulses or goes round (anything\n// of 6.28318 times it, a sin or a turn, comes back to where it began with no seam)\nfloat kcycle(float period) { return fract(lookTime / period); }\n// a drift that never repeats, for a look that flows, boils or creeps: two phases of one cycle of `period` seconds, half\n// a cycle apart, each 0 to 1 (x and y), and the share of the first (z). A look moves its pattern on by each phase, reads\n// it at both and mixes them by z; each phase jumps back to 0 only where its share is 0, so the drift shows no seam\nvec3 kloop(float period) { float a = fract(lookTime / period); return vec3(a, fract(a + 0.5), 1.0 - abs(2.0 * a - 1.0)); }\n// value noise in three numbers whose third repeats every `n` cells (a whole number): a pattern that churns in place,\n// for what boils, breathes or glows and fades, never sliding as a drift does. Given p.z = kcycle(period) * n it changes\n// n cells' worth over the period and comes back to where it began at its end with no seam, so nothing is mixed and\n// nothing shows twice\nfloat kh3(vec3 c) { return fract(sin(dot(c, vec3(127.1, 311.7, 74.7))) * 43758.5453123); }\nfloat kn3(vec3 p, float n) {\n  vec3 i = floor(p), f = fract(p);\n  vec3 u = f * f * (3.0 - 2.0 * f);\n  float z0 = mod(i.z, n), z1 = mod(i.z + 1.0, n);\n  float a0 = mix(mix(kh3(vec3(i.xy, z0)), kh3(vec3(i.xy + vec2(1, 0), z0)), u.x),\n                 mix(kh3(vec3(i.xy + vec2(0, 1), z0)), kh3(vec3(i.xy + vec2(1, 1), z0)), u.x), u.y);\n  float a1 = mix(mix(kh3(vec3(i.xy, z1)), kh3(vec3(i.xy + vec2(1, 0), z1)), u.x),\n                 mix(kh3(vec3(i.xy + vec2(0, 1), z1)), kh3(vec3(i.xy + vec2(1, 1), z1)), u.x), u.y);\n  return mix(a0, a1, u.z);\n}\n// four sizes of it, each finer one churning twice as fast and still repeating on the same cycle\nfloat kfbm3(vec3 p, float n) {\n  float a = 0.5, s = 0.0;\n  for (int i = 0; i < 4; i++) { s += a * kn3(p, n); p = vec3(p.xy * 2.03 + 17.1, p.z * 2.0); n *= 2.0; a *= 0.5; }\n  return s / 0.9375;\n}\n// the normal bent by a height field, as three's bump map bends it (perturbNormalArb)\nvec3 kitBump(vec3 pos, vec3 n, float h, float faceDirection) {\n  vec3 sx = dFdx(pos), sy = dFdy(pos);\n  vec3 r1 = cross(sy, n), r2 = cross(n, sx);\n  float det = dot(sx, r1) * faceDirection;\n  vec2 dh = vec2(dFdx(h), dFdy(h));\n  vec3 grad = sign(det) * (dh.x * r1 + dh.y * r2);\n  return normalize(abs(det) * n - grad);\n}\n// a normal in the surface's own ways (u, v, out) turned into the view's, the ways found from the uv's change across\n// the pixel, as three's normal map without tangents finds them (getTangentFrame)\nvec3 lookPerturb(vec3 n, vec3 nts, float faceDirection) {\n  vec3 q0 = dFdx(-vViewPosition), q1 = dFdy(-vViewPosition);\n  vec3 q1perp = cross(q1, n), q0perp = cross(n, q0);\n  vec3 T = q1perp * lookGx.x + q0perp * lookGy.x;\n  vec3 B = q1perp * lookGx.y + q0perp * lookGy.y;\n  float det = max(dot(T, T), dot(B, B));\n  float scale = det == 0.0 ? 0.0 : faceDirection * inversesqrt(det);\n  return normalize(T * (nts.x * scale) + B * (nts.y * scale) + n * nts.z);\n}\n\nstruct Look {\n  vec3 colour; float rough; float metal; float height; vec3 nts; vec3 normal; bool ownNormal;\n  float ao; float aoDirect; float alpha; vec3 glow;\n  float clearcoat; float clearcoatRough; vec3 sheen; float sheenRough; float iridescence; float iridIor; float iridThick;\n  float transmission; float thickness; vec3 attColour; float attDist; float ior; float dispersion;\n};\nLook lookStart() {\n  Look k;\n  k.colour = vec3(0.5); k.rough = 0.8; k.metal = 0.0; k.height = 0.0; k.nts = vec3(0.0, 0.0, 1.0);\n  k.normal = vec3(0.0, 0.0, 1.0); k.ownNormal = false; k.ao = 1.0; k.aoDirect = 0.0; k.alpha = 1.0; k.glow = vec3(0.0);\n  k.clearcoat = 0.0; k.clearcoatRough = 0.1; k.sheen = vec3(0.0); k.sheenRough = 0.5;\n  k.iridescence = 0.0; k.iridIor = 1.3; k.iridThick = 400.0;\n  k.transmission = 0.0; k.thickness = 0.0; k.attColour = vec3(1.0); k.attDist = 1e9; k.ior = 1.5; k.dispersion = 0.0;\n  return k;\n}\n\n\nvec3 p_stColour;\nfloat p_stMetal;\nfloat p_stRough;\nfloat p_stOil;\nvec3 p_stOilColour;\nvec3 p_stOilBrown;\nfloat p_stOilSize;\nfloat p_stOilRough;\nfloat p_stFinPitch;\nfloat p_stFinShare;\nfloat p_stFinDepth;\nvec3 p_plColour;\nfloat p_plStipple;\nfloat p_plRelief;\nfloat p_plRough;\nfloat p_plRoughVar;\nfloat p_plTone;\nfloat p_plThrough;\nvec3 p_rbColour;\nvec3 p_rbBloom;\nfloat p_rbBloomAmount;\nfloat p_rbGrit;\nfloat p_rbRelief;\nfloat p_rbRough;\nvec3 p_rbSheen;\nfloat p_rbSheenRough;\nvec3 p_chColour;\nfloat p_chRough;\nfloat p_chSwirl;\nvec3 p_apColour;\nfloat p_apFlake;\nvec3 p_apFlakeColour;\nfloat p_apFlakeSize;\nfloat p_apRough;\nfloat p_apCoat;\nfloat p_apCoatRough;\nfloat p_apPeel;\nfloat p_apPeelDepth;\nfloat p_apDust;\nvec3 p_apDustColour;\nfloat p_apDustHeight;\nvec3 p_tpColour;\nvec3 p_tpFaded;\nfloat p_tpFade;\nfloat p_tpGrain;\nfloat p_tpGrainDepth;\nfloat p_tpRough;\nfloat p_tpDust;\nvec3 p_tpDustColour;\nfloat p_tpDustHeight;\nvec3 p_trColour;\nvec3 p_trScrub;\nvec3 p_trDust;\nfloat p_trDustAmount;\nfloat p_trGrit;\nfloat p_trRelief;\nfloat p_trRough;\nfloat p_trSheen;\nvec3 p_ucColour;\nfloat p_ucRough;\nfloat p_ucGrime;\nvec3 p_ucGrimeColour;\nfloat p_ucDust;\nvec3 p_ucDustColour;\nfloat p_ucChips;\nvec3 p_ucRust;\nfloat p_ucOil;\nvec3 p_rmColour;\nvec3 p_rmWorn;\nvec3 p_rmDirt;\nfloat p_rmDirtAmount;\nfloat p_rmRibs;\nfloat p_rmDepth;\nfloat p_rmRough;\nfloat p_upKind;\nvec3 p_upColour;\nvec3 p_upColour2;\nfloat p_upThread;\nfloat p_upFleck;\nfloat p_upPrint;\nfloat p_upMotif;\nfloat p_upRelief;\nfloat p_upSheen;\nfloat p_upRough;\nvec3 p_sbColour;\nfloat p_sbCells;\nfloat p_sbDepth;\nfloat p_sbGlow;\nvec3 p_sbGlowColour;\nvec3 p_lnColour;\nvec3 p_lnGlow;\nfloat p_lnSize;\nfloat p_lnRings;\nfloat p_lnRingAmount;\nfloat p_lnFall;\nfloat p_lnRelief;\nvec3 p_gfFace;\nvec3 p_gfMark;\nvec3 p_gfRed;\nfloat p_gfRadius;\nfloat p_gfTicks;\nfloat p_gfSweep;\nfloat p_gfRead;\nvec3 p_gfNeedle;\nfloat p_gfGlow;\nfloat p_gfTachSteps;\nfloat p_gfTachRed;\nfloat p_gfNumerals;\nfloat p_gfSpeedTop;\nfloat p_gfSpeedStep;\nvec3 p_glTint;\nvec3 p_glTint2;\nfloat p_glWaves;\nfloat p_glWaveDepth;\nfloat p_glSeeds;\nfloat p_glRough;\nfloat p_glAlpha;\nfloat p_glAlphaVar;\nfloat p_glRibs;\nfloat p_glRibWide;\nfloat p_glRibAlpha;\nvec3 p_glGlow;\nfloat p_glCrease;\nfloat p_glCreaseFreq;\nfloat p_glBands;\nfloat p_glBandHigh;\n\n\nuniform vec3 L0_stColour;\nuniform float L0_stMetal;\nuniform float L0_stRough;\nuniform float L0_stOil;\nuniform vec3 L0_stOilColour;\nuniform vec3 L0_stOilBrown;\nuniform float L0_stOilSize;\nuniform float L0_stOilRough;\nuniform float L0_stFinPitch;\nuniform float L0_stFinShare;\nuniform float L0_stFinDepth;\nuniform vec3 L1_plColour;\nuniform float L1_plStipple;\nuniform float L1_plRelief;\nuniform float L1_plRough;\nuniform float L1_plRoughVar;\nuniform float L1_plTone;\nuniform float L1_plThrough;\nuniform vec3 L2_rbColour;\nuniform vec3 L2_rbBloom;\nuniform float L2_rbBloomAmount;\nuniform float L2_rbGrit;\nuniform float L2_rbRelief;\nuniform float L2_rbRough;\nuniform vec3 L2_rbSheen;\nuniform float L2_rbSheenRough;\nuniform vec3 L3_chColour;\nuniform float L3_chRough;\nuniform float L3_chSwirl;\nuniform vec3 L4_chColour;\nuniform float L4_chRough;\nuniform float L4_chSwirl;\nuniform vec3 L5_apColour;\nuniform float L5_apFlake;\nuniform vec3 L5_apFlakeColour;\nuniform float L5_apFlakeSize;\nuniform float L5_apRough;\nuniform float L5_apCoat;\nuniform float L5_apCoatRough;\nuniform float L5_apPeel;\nuniform float L5_apPeelDepth;\nuniform float L5_apDust;\nuniform vec3 L5_apDustColour;\nuniform float L5_apDustHeight;\nuniform vec3 L6_apColour;\nuniform float L6_apFlake;\nuniform vec3 L6_apFlakeColour;\nuniform float L6_apFlakeSize;\nuniform float L6_apRough;\nuniform float L6_apCoat;\nuniform float L6_apCoatRough;\nuniform float L6_apPeel;\nuniform float L6_apPeelDepth;\nuniform float L6_apDust;\nuniform vec3 L6_apDustColour;\nuniform float L6_apDustHeight;\nuniform vec3 L7_tpColour;\nuniform vec3 L7_tpFaded;\nuniform float L7_tpFade;\nuniform float L7_tpGrain;\nuniform float L7_tpGrainDepth;\nuniform float L7_tpRough;\nuniform float L7_tpDust;\nuniform vec3 L7_tpDustColour;\nuniform float L7_tpDustHeight;\nuniform vec3 L8_tpColour;\nuniform vec3 L8_tpFaded;\nuniform float L8_tpFade;\nuniform float L8_tpGrain;\nuniform float L8_tpGrainDepth;\nuniform float L8_tpRough;\nuniform float L8_tpDust;\nuniform vec3 L8_tpDustColour;\nuniform float L8_tpDustHeight;\nuniform vec3 L9_trColour;\nuniform vec3 L9_trScrub;\nuniform vec3 L9_trDust;\nuniform float L9_trDustAmount;\nuniform float L9_trGrit;\nuniform float L9_trRelief;\nuniform float L9_trRough;\nuniform float L9_trSheen;\nuniform vec3 L10_ucColour;\nuniform float L10_ucRough;\nuniform float L10_ucGrime;\nuniform vec3 L10_ucGrimeColour;\nuniform float L10_ucDust;\nuniform vec3 L10_ucDustColour;\nuniform float L10_ucChips;\nuniform vec3 L10_ucRust;\nuniform float L10_ucOil;\nuniform vec3 L11_ucColour;\nuniform float L11_ucRough;\nuniform float L11_ucGrime;\nuniform vec3 L11_ucGrimeColour;\nuniform float L11_ucDust;\nuniform vec3 L11_ucDustColour;\nuniform float L11_ucChips;\nuniform vec3 L11_ucRust;\nuniform float L11_ucOil;\nuniform vec3 L12_ucColour;\nuniform float L12_ucRough;\nuniform float L12_ucGrime;\nuniform vec3 L12_ucGrimeColour;\nuniform float L12_ucDust;\nuniform vec3 L12_ucDustColour;\nuniform float L12_ucChips;\nuniform vec3 L12_ucRust;\nuniform float L12_ucOil;\nuniform vec3 L13_ucColour;\nuniform float L13_ucRough;\nuniform float L13_ucGrime;\nuniform vec3 L13_ucGrimeColour;\nuniform float L13_ucDust;\nuniform vec3 L13_ucDustColour;\nuniform float L13_ucChips;\nuniform vec3 L13_ucRust;\nuniform float L13_ucOil;\nuniform vec3 L14_rmColour;\nuniform vec3 L14_rmWorn;\nuniform vec3 L14_rmDirt;\nuniform float L14_rmDirtAmount;\nuniform float L14_rmRibs;\nuniform float L14_rmDepth;\nuniform float L14_rmRough;\nuniform float L15_upKind;\nuniform vec3 L15_upColour;\nuniform vec3 L15_upColour2;\nuniform float L15_upThread;\nuniform float L15_upFleck;\nuniform float L15_upPrint;\nuniform float L15_upMotif;\nuniform float L15_upRelief;\nuniform float L15_upSheen;\nuniform float L15_upRough;\nuniform float L16_upKind;\nuniform vec3 L16_upColour;\nuniform vec3 L16_upColour2;\nuniform float L16_upThread;\nuniform float L16_upFleck;\nuniform float L16_upPrint;\nuniform float L16_upMotif;\nuniform float L16_upRelief;\nuniform float L16_upSheen;\nuniform float L16_upRough;\nuniform vec3 L17_sbColour;\nuniform float L17_sbCells;\nuniform float L17_sbDepth;\nuniform float L17_sbGlow;\nuniform vec3 L17_sbGlowColour;\nuniform vec3 L18_lnColour;\nuniform vec3 L18_lnGlow;\nuniform float L18_lnSize;\nuniform float L18_lnRings;\nuniform float L18_lnRingAmount;\nuniform float L18_lnFall;\nuniform float L18_lnRelief;\nuniform vec3 L19_lnColour;\nuniform vec3 L19_lnGlow;\nuniform float L19_lnSize;\nuniform float L19_lnRings;\nuniform float L19_lnRingAmount;\nuniform float L19_lnFall;\nuniform float L19_lnRelief;\nuniform vec3 L20_lnColour;\nuniform vec3 L20_lnGlow;\nuniform float L20_lnSize;\nuniform float L20_lnRings;\nuniform float L20_lnRingAmount;\nuniform float L20_lnFall;\nuniform float L20_lnRelief;\nuniform vec3 L21_gfFace;\nuniform vec3 L21_gfMark;\nuniform vec3 L21_gfRed;\nuniform float L21_gfRadius;\nuniform float L21_gfTicks;\nuniform float L21_gfSweep;\nuniform float L21_gfRead;\nuniform vec3 L21_gfNeedle;\nuniform float L21_gfGlow;\nuniform float L21_gfTachSteps;\nuniform float L21_gfTachRed;\nuniform float L21_gfNumerals;\nuniform float L21_gfSpeedTop;\nuniform float L21_gfSpeedStep;\nuniform vec3 L22_ucColour;\nuniform float L22_ucRough;\nuniform float L22_ucGrime;\nuniform vec3 L22_ucGrimeColour;\nuniform float L22_ucDust;\nuniform vec3 L22_ucDustColour;\nuniform float L22_ucChips;\nuniform vec3 L22_ucRust;\nuniform float L22_ucOil;\nuniform vec3 L23_plColour;\nuniform float L23_plStipple;\nuniform float L23_plRelief;\nuniform float L23_plRough;\nuniform float L23_plRoughVar;\nuniform float L23_plTone;\nuniform float L23_plThrough;\nuniform vec3 L24_glTint;\nuniform vec3 L24_glTint2;\nuniform float L24_glWaves;\nuniform float L24_glWaveDepth;\nuniform float L24_glSeeds;\nuniform float L24_glRough;\nuniform float L24_glAlpha;\nuniform float L24_glAlphaVar;\nuniform float L24_glRibs;\nuniform float L24_glRibWide;\nuniform float L24_glRibAlpha;\nuniform vec3 L24_glGlow;\nuniform float L24_glCrease;\nuniform float L24_glCreaseFreq;\nuniform float L24_glBands;\nuniform float L24_glBandHigh;\n\n\n\n\n\n\n\n\n\n\n\n// the cloth's height (0 low to 1 high) and its yarn's lightness (0 to 1) at p, in metres, for the build kind\nvec2 upCloth(vec2 p, float kind, float t, float seed) {\n  vec2 q = p / t;\n  if (kind < 0.5) {\n    float warp = sin(q.x * 3.14159), weft = sin(q.y * 3.14159);\n    float over = step(0.0, warp * weft);\n    float h = mix(abs(weft), abs(warp), over);\n    return vec2(0.3 + 0.7 * h, over);\n  } else if (kind < 1.5) {\n    // twill: floats two over, one under, stepping each row\n    float row = floor(q.y);\n    float d = fract((q.x + row) / 3.0);\n    float over = step(0.34, d);\n    float h = abs(sin(fract(q.y) * 3.14159)) * mix(0.6, 1.0, over);\n    return vec2(h, over);\n  } else if (kind < 2.5) {\n    // bouclé: small loops crowded in jittered cells, each a ring of yarn\n    float id, e;\n    float d = kvor(q, id, e);\n    float loopR = 0.32 + 0.1 * fract(id * 13.7);\n    float ringH = 1.0 - smoothstep(0.0, 0.16, abs(d - loopR));\n    float hump = 1.0 - smoothstep(0.0, 0.62, d);\n    return vec2(0.55 * hump + 0.6 * ringH, fract(id * 31.3));\n  } else if (kind < 3.5) {\n    // mesh: oval holes in offset rows, the knit's bars between them\n    vec2 m = vec2(q.x * 0.5, q.y * 0.8);\n    m.x += 0.5 * mod(floor(m.y), 2.0);\n    vec2 f = fract(m) - 0.5;\n    float hole = length(f * vec2(1.0, 1.35));\n    return vec2(smoothstep(0.26, 0.4, hole), 1.0 - smoothstep(0.24, 0.3, hole));\n  } else if (kind < 4.5) {\n    // terry: loops standing up, each a soft tuft in jittered cells, the ground weave between them\n    float id, e;\n    float d = kvor(q, id, e);\n    float tuft = 1.0 - smoothstep(0.1, 0.55, d);\n    return vec2(0.25 + 0.75 * tuft, 0.6 + 0.4 * fract(id * 17.1));\n  }\n  // braid: plaited yarns, a herringbone along u\n  float side = sign(fract(q.y * 0.5) - 0.5);\n  float s = fract(q.x * 0.7 + side * q.y * 0.7);\n  float h = abs(sin(s * 3.14159));\n  return vec2(h, step(0.0, side));\n}\n// a small leaf printed on cotton, repeated rep metres apart, each turned its own way: 1 on the leaf\nfloat upLeaf(vec2 p, float rep, float seed) {\n  vec2 cell = floor(p / rep);\n  vec2 f = fract(p / rep) - 0.5;\n  float a = kh(cell + seed) * 6.2831853;\n  vec2 r = vec2(cos(a) * f.x + sin(a) * f.y, -sin(a) * f.x + cos(a) * f.y);\n  r += (vec2(kh(cell + 3.1), kh(cell + 5.7)) - 0.5) * 0.15;\n  float blade = length(vec2(r.x * 2.6, r.y * 1.0 + 0.4 * r.x * r.x * 8.0));\n  float leafM = 1.0 - smoothstep(0.26, 0.29, blade);\n  float rib = 1.0 - smoothstep(0.0, 0.02, abs(r.x));\n  return leafM * (1.0 - 0.6 * rib * step(abs(r.y), 0.25));\n}\n\n\n\n\n// 1 on a tick ring: a the angle from the sweep's start in degrees, step the degrees between marks, r the point's radius\n// in the dial's radii from r0 to r1, e the pixel's width in radii\nfloat gfRing(float a, float stepDeg, float r, float r0, float r1, float half_, float e) {\n  float k = a / stepDeg;\n  float d = abs(fract(k + 0.5) - 0.5) * stepDeg * 0.0174533 * r;\n  return (1.0 - smoothstep(half_, half_ + e, d)) * smoothstep(r0 - e, r0, r) * (1.0 - smoothstep(r1, r1 + e, r));\n}\n// the distance from p to the stroke a to b\nfloat gfStroke(vec2 p, vec2 a, vec2 b) {\n  vec2 pa = p - a, ba = b - a;\n  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);\n  return length(pa - ba * h);\n}\n// the distance from p to the digit d drawn in seven strokes, in a cell 0.8 wide and 1.6 high about its middle\nfloat gfDigit(vec2 p, int d) {\n  int m = d == 0 ? 63 : d == 1 ? 6 : d == 2 ? 91 : d == 3 ? 79 : d == 4 ? 102 : d == 5 ? 109 : d == 6 ? 125 :\n          d == 7 ? 7 : d == 8 ? 127 : 111;\n  float r = 1e3;\n  if ((m & 1) != 0) r = min(r, gfStroke(p, vec2(-0.4, 0.8), vec2(0.4, 0.8)));\n  if ((m & 2) != 0) r = min(r, gfStroke(p, vec2(0.4, 0.8), vec2(0.4, 0.0)));\n  if ((m & 4) != 0) r = min(r, gfStroke(p, vec2(0.4, 0.0), vec2(0.4, -0.8)));\n  if ((m & 8) != 0) r = min(r, gfStroke(p, vec2(-0.4, -0.8), vec2(0.4, -0.8)));\n  if ((m & 16) != 0) r = min(r, gfStroke(p, vec2(-0.4, 0.0), vec2(-0.4, -0.8)));\n  if ((m & 32) != 0) r = min(r, gfStroke(p, vec2(-0.4, 0.8), vec2(-0.4, 0.0)));\n  if ((m & 64) != 0) r = min(r, gfStroke(p, vec2(-0.4, 0.0), vec2(0.4, 0.0)));\n  return r;\n}\n// 1 on the whole number n written upright about c, its digits size half high, e the pixel's width (in the same units)\nfloat gfNumber(vec2 p, vec2 c, float n, float size, float e) {\n  float v = floor(n + 0.5);\n  int count = v < 9.5 ? 1 : v < 99.5 ? 2 : 3;\n  vec2 q = (p - c) / (size * 0.5);\n  float x0 = -float(count - 1) * 0.6;\n  if (abs(q.x) > float(count) * 0.6 + 0.4 || abs(q.y) > 1.2) return 0.0;\n  float best = 1e3;\n  for (int k = 0; k < 3; k++) {\n    if (k >= count) break;\n    float place = pow(10.0, float(count - 1 - k));\n    int d = int(mod(floor((v + 0.5) / place), 10.0));\n    best = min(best, gfDigit(q - vec2(x0 + 1.2 * float(k), 0.0), d));\n  }\n  float w = 0.13;\n  float ew = e / (size * 0.5);\n  return 1.0 - smoothstep(w, w + ew, best);\n}\n// where a numeral stands: from degrees along a sweep of sw centred on straight up, at radius r, about pivot\nvec2 gfAt(float from, float sw, float r, vec2 pivot) {\n  float a = radians(-sw * 0.5 + from);\n  return pivot + vec2(sin(a), cos(a)) * r;\n}\n\n\nvoid look_0(inout Look k) {\n  p_stColour = L0_stColour;\n  p_stMetal = L0_stMetal;\n  p_stRough = L0_stRough;\n  p_stOil = L0_stOil;\n  p_stOilColour = L0_stOilColour;\n  p_stOilBrown = L0_stOilBrown;\n  p_stOilSize = L0_stOilSize;\n  p_stOilRough = L0_stOilRough;\n  p_stFinPitch = L0_stFinPitch;\n  p_stFinShare = L0_stFinShare;\n  p_stFinDepth = L0_stFinDepth;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float brush = kn(vec2(uv.x * 4.0, uv.y * 900.0) + seed) * kfade(0.002);\n    float wear = kfbm(uv * 3.0 + seed);\n    vec3 stC = p_stColour * (0.9 + 0.12 * brush) * (0.9 + 0.15 * wear);\n    float stM = p_stMetal;\n    float stR = p_stRough + 0.15 * brush + 0.1 * wear;\n    float stH = 0.00005 * brush;\n    // fins: a rounded ridge of share stFinShare in each pitch along s3.x, the groove between them the depth down and\n    // dark (the normal they bend is worked out below); fading to the fins' mean where a pitch is under a few pixels\n    float stOn = step(0.5, s3.y);\n    float stFade = kfade(p_stFinPitch * 4.0);\n    float stF = fract(s3.x / p_stFinPitch);\n    float stRidge = smoothstep(1.0 - 2.0 * p_stFinShare, 1.0, 0.5 + 0.5 * cos(6.28318 * stF));\n    // far off, the fins' mean: the ridges' share lit, the rest groove\n    float stShade = mix(p_stFinShare, stRidge, stFade);\n    stC *= mix(1.0, 0.55 + 0.45 * stShade, stOn);\n    // burnt castor oil: blotches and runs of a brown-black varnish; thick (glossy, brown in its highlight) or thin\n    float stBlot = kfbm(uv * p_stOilSize + seed * 1.7);\n    float stRun = kn(vec2(uv.x * p_stOilSize * 0.6, uv.y * p_stOilSize * 9.0) + seed + 11.0);\n    float stThick = smoothstep(0.35, 0.75, 0.65 * stBlot + 0.35 * stRun);\n    float stO = clamp(p_stOil * (0.75 + 0.35 * stThick), 0.0, 1.0);\n    vec3 stOilC = mix(p_stOilColour, p_stOilBrown, stThick * (0.5 + 0.5 * kn(uv * 60.0 + seed)));\n    stC = mix(stC, stOilC * mix(1.0, 0.6 + 0.4 * stShade, stOn), stO);\n    stM = mix(stM, 0.12, stO);\n    stR = mix(stR, mix(0.75, p_stOilRough, stThick), stO);\n    stH += p_stOil * 0.00004 * stThick;\n    k.colour = stC;\n    k.metal = stM;\n    k.rough = stR;\n    k.height = stH;\n    if (stOn > 0.5) {\n      // the fins bend the normal from their profile's slope worked out exactly, not from the pixels' neighbours (whose\n      // steps break thin rings into dots): the way s3.x grows across the surface, in the view's ways, from its change\n      // between pixels (it is even across a face, so this is clean), times the profile's slope along it\n      vec3 stN = normalize(vNormal);\n      vec3 stPx = dFdx(-vViewPosition), stPy = dFdy(-vViewPosition);\n      vec3 stR1 = cross(stPy, stN), stR2 = cross(stN, stPx);\n      float stDet = dot(stPx, stR1);\n      vec3 stG = (dFdx(s3.x) * stR1 + dFdy(s3.x) * stR2) / (abs(stDet) > 1e-14 ? stDet : 1e-14);\n      float stPhi = 6.28318 * stF;\n      float stA = 1.0 - 2.0 * p_stFinShare;\n      float stT = clamp((0.5 + 0.5 * cos(stPhi) - stA) / (1.0 - stA), 0.0, 1.0);\n      float stSlope = p_stFinDepth * 6.0 * stT * (1.0 - stT) / (1.0 - stA) * (-0.5 * sin(stPhi) * 6.28318 / p_stFinPitch);\n      k.normal = normalize(stN - stFade * stSlope * stG);\n      k.ownNormal = true;\n    }\n\n}\n\nvoid look_1(inout Look k) {\n  p_plColour = L1_plColour;\n  p_plStipple = L1_plStipple;\n  p_plRelief = L1_plRelief;\n  p_plRough = L1_plRough;\n  p_plRoughVar = L1_plRoughVar;\n  p_plTone = L1_plTone;\n  p_plThrough = L1_plThrough;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float plS = kn(uv * p_plStipple + seed) * kfade(2.0 / p_plStipple);\n    float plS2 = kn(uv * p_plStipple * 0.37 + seed + 9.0) * kfade(5.0 / p_plStipple);\n    float plW = kfbm4(uv * 3.0 + seed);\n    k.colour = p_plColour * (1.0 + p_plTone * (plW - 0.5) * 2.0);\n    k.rough = clamp(p_plRough + p_plRoughVar * (plW - 0.5) * 2.0 + 0.05 * plS, 0.0, 1.0);\n    k.height = p_plRelief * (0.6 * plS + 0.4 * plS2);\n    if (p_plThrough > 0.0) {\n      float plFace = clamp(abs(dot(normalize(cameraPosition - wp), normalize(wn))), 0.0, 1.0);\n      k.glow = p_plThrough * k.colour * (0.45 + 0.55 * plFace) * (0.9 + 0.2 * plW);\n    }\n\n}\n\nvoid look_2(inout Look k) {\n  p_rbColour = L2_rbColour;\n  p_rbBloom = L2_rbBloom;\n  p_rbBloomAmount = L2_rbBloomAmount;\n  p_rbGrit = L2_rbGrit;\n  p_rbRelief = L2_rbRelief;\n  p_rbRough = L2_rbRough;\n  p_rbSheen = L2_rbSheen;\n  p_rbSheenRough = L2_rbSheenRough;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float rbG = kn(uv * p_rbGrit + seed) * kfade(2.0 / p_rbGrit);\n    float rbP = 1.0 - smoothstep(0.0, 0.25, kcell(uv * p_rbGrit * 0.25 + seed)) ;\n    rbP *= kfade(6.0 / p_rbGrit);\n    float rbB = smoothstep(0.35, 0.8, kfbm4(uv * 4.0 + seed)) * p_rbBloomAmount;\n    k.colour = mix(p_rbColour, p_rbBloom, rbB) * (0.95 + 0.1 * rbG) * (1.0 - 0.3 * rbP);\n    k.rough = clamp(p_rbRough + 0.08 * rbB + 0.05 * rbG, 0.0, 1.0);\n    k.height = p_rbRelief * (rbG - 0.6 * rbP);\n    k.sheen = p_rbSheen;\n    k.sheenRough = p_rbSheenRough;\n\n}\n\nvoid look_3(inout Look k) {\n  p_chColour = L3_chColour;\n  p_chRough = L3_chRough;\n  p_chSwirl = L3_chSwirl;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    // polishing swirls: faint arcs a few millimetres across, gone to their mean where a pixel is as wide\n    float chSw = mix(0.5, kn(uv * 900.0 + seed), kfade(0.002));\n    float chT = kfbm4(uv * 6.0 + seed);\n    k.colour = p_chColour * (0.97 + 0.06 * chT);\n    k.metal = 1.0;\n    k.rough = clamp(p_chRough + p_chSwirl * 0.06 * (chSw - 0.5), 0.02, 1.0);\n    k.height = 0.000004 * p_chSwirl * (chSw - 0.5);\n\n}\n\nvoid look_4(inout Look k) {\n  p_chColour = L4_chColour;\n  p_chRough = L4_chRough;\n  p_chSwirl = L4_chSwirl;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    // polishing swirls: faint arcs a few millimetres across, gone to their mean where a pixel is as wide\n    float chSw = mix(0.5, kn(uv * 900.0 + seed), kfade(0.002));\n    float chT = kfbm4(uv * 6.0 + seed);\n    k.colour = p_chColour * (0.97 + 0.06 * chT);\n    k.metal = 1.0;\n    k.rough = clamp(p_chRough + p_chSwirl * 0.06 * (chSw - 0.5), 0.02, 1.0);\n    k.height = 0.000004 * p_chSwirl * (chSw - 0.5);\n\n}\n\nvoid look_5(inout Look k) {\n  p_apColour = L5_apColour;\n  p_apFlake = L5_apFlake;\n  p_apFlakeColour = L5_apFlakeColour;\n  p_apFlakeSize = L5_apFlakeSize;\n  p_apRough = L5_apRough;\n  p_apCoat = L5_apCoat;\n  p_apCoatRough = L5_apCoatRough;\n  p_apPeel = L5_apPeel;\n  p_apPeelDepth = L5_apPeelDepth;\n  p_apDust = L5_apDust;\n  p_apDustColour = L5_apDustColour;\n  p_apDustHeight = L5_apDustHeight;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    // flake: one fleck a cell, each its own brightness and its own tilt, fading to its mean where a fleck is under a pixel\n    vec2 apC = floor(uv / p_apFlakeSize);\n    float apS = kh(apC + seed);\n    float apSee = kfade(p_apFlakeSize * 3.0);\n    float apFleck = mix(0.5, step(0.55, apS) * (0.4 + 0.6 * kh(apC + seed + 17.0)), apSee) * p_apFlake;\n    vec3 apBase = p_apColour * (0.97 + 0.06 * kfbm4(uv * 1.5 + seed));\n    k.colour = mix(apBase, apBase * 0.4 + p_apFlakeColour * 0.6, apFleck * 0.35);\n    k.metal = p_apFlake * 0.6;\n    k.rough = clamp(p_apRough - 0.15 * apFleck, 0.0, 1.0);\n    float apPeelF = kfade(2.0 / p_apPeel);\n    float apP = (1.0 - kcell(uv * p_apPeel + seed)) * apPeelF;\n    k.height = p_apPeelDepth * apP + 0.000004 * (apS - 0.5) * apSee * p_apFlake;\n    k.clearcoat = p_apCoat;\n    k.clearcoatRough = p_apCoatRough;\n    // road dust: thick at the ground, gone by apDustHeight, broken up so it reads as spray, not a band\n    float apLow = 1.0 - smoothstep(0.0, p_apDustHeight, wp.y);\n    float apSpray = smoothstep(0.25, 0.85, kfbm(uv * 6.0 + seed + 3.0) + 0.35 * apLow);\n    float apD = clamp(p_apDust * apLow * apSpray * 1.4, 0.0, 1.0);\n    k.colour = mix(k.colour, p_apDustColour * (0.85 + 0.3 * kn(uv * 60.0 + seed)), apD);\n    k.rough = mix(k.rough, 0.85, apD);\n    k.metal = mix(k.metal, 0.0, apD);\n    k.clearcoat = mix(k.clearcoat, 0.0, apD);\n\n}\n\nvoid look_6(inout Look k) {\n  p_apColour = L6_apColour;\n  p_apFlake = L6_apFlake;\n  p_apFlakeColour = L6_apFlakeColour;\n  p_apFlakeSize = L6_apFlakeSize;\n  p_apRough = L6_apRough;\n  p_apCoat = L6_apCoat;\n  p_apCoatRough = L6_apCoatRough;\n  p_apPeel = L6_apPeel;\n  p_apPeelDepth = L6_apPeelDepth;\n  p_apDust = L6_apDust;\n  p_apDustColour = L6_apDustColour;\n  p_apDustHeight = L6_apDustHeight;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    // flake: one fleck a cell, each its own brightness and its own tilt, fading to its mean where a fleck is under a pixel\n    vec2 apC = floor(uv / p_apFlakeSize);\n    float apS = kh(apC + seed);\n    float apSee = kfade(p_apFlakeSize * 3.0);\n    float apFleck = mix(0.5, step(0.55, apS) * (0.4 + 0.6 * kh(apC + seed + 17.0)), apSee) * p_apFlake;\n    vec3 apBase = p_apColour * (0.97 + 0.06 * kfbm4(uv * 1.5 + seed));\n    k.colour = mix(apBase, apBase * 0.4 + p_apFlakeColour * 0.6, apFleck * 0.35);\n    k.metal = p_apFlake * 0.6;\n    k.rough = clamp(p_apRough - 0.15 * apFleck, 0.0, 1.0);\n    float apPeelF = kfade(2.0 / p_apPeel);\n    float apP = (1.0 - kcell(uv * p_apPeel + seed)) * apPeelF;\n    k.height = p_apPeelDepth * apP + 0.000004 * (apS - 0.5) * apSee * p_apFlake;\n    k.clearcoat = p_apCoat;\n    k.clearcoatRough = p_apCoatRough;\n    // road dust: thick at the ground, gone by apDustHeight, broken up so it reads as spray, not a band\n    float apLow = 1.0 - smoothstep(0.0, p_apDustHeight, wp.y);\n    float apSpray = smoothstep(0.25, 0.85, kfbm(uv * 6.0 + seed + 3.0) + 0.35 * apLow);\n    float apD = clamp(p_apDust * apLow * apSpray * 1.4, 0.0, 1.0);\n    k.colour = mix(k.colour, p_apDustColour * (0.85 + 0.3 * kn(uv * 60.0 + seed)), apD);\n    k.rough = mix(k.rough, 0.85, apD);\n    k.metal = mix(k.metal, 0.0, apD);\n    k.clearcoat = mix(k.clearcoat, 0.0, apD);\n\n}\n\nvoid look_7(inout Look k) {\n  p_tpColour = L7_tpColour;\n  p_tpFaded = L7_tpFaded;\n  p_tpFade = L7_tpFade;\n  p_tpGrain = L7_tpGrain;\n  p_tpGrainDepth = L7_tpGrainDepth;\n  p_tpRough = L7_tpRough;\n  p_tpDust = L7_tpDust;\n  p_tpDustColour = L7_tpDustColour;\n  p_tpDustHeight = L7_tpDustHeight;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float tpSee = kfade(2.0 / p_tpGrain);\n    float tpId, tpEdge;\n    kvor(uv * p_tpGrain + seed, tpId, tpEdge);\n    float tpRim = (1.0 - smoothstep(0.0, 0.18, tpEdge)) * tpSee;\n    float tpCell = (kh1(tpId) - 0.5) * tpSee;\n    float tpUp = smoothstep(0.2, 0.9, wn.y);\n    float tpF = p_tpFade * tpUp * (0.7 + 0.3 * kfbm4(uv * 3.0 + seed));\n    k.colour = mix(p_tpColour, p_tpFaded, tpF) * (1.0 + 0.12 * tpCell - 0.15 * tpRim);\n    k.rough = clamp(p_tpRough + 0.1 * tpF - 0.08 * tpRim, 0.0, 1.0);\n    k.height = p_tpGrainDepth * (0.6 * tpRim + 0.4 * tpCell);\n    float tpLow = 1.0 - smoothstep(0.0, p_tpDustHeight, wp.y);\n    float tpD = clamp(p_tpDust * tpLow * smoothstep(0.3, 0.8, kfbm(uv * 5.0 + seed + 7.0) + 0.3 * tpLow) * 1.4, 0.0, 1.0);\n    k.colour = mix(k.colour, p_tpDustColour, tpD);\n    k.rough = mix(k.rough, 0.9, tpD);\n\n}\n\nvoid look_8(inout Look k) {\n  p_tpColour = L8_tpColour;\n  p_tpFaded = L8_tpFaded;\n  p_tpFade = L8_tpFade;\n  p_tpGrain = L8_tpGrain;\n  p_tpGrainDepth = L8_tpGrainDepth;\n  p_tpRough = L8_tpRough;\n  p_tpDust = L8_tpDust;\n  p_tpDustColour = L8_tpDustColour;\n  p_tpDustHeight = L8_tpDustHeight;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float tpSee = kfade(2.0 / p_tpGrain);\n    float tpId, tpEdge;\n    kvor(uv * p_tpGrain + seed, tpId, tpEdge);\n    float tpRim = (1.0 - smoothstep(0.0, 0.18, tpEdge)) * tpSee;\n    float tpCell = (kh1(tpId) - 0.5) * tpSee;\n    float tpUp = smoothstep(0.2, 0.9, wn.y);\n    float tpF = p_tpFade * tpUp * (0.7 + 0.3 * kfbm4(uv * 3.0 + seed));\n    k.colour = mix(p_tpColour, p_tpFaded, tpF) * (1.0 + 0.12 * tpCell - 0.15 * tpRim);\n    k.rough = clamp(p_tpRough + 0.1 * tpF - 0.08 * tpRim, 0.0, 1.0);\n    k.height = p_tpGrainDepth * (0.6 * tpRim + 0.4 * tpCell);\n    float tpLow = 1.0 - smoothstep(0.0, p_tpDustHeight, wp.y);\n    float tpD = clamp(p_tpDust * tpLow * smoothstep(0.3, 0.8, kfbm(uv * 5.0 + seed + 7.0) + 0.3 * tpLow) * 1.4, 0.0, 1.0);\n    k.colour = mix(k.colour, p_tpDustColour, tpD);\n    k.rough = mix(k.rough, 0.9, tpD);\n\n}\n\nvoid look_9(inout Look k) {\n  p_trColour = L9_trColour;\n  p_trScrub = L9_trScrub;\n  p_trDust = L9_trDust;\n  p_trDustAmount = L9_trDustAmount;\n  p_trGrit = L9_trGrit;\n  p_trRelief = L9_trRelief;\n  p_trRough = L9_trRough;\n  p_trSheen = L9_trSheen;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float trG = kn(uv * p_trGrit + seed) * kfade(2.0 / p_trGrit);\n    float trBlot = kfbm4(uv * 8.0 + seed);\n    float trD = clamp(p_trDustAmount * smoothstep(0.35, 0.85, trBlot), 0.0, 1.0);\n    k.colour = mix(p_trColour, p_trScrub, 0.4 * smoothstep(0.4, 0.8, kfbm4(uv * 30.0 + seed + 2.0)));\n    k.colour = mix(k.colour, p_trDust, trD) * (0.94 + 0.12 * trG);\n    k.rough = clamp(p_trRough + 0.06 * trG + 0.06 * trD, 0.0, 1.0);\n    k.height = p_trRelief * trG;\n    k.sheen = vec3(p_trSheen) * (1.0 - trD);\n    k.sheenRough = 0.5;\n\n}\n\nvoid look_10(inout Look k) {\n  p_ucColour = L10_ucColour;\n  p_ucRough = L10_ucRough;\n  p_ucGrime = L10_ucGrime;\n  p_ucGrimeColour = L10_ucGrimeColour;\n  p_ucDust = L10_ucDust;\n  p_ucDustColour = L10_ucDustColour;\n  p_ucChips = L10_ucChips;\n  p_ucRust = L10_ucRust;\n  p_ucOil = L10_ucOil;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float ucDown = smoothstep(0.0, -0.8, wn.y);\n    float ucUp = smoothstep(0.3, 0.95, wn.y);\n    float ucB = kfbm(uv * 4.0 + seed);\n    float ucG = clamp(p_ucGrime * (0.3 + 0.9 * ucDown) * smoothstep(0.3, 0.75, ucB + 0.25 * ucDown), 0.0, 1.0);\n    float ucD = clamp(p_ucDust * ucUp * smoothstep(0.35, 0.8, kfbm4(uv * 7.0 + seed + 4.0)), 0.0, 1.0);\n    // chips gather in patches (a slow field) and are each a small blot (a fast one), so they cluster on a part\n    float ucPatch = smoothstep(0.55, 0.8, kfbm4(uv * 1.5 + seed + 21.0));\n    float ucChipN = (kn(uv * 70.0 + seed + 9.0) + 0.15 * kn(uv * 300.0 + seed)) * kfade(0.02);\n    float ucChip = ucPatch * smoothstep(1.06 - 0.12 * p_ucChips, 1.1 - 0.12 * p_ucChips, ucChipN);\n    float ucO = p_ucOil * smoothstep(0.55, 0.85, kfbm4(uv * 2.0 + seed + 11.0));\n    k.colour = mix(p_ucColour, p_ucGrimeColour, ucG);\n    k.colour = mix(k.colour, p_ucDustColour, ucD);\n    k.colour = mix(k.colour, p_ucRust * (0.7 + 0.6 * kn(uv * 200.0 + seed)), ucChip);\n    k.colour = mix(k.colour, vec3(0.01, 0.008, 0.006), ucO);\n    k.rough = clamp(p_ucRough + 0.35 * ucG + 0.3 * ucD + 0.35 * ucChip - 0.4 * ucO, 0.05, 1.0);\n    k.metal = 0.0;\n    k.height = 0.00015 * ucG * ucB - 0.0001 * ucChip;\n\n}\n\nvoid look_11(inout Look k) {\n  p_ucColour = L11_ucColour;\n  p_ucRough = L11_ucRough;\n  p_ucGrime = L11_ucGrime;\n  p_ucGrimeColour = L11_ucGrimeColour;\n  p_ucDust = L11_ucDust;\n  p_ucDustColour = L11_ucDustColour;\n  p_ucChips = L11_ucChips;\n  p_ucRust = L11_ucRust;\n  p_ucOil = L11_ucOil;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float ucDown = smoothstep(0.0, -0.8, wn.y);\n    float ucUp = smoothstep(0.3, 0.95, wn.y);\n    float ucB = kfbm(uv * 4.0 + seed);\n    float ucG = clamp(p_ucGrime * (0.3 + 0.9 * ucDown) * smoothstep(0.3, 0.75, ucB + 0.25 * ucDown), 0.0, 1.0);\n    float ucD = clamp(p_ucDust * ucUp * smoothstep(0.35, 0.8, kfbm4(uv * 7.0 + seed + 4.0)), 0.0, 1.0);\n    // chips gather in patches (a slow field) and are each a small blot (a fast one), so they cluster on a part\n    float ucPatch = smoothstep(0.55, 0.8, kfbm4(uv * 1.5 + seed + 21.0));\n    float ucChipN = (kn(uv * 70.0 + seed + 9.0) + 0.15 * kn(uv * 300.0 + seed)) * kfade(0.02);\n    float ucChip = ucPatch * smoothstep(1.06 - 0.12 * p_ucChips, 1.1 - 0.12 * p_ucChips, ucChipN);\n    float ucO = p_ucOil * smoothstep(0.55, 0.85, kfbm4(uv * 2.0 + seed + 11.0));\n    k.colour = mix(p_ucColour, p_ucGrimeColour, ucG);\n    k.colour = mix(k.colour, p_ucDustColour, ucD);\n    k.colour = mix(k.colour, p_ucRust * (0.7 + 0.6 * kn(uv * 200.0 + seed)), ucChip);\n    k.colour = mix(k.colour, vec3(0.01, 0.008, 0.006), ucO);\n    k.rough = clamp(p_ucRough + 0.35 * ucG + 0.3 * ucD + 0.35 * ucChip - 0.4 * ucO, 0.05, 1.0);\n    k.metal = 0.0;\n    k.height = 0.00015 * ucG * ucB - 0.0001 * ucChip;\n\n}\n\nvoid look_12(inout Look k) {\n  p_ucColour = L12_ucColour;\n  p_ucRough = L12_ucRough;\n  p_ucGrime = L12_ucGrime;\n  p_ucGrimeColour = L12_ucGrimeColour;\n  p_ucDust = L12_ucDust;\n  p_ucDustColour = L12_ucDustColour;\n  p_ucChips = L12_ucChips;\n  p_ucRust = L12_ucRust;\n  p_ucOil = L12_ucOil;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float ucDown = smoothstep(0.0, -0.8, wn.y);\n    float ucUp = smoothstep(0.3, 0.95, wn.y);\n    float ucB = kfbm(uv * 4.0 + seed);\n    float ucG = clamp(p_ucGrime * (0.3 + 0.9 * ucDown) * smoothstep(0.3, 0.75, ucB + 0.25 * ucDown), 0.0, 1.0);\n    float ucD = clamp(p_ucDust * ucUp * smoothstep(0.35, 0.8, kfbm4(uv * 7.0 + seed + 4.0)), 0.0, 1.0);\n    // chips gather in patches (a slow field) and are each a small blot (a fast one), so they cluster on a part\n    float ucPatch = smoothstep(0.55, 0.8, kfbm4(uv * 1.5 + seed + 21.0));\n    float ucChipN = (kn(uv * 70.0 + seed + 9.0) + 0.15 * kn(uv * 300.0 + seed)) * kfade(0.02);\n    float ucChip = ucPatch * smoothstep(1.06 - 0.12 * p_ucChips, 1.1 - 0.12 * p_ucChips, ucChipN);\n    float ucO = p_ucOil * smoothstep(0.55, 0.85, kfbm4(uv * 2.0 + seed + 11.0));\n    k.colour = mix(p_ucColour, p_ucGrimeColour, ucG);\n    k.colour = mix(k.colour, p_ucDustColour, ucD);\n    k.colour = mix(k.colour, p_ucRust * (0.7 + 0.6 * kn(uv * 200.0 + seed)), ucChip);\n    k.colour = mix(k.colour, vec3(0.01, 0.008, 0.006), ucO);\n    k.rough = clamp(p_ucRough + 0.35 * ucG + 0.3 * ucD + 0.35 * ucChip - 0.4 * ucO, 0.05, 1.0);\n    k.metal = 0.0;\n    k.height = 0.00015 * ucG * ucB - 0.0001 * ucChip;\n\n}\n\nvoid look_13(inout Look k) {\n  p_ucColour = L13_ucColour;\n  p_ucRough = L13_ucRough;\n  p_ucGrime = L13_ucGrime;\n  p_ucGrimeColour = L13_ucGrimeColour;\n  p_ucDust = L13_ucDust;\n  p_ucDustColour = L13_ucDustColour;\n  p_ucChips = L13_ucChips;\n  p_ucRust = L13_ucRust;\n  p_ucOil = L13_ucOil;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float ucDown = smoothstep(0.0, -0.8, wn.y);\n    float ucUp = smoothstep(0.3, 0.95, wn.y);\n    float ucB = kfbm(uv * 4.0 + seed);\n    float ucG = clamp(p_ucGrime * (0.3 + 0.9 * ucDown) * smoothstep(0.3, 0.75, ucB + 0.25 * ucDown), 0.0, 1.0);\n    float ucD = clamp(p_ucDust * ucUp * smoothstep(0.35, 0.8, kfbm4(uv * 7.0 + seed + 4.0)), 0.0, 1.0);\n    // chips gather in patches (a slow field) and are each a small blot (a fast one), so they cluster on a part\n    float ucPatch = smoothstep(0.55, 0.8, kfbm4(uv * 1.5 + seed + 21.0));\n    float ucChipN = (kn(uv * 70.0 + seed + 9.0) + 0.15 * kn(uv * 300.0 + seed)) * kfade(0.02);\n    float ucChip = ucPatch * smoothstep(1.06 - 0.12 * p_ucChips, 1.1 - 0.12 * p_ucChips, ucChipN);\n    float ucO = p_ucOil * smoothstep(0.55, 0.85, kfbm4(uv * 2.0 + seed + 11.0));\n    k.colour = mix(p_ucColour, p_ucGrimeColour, ucG);\n    k.colour = mix(k.colour, p_ucDustColour, ucD);\n    k.colour = mix(k.colour, p_ucRust * (0.7 + 0.6 * kn(uv * 200.0 + seed)), ucChip);\n    k.colour = mix(k.colour, vec3(0.01, 0.008, 0.006), ucO);\n    k.rough = clamp(p_ucRough + 0.35 * ucG + 0.3 * ucD + 0.35 * ucChip - 0.4 * ucO, 0.05, 1.0);\n    k.metal = 0.0;\n    k.height = 0.00015 * ucG * ucB - 0.0001 * ucChip;\n\n}\n\nvoid look_14(inout Look k) {\n  p_rmColour = L14_rmColour;\n  p_rmWorn = L14_rmWorn;\n  p_rmDirt = L14_rmDirt;\n  p_rmDirtAmount = L14_rmDirtAmount;\n  p_rmRibs = L14_rmRibs;\n  p_rmDepth = L14_rmDepth;\n  p_rmRough = L14_rmRough;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float rmSee = kfade(2.0 / p_rmRibs);\n    float rmT = fract(uv.y * p_rmRibs);\n    float rmRib = smoothstep(0.15, 0.3, rmT) * (1.0 - smoothstep(0.7, 0.85, rmT));\n    float rmR = mix(0.5, rmRib, rmSee);\n    float rmD = p_rmDirtAmount * (1.0 - rmR) * smoothstep(0.3, 0.8, kfbm4(uv * 5.0 + seed));\n    k.colour = mix(p_rmColour, p_rmWorn, rmR * 0.6 * kfbm4(uv * 12.0 + seed + 3.0));\n    k.colour = mix(k.colour, p_rmDirt, clamp(rmD * 1.6, 0.0, 1.0));\n    k.rough = clamp(p_rmRough - 0.15 * rmR + 0.1 * rmD, 0.0, 1.0);\n    k.height = p_rmDepth * rmR;\n\n}\n\nvoid look_15(inout Look k) {\n  p_upKind = L15_upKind;\n  p_upColour = L15_upColour;\n  p_upColour2 = L15_upColour2;\n  p_upThread = L15_upThread;\n  p_upFleck = L15_upFleck;\n  p_upPrint = L15_upPrint;\n  p_upMotif = L15_upMotif;\n  p_upRelief = L15_upRelief;\n  p_upSheen = L15_upSheen;\n  p_upRough = L15_upRough;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    // a loop's or a thread's own detail (its ring, its crossing) is half of it across: faded out before it aliases\n    float upF = kfade(p_upThread * 0.5);\n    vec2 cl = upCloth(uv, p_upKind, p_upThread, seed);\n    float h = mix(0.5, cl.x, upF);\n    float lite = mix(0.5, cl.y, upF);\n    // heather: fibres of the second colour twisted into the yarn, finer than a thread\n    float fleck = smoothstep(0.55, 0.85, kn(uv / (p_upThread * 0.7) + seed * 3.0));\n    float fleckMean = 0.18;\n    float heather = p_upFleck * mix(fleckMean, fleck, kfade(p_upThread * 0.7));\n    vec3 col = mix(p_upColour, p_upColour2, heather);\n    // the dye's slow unevenness over the cloth\n    col *= 0.94 + 0.1 * kfbm4(uv * 4.0 + seed);\n    // the print: leaves in the second colour, then the weave over it\n    float leaf = upLeaf(uv, p_upMotif, seed) * kfade(p_upMotif * 0.2);\n    float leafMean = 0.12;\n    col = mix(col, p_upColour2, p_upPrint * mix(leafMean, leaf, kfade(p_upMotif * 0.2)));\n    // low places in shadow of the yarn round them, high places catch the light; a mesh's holes dark\n    // (a loop pile, bouclé or terry, is soft: its loops shade one another only a little)\n    bool upLoops = (p_upKind > 1.5 && p_upKind < 2.5) || (p_upKind > 3.5 && p_upKind < 4.5);\n    float shade = p_upKind > 2.5 && p_upKind < 3.5 ? mix(0.25, 1.0, h) : upLoops ? 0.88 + 0.15 * h : 0.78 + 0.3 * h;\n    col *= shade * (upLoops ? 0.95 + 0.07 * lite : 0.92 + 0.12 * lite);\n    // a loop pile's yarn bunches: clumps of loops a few loops across, standing proud or sinking, seen from across a room\n    float clump = upLoops ? kfbm4(uv / (p_upThread * 3.0) + seed) : 0.5;\n    float clumpF = kfade(p_upThread * 1.5);\n    clump = mix(0.5, clump, clumpF);\n    col *= 0.86 + 0.28 * clump;\n    h = mix(h, clump, upLoops ? 0.6 : 0.0);\n    k.colour = col;\n    k.rough = p_upRough;\n    k.height = p_upRelief * h;\n    k.ao = mix(0.75, 1.0, h);\n    k.sheen = mix(p_upColour, vec3(1.0), 0.35) * p_upSheen;\n    k.sheenRough = 0.7;\n\n}\n\nvoid look_16(inout Look k) {\n  p_upKind = L16_upKind;\n  p_upColour = L16_upColour;\n  p_upColour2 = L16_upColour2;\n  p_upThread = L16_upThread;\n  p_upFleck = L16_upFleck;\n  p_upPrint = L16_upPrint;\n  p_upMotif = L16_upMotif;\n  p_upRelief = L16_upRelief;\n  p_upSheen = L16_upSheen;\n  p_upRough = L16_upRough;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    // a loop's or a thread's own detail (its ring, its crossing) is half of it across: faded out before it aliases\n    float upF = kfade(p_upThread * 0.5);\n    vec2 cl = upCloth(uv, p_upKind, p_upThread, seed);\n    float h = mix(0.5, cl.x, upF);\n    float lite = mix(0.5, cl.y, upF);\n    // heather: fibres of the second colour twisted into the yarn, finer than a thread\n    float fleck = smoothstep(0.55, 0.85, kn(uv / (p_upThread * 0.7) + seed * 3.0));\n    float fleckMean = 0.18;\n    float heather = p_upFleck * mix(fleckMean, fleck, kfade(p_upThread * 0.7));\n    vec3 col = mix(p_upColour, p_upColour2, heather);\n    // the dye's slow unevenness over the cloth\n    col *= 0.94 + 0.1 * kfbm4(uv * 4.0 + seed);\n    // the print: leaves in the second colour, then the weave over it\n    float leaf = upLeaf(uv, p_upMotif, seed) * kfade(p_upMotif * 0.2);\n    float leafMean = 0.12;\n    col = mix(col, p_upColour2, p_upPrint * mix(leafMean, leaf, kfade(p_upMotif * 0.2)));\n    // low places in shadow of the yarn round them, high places catch the light; a mesh's holes dark\n    // (a loop pile, bouclé or terry, is soft: its loops shade one another only a little)\n    bool upLoops = (p_upKind > 1.5 && p_upKind < 2.5) || (p_upKind > 3.5 && p_upKind < 4.5);\n    float shade = p_upKind > 2.5 && p_upKind < 3.5 ? mix(0.25, 1.0, h) : upLoops ? 0.88 + 0.15 * h : 0.78 + 0.3 * h;\n    col *= shade * (upLoops ? 0.95 + 0.07 * lite : 0.92 + 0.12 * lite);\n    // a loop pile's yarn bunches: clumps of loops a few loops across, standing proud or sinking, seen from across a room\n    float clump = upLoops ? kfbm4(uv / (p_upThread * 3.0) + seed) : 0.5;\n    float clumpF = kfade(p_upThread * 1.5);\n    clump = mix(0.5, clump, clumpF);\n    col *= 0.86 + 0.28 * clump;\n    h = mix(h, clump, upLoops ? 0.6 : 0.0);\n    k.colour = col;\n    k.rough = p_upRough;\n    k.height = p_upRelief * h;\n    k.ao = mix(0.75, 1.0, h);\n    k.sheen = mix(p_upColour, vec3(1.0), 0.35) * p_upSheen;\n    k.sheenRough = 0.7;\n\n}\n\nvoid look_17(inout Look k) {\n  p_sbColour = L17_sbColour;\n  p_sbCells = L17_sbCells;\n  p_sbDepth = L17_sbDepth;\n  p_sbGlow = L17_sbGlow;\n  p_sbGlowColour = L17_sbGlowColour;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float sbSee = kfade(2.0 / p_sbCells);\n    vec2 sbF = fract(uv * p_sbCells) - 0.5;\n    float sbBump = (1.0 - dot(sbF, sbF) * 3.0) * sbSee;\n    float sbFlute = (1.0 - smoothstep(0.38, 0.5, max(abs(sbF.x), abs(sbF.y)))) * sbSee;\n    k.colour = p_sbColour * (0.85 + 0.15 * sbFlute);\n    k.metal = 0.85;\n    k.rough = 0.06 + 0.12 * (1.0 - sbFlute) * sbSee;\n    k.height = p_sbDepth * sbBump;\n    k.clearcoat = 1.0;\n    k.clearcoatRough = 0.02;\n    k.glow = p_sbGlowColour * p_sbGlow * (0.75 + 0.25 * sbFlute);\n\n}\n\nvoid look_18(inout Look k) {\n  p_lnColour = L18_lnColour;\n  p_lnGlow = L18_lnGlow;\n  p_lnSize = L18_lnSize;\n  p_lnRings = L18_lnRings;\n  p_lnRingAmount = L18_lnRingAmount;\n  p_lnFall = L18_lnFall;\n  p_lnRelief = L18_lnRelief;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    vec2 lnQ = (fract(uv / p_lnSize) - 0.5) * 2.0;\n    float lnR = clamp(length(lnQ), 0.0, 1.0);\n    // the rings, soft: a smooth wave in r, faded where a ring is finer than a pixel\n    float lnRingF = kfade(p_lnSize * 0.5 / p_lnRings);\n    float lnRing = (0.5 + 0.5 * cos(lnR * p_lnRings * 6.2832)) * lnRingF + 0.5 * (1.0 - lnRingF);\n    float lnCore = 1.0 - p_lnFall * smoothstep(0.0, 1.0, lnR);\n    float lnBand = 1.0 - p_lnRingAmount + p_lnRingAmount * 2.0 * lnRing * (1.0 - 0.5 * lnR);\n    k.colour = p_lnColour;\n    k.glow = p_lnGlow * lnCore * lnBand;\n    k.rough = 0.06;\n    k.height = p_lnRelief * lnRing * lnRingF;\n    k.clearcoat = 0.3;\n    k.clearcoatRough = 0.05;\n\n}\n\nvoid look_19(inout Look k) {\n  p_lnColour = L19_lnColour;\n  p_lnGlow = L19_lnGlow;\n  p_lnSize = L19_lnSize;\n  p_lnRings = L19_lnRings;\n  p_lnRingAmount = L19_lnRingAmount;\n  p_lnFall = L19_lnFall;\n  p_lnRelief = L19_lnRelief;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    vec2 lnQ = (fract(uv / p_lnSize) - 0.5) * 2.0;\n    float lnR = clamp(length(lnQ), 0.0, 1.0);\n    // the rings, soft: a smooth wave in r, faded where a ring is finer than a pixel\n    float lnRingF = kfade(p_lnSize * 0.5 / p_lnRings);\n    float lnRing = (0.5 + 0.5 * cos(lnR * p_lnRings * 6.2832)) * lnRingF + 0.5 * (1.0 - lnRingF);\n    float lnCore = 1.0 - p_lnFall * smoothstep(0.0, 1.0, lnR);\n    float lnBand = 1.0 - p_lnRingAmount + p_lnRingAmount * 2.0 * lnRing * (1.0 - 0.5 * lnR);\n    k.colour = p_lnColour;\n    k.glow = p_lnGlow * lnCore * lnBand;\n    k.rough = 0.06;\n    k.height = p_lnRelief * lnRing * lnRingF;\n    k.clearcoat = 0.3;\n    k.clearcoatRough = 0.05;\n\n}\n\nvoid look_20(inout Look k) {\n  p_lnColour = L20_lnColour;\n  p_lnGlow = L20_lnGlow;\n  p_lnSize = L20_lnSize;\n  p_lnRings = L20_lnRings;\n  p_lnRingAmount = L20_lnRingAmount;\n  p_lnFall = L20_lnFall;\n  p_lnRelief = L20_lnRelief;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    vec2 lnQ = (fract(uv / p_lnSize) - 0.5) * 2.0;\n    float lnR = clamp(length(lnQ), 0.0, 1.0);\n    // the rings, soft: a smooth wave in r, faded where a ring is finer than a pixel\n    float lnRingF = kfade(p_lnSize * 0.5 / p_lnRings);\n    float lnRing = (0.5 + 0.5 * cos(lnR * p_lnRings * 6.2832)) * lnRingF + 0.5 * (1.0 - lnRingF);\n    float lnCore = 1.0 - p_lnFall * smoothstep(0.0, 1.0, lnR);\n    float lnBand = 1.0 - p_lnRingAmount + p_lnRingAmount * 2.0 * lnRing * (1.0 - 0.5 * lnR);\n    k.colour = p_lnColour;\n    k.glow = p_lnGlow * lnCore * lnBand;\n    k.rough = 0.06;\n    k.height = p_lnRelief * lnRing * lnRingF;\n    k.clearcoat = 0.3;\n    k.clearcoatRough = 0.05;\n\n}\n\nvoid look_21(inout Look k) {\n  p_gfFace = L21_gfFace;\n  p_gfMark = L21_gfMark;\n  p_gfRed = L21_gfRed;\n  p_gfRadius = L21_gfRadius;\n  p_gfTicks = L21_gfTicks;\n  p_gfSweep = L21_gfSweep;\n  p_gfRead = L21_gfRead;\n  p_gfNeedle = L21_gfNeedle;\n  p_gfGlow = L21_gfGlow;\n  p_gfTachSteps = L21_gfTachSteps;\n  p_gfTachRed = L21_gfTachRed;\n  p_gfNumerals = L21_gfNumerals;\n  p_gfSpeedTop = L21_gfSpeedTop;\n  p_gfSpeedStep = L21_gfSpeedStep;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    vec2 gfP;\n    float gfRad, gfKind, gfReadAt;\n    if (s2.x > 0.001) {\n      gfRad = s2.x * 0.5;\n      gfP = s3 / gfRad;\n      gfKind = floor(s2.z + 0.5);\n      gfReadAt = clamp(s2.w, 0.0, 1.0);\n    } else {\n      gfRad = p_gfRadius;\n      gfP = uv / gfRad;\n      gfKind = 0.0;\n      gfReadAt = p_gfRead;\n    }\n    if (gfKind > 8.5 || gfKind < -0.5) gfKind = 0.0;\n    if (gfKind > 2.5 && gfKind < 3.5) {\n      // a warning lamp, unlit: its lens's colour by s2.w, deep and dark; the bulb behind it a faint brightening in its\n      // middle; the frame's shadow round its square edge\n      float gfWhich = floor(s2.w + 0.5);\n      vec3 gfLens = gfWhich < 0.5 ? vec3(0.09, 0.006, 0.004) : gfWhich < 1.5 ? vec3(0.1, 0.045, 0.003) :\n                    gfWhich < 2.5 ? vec3(0.008, 0.06, 0.012) : vec3(0.006, 0.02, 0.09);\n      vec2 gfSq = abs(gfP);\n      float gfEdge = max(gfSq.x, gfSq.y);\n      float gfEw = fwidth(gfEdge) + 0.002;\n      float gfBulb = 1.0 - smoothstep(0.0, 0.75, length(gfP));\n      vec3 gfL = gfLens * (0.7 + 0.6 * gfBulb);\n      gfL *= 1.0 - 0.6 * smoothstep(0.78 - gfEw, 0.95, gfEdge);\n      k.colour = gfL;\n      k.metal = 0.0;\n      k.rough = 0.25;\n      k.glow = vec3(0.0);\n    } else {\n    bool gfSmall = gfKind > 1.5;\n    float gfR = length(gfP);\n    float gfE = fwidth(gfR) * 0.75 + 0.002;\n    // the angle from straight up, degrees, clockwise; the sweep is centred on straight up\n    float gfA = degrees(atan(gfP.x, gfP.y));\n    float gfSw = gfSmall ? 90.0 : p_gfSweep;\n    float gfHalf = gfSw * 0.5;\n    float gfFrom = gfA + gfHalf;\n    float gfIn = step(-0.5, gfFrom) * step(gfFrom, gfSw + 0.5);\n    float gfInk = 0.0;\n    float gfRedInk = 0.0;\n    float gfNumInk = 0.0;\n    float gfNe = fwidth(gfP.x) + fwidth(gfP.y);\n    bool gfNum = p_gfNumerals > 0.5;\n    if (gfKind < 0.5) {\n      float gfStep = gfSw / p_gfTicks;\n      gfInk = gfIn * max(gfRing(gfFrom, gfStep, gfR, 0.8, 0.93, 0.012, gfE), gfRing(gfFrom, gfStep * 5.0, gfR, 0.68, 0.93, 0.024, gfE));\n      if (gfNum) {\n        float gfCount = floor(p_gfSpeedTop / p_gfSpeedStep + 0.5);\n        for (int i = 0; i <= 40; i++) {\n          if (float(i) > gfCount) break;\n          float v = float(i) * p_gfSpeedStep;\n          gfNumInk = max(gfNumInk, gfNumber(gfP, gfAt(gfSw * v / p_gfSpeedTop, gfSw, 0.52, vec2(0.0)), v, 0.11, gfNe));\n        }\n      }\n    } else if (gfKind < 1.5) {\n      // gfTachSteps steps of 500 rpm, long at each thousand; red from gfTachRed of the sweep, with a red arc inside\n      // the marks\n      float gfStep = gfSw / p_gfTachSteps;\n      float gfMarks = gfIn * max(gfRing(gfFrom, gfStep, gfR, 0.8, 0.93, 0.014, gfE), gfRing(gfFrom, gfStep * 2.0, gfR, 0.68, 0.93, 0.026, gfE));\n      float gfHot = step(gfSw * p_gfTachRed, gfFrom) * gfIn;\n      float gfArc = gfHot * smoothstep(0.62 - gfE, 0.62, gfR) * (1.0 - smoothstep(0.68, 0.68 + gfE, gfR));\n      gfInk = gfMarks * (1.0 - gfHot);\n      gfRedInk = max(gfMarks * gfHot, gfArc);\n      if (gfNum) {\n        float gfTop = p_gfTachSteps * 0.5;\n        for (int i = 0; i <= 12; i++) {\n          if (float(i) > gfTop) break;\n          gfNumInk = max(gfNumInk, gfNumber(gfP, gfAt(gfSw * float(i) / gfTop, gfSw, 0.48, vec2(0.0)), float(i), 0.15, gfNe));\n        }\n      }\n    } else {\n      // three long marks over the top arc, two short between; the low end's red\n      float gfMarks = gfIn * max(gfRing(gfFrom, gfSw / 4.0, gfR, 0.72, 0.92, 0.03, gfE), gfRing(gfFrom, gfSw / 2.0, gfR, 0.56, 0.92, 0.05, gfE));\n      float gfLow = step(gfFrom, gfSw * 0.12);\n      gfInk = gfMarks * (1.0 - gfLow);\n      gfRedInk = gfMarks * gfLow;\n      if (gfNum && gfKind > 3.5) {\n        // its three numerals inside the arc's ends and middle, about the needle's pivot low on the face\n        vec3 gfVals = gfKind < 4.5 ? vec3(0.0, 1.0, 2.0) : gfKind < 5.5 ? vec3(0.0, 5.0, 10.0) :\n                      gfKind < 6.5 ? vec3(40.0, 80.0, 120.0) : gfKind < 7.5 ? vec3(50.0, 100.0, 150.0) :\n                      vec3(0.0, -1.0, 1.0);\n        float gfSz = gfVals.z > 99.5 ? 0.17 : 0.2;\n        for (int i = 0; i < 3; i++) {\n          float v = gfVals[i];\n          if (v < -0.5) continue;\n          vec2 c = vec2(sin(radians(-48.0 + 48.0 * float(i))), cos(radians(-48.0 + 48.0 * float(i)))) * 0.52;\n          c.y -= 0.14;\n          gfNumInk = max(gfNumInk, gfNumber(gfP, c, v, gfSz, gfNe));\n        }\n      }\n    }\n    // the numerals finer than a pixel fade out\n    gfNumInk *= kfade(0.1 * gfRad);\n    gfInk = max(gfInk, gfNumInk);\n    // the needle from just behind the hub out to the marks, tapering; a small gauge's pivots low, its needle long\n    float gfAn = radians(-gfHalf + gfSw * gfReadAt);\n    vec2 gfDir = vec2(sin(gfAn), cos(gfAn));\n    vec2 gfQ = gfSmall ? gfP + vec2(0.0, 0.55) : gfP;\n    float gfLen = gfSmall ? 1.3 : 0.8;\n    float gfAlong = clamp(dot(gfQ, gfDir), -0.15, gfLen);\n    float gfOff = length(gfQ - gfDir * gfAlong);\n    float gfWide = 0.04 * (1.0 - 0.6 * max(gfAlong, 0.0) / gfLen);\n    float gfNeedle = 1.0 - smoothstep(gfWide, gfWide + gfE, gfOff);\n    gfNeedle *= step(length(gfP), 0.98);\n    float gfHub = 1.0 - smoothstep(0.1, 0.1 + gfE, length(gfQ));\n    gfHub *= step(length(gfP), 0.98);\n    vec3 gfC = mix(p_gfFace, p_gfMark, clamp(gfInk, 0.0, 1.0));\n    gfC = mix(gfC, p_gfRed, clamp(gfRedInk, 0.0, 1.0));\n    gfC = mix(gfC, p_gfNeedle, gfNeedle);\n    gfC = mix(gfC, vec3(0.02), gfHub);\n    // finer than a pixel, the dial is the grey its marks make; and the bezel's shadow at its rim\n    float gfF = kfade(0.1 * gfRad);\n    gfC = mix(mix(p_gfFace, p_gfMark, 0.1), gfC, gfF);\n    gfC *= 1.0 - 0.55 * smoothstep(0.9, 1.0, gfR);\n    k.colour = gfC;\n    k.metal = 0.0;\n    k.rough = 0.5;\n    k.glow = (p_gfMark * clamp(gfInk, 0.0, 1.0) + p_gfRed * clamp(gfRedInk, 0.0, 1.0) + p_gfNeedle * gfNeedle) * p_gfGlow * gfF * (1.0 - gfHub);\n    }\n\n}\n\nvoid look_22(inout Look k) {\n  p_ucColour = L22_ucColour;\n  p_ucRough = L22_ucRough;\n  p_ucGrime = L22_ucGrime;\n  p_ucGrimeColour = L22_ucGrimeColour;\n  p_ucDust = L22_ucDust;\n  p_ucDustColour = L22_ucDustColour;\n  p_ucChips = L22_ucChips;\n  p_ucRust = L22_ucRust;\n  p_ucOil = L22_ucOil;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float ucDown = smoothstep(0.0, -0.8, wn.y);\n    float ucUp = smoothstep(0.3, 0.95, wn.y);\n    float ucB = kfbm(uv * 4.0 + seed);\n    float ucG = clamp(p_ucGrime * (0.3 + 0.9 * ucDown) * smoothstep(0.3, 0.75, ucB + 0.25 * ucDown), 0.0, 1.0);\n    float ucD = clamp(p_ucDust * ucUp * smoothstep(0.35, 0.8, kfbm4(uv * 7.0 + seed + 4.0)), 0.0, 1.0);\n    // chips gather in patches (a slow field) and are each a small blot (a fast one), so they cluster on a part\n    float ucPatch = smoothstep(0.55, 0.8, kfbm4(uv * 1.5 + seed + 21.0));\n    float ucChipN = (kn(uv * 70.0 + seed + 9.0) + 0.15 * kn(uv * 300.0 + seed)) * kfade(0.02);\n    float ucChip = ucPatch * smoothstep(1.06 - 0.12 * p_ucChips, 1.1 - 0.12 * p_ucChips, ucChipN);\n    float ucO = p_ucOil * smoothstep(0.55, 0.85, kfbm4(uv * 2.0 + seed + 11.0));\n    k.colour = mix(p_ucColour, p_ucGrimeColour, ucG);\n    k.colour = mix(k.colour, p_ucDustColour, ucD);\n    k.colour = mix(k.colour, p_ucRust * (0.7 + 0.6 * kn(uv * 200.0 + seed)), ucChip);\n    k.colour = mix(k.colour, vec3(0.01, 0.008, 0.006), ucO);\n    k.rough = clamp(p_ucRough + 0.35 * ucG + 0.3 * ucD + 0.35 * ucChip - 0.4 * ucO, 0.05, 1.0);\n    k.metal = 0.0;\n    k.height = 0.00015 * ucG * ucB - 0.0001 * ucChip;\n\n}\n\nvoid look_23(inout Look k) {\n  p_plColour = L23_plColour;\n  p_plStipple = L23_plStipple;\n  p_plRelief = L23_plRelief;\n  p_plRough = L23_plRough;\n  p_plRoughVar = L23_plRoughVar;\n  p_plTone = L23_plTone;\n  p_plThrough = L23_plThrough;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float plS = kn(uv * p_plStipple + seed) * kfade(2.0 / p_plStipple);\n    float plS2 = kn(uv * p_plStipple * 0.37 + seed + 9.0) * kfade(5.0 / p_plStipple);\n    float plW = kfbm4(uv * 3.0 + seed);\n    k.colour = p_plColour * (1.0 + p_plTone * (plW - 0.5) * 2.0);\n    k.rough = clamp(p_plRough + p_plRoughVar * (plW - 0.5) * 2.0 + 0.05 * plS, 0.0, 1.0);\n    k.height = p_plRelief * (0.6 * plS + 0.4 * plS2);\n    if (p_plThrough > 0.0) {\n      float plFace = clamp(abs(dot(normalize(cameraPosition - wp), normalize(wn))), 0.0, 1.0);\n      k.glow = p_plThrough * k.colour * (0.45 + 0.55 * plFace) * (0.9 + 0.2 * plW);\n    }\n\n}\n\nvoid look_24(inout Look k) {\n  p_glTint = L24_glTint;\n  p_glTint2 = L24_glTint2;\n  p_glWaves = L24_glWaves;\n  p_glWaveDepth = L24_glWaveDepth;\n  p_glSeeds = L24_glSeeds;\n  p_glRough = L24_glRough;\n  p_glAlpha = L24_glAlpha;\n  p_glAlphaVar = L24_glAlphaVar;\n  p_glRibs = L24_glRibs;\n  p_glRibWide = L24_glRibWide;\n  p_glRibAlpha = L24_glRibAlpha;\n  p_glGlow = L24_glGlow;\n  p_glCrease = L24_glCrease;\n  p_glCreaseFreq = L24_glCreaseFreq;\n  p_glBands = L24_glBands;\n  p_glBandHigh = L24_glBandHigh;\n  vec2 uv = vLookUv;\n  float seed = vLookInfo.y * 7.13 + vLookInfo.z * 1.71;\n  vec3 wp = vLookWorld;\n  vec3 wn = normalize(vLookWN);\n\n    float wave = kfbm4(uv * p_glWaves + seed);\n    float seeds = smoothstep(0.08, 0.02, kcell(uv * 60.0 + seed)) * kfade(0.01);\n    // the twin wall's ribs, along u, one every 1 / glRibs metres across v; under a pixel, their mean cover\n    float glRib = 0.0;\n    if (p_glRibs > 0.0) {\n      float glRd = abs(fract(uv.y * p_glRibs) - 0.5) * 2.0;\n      float glRw = fwidth(uv.y * p_glRibs) * 2.0;\n      float glLine = 1.0 - smoothstep(p_glRibWide - glRw, p_glRibWide + glRw, 1.0 - glRd);\n      glRib = mix(p_glRibWide, glLine, kfade(1.5 / p_glRibs));\n    }\n    // the film's creases and wound bands, level round the load (the world's height, and the way along the face)\n    float glFold = 0.0, glBand = 0.0;\n    if (p_glCrease > 0.0 || p_glBands > 0.0) {\n      vec3 glSide = cross(vec3(0.0, 1.0, 0.0), wn);\n      float glAlong = dot(glSide, glSide) > 0.01 ? dot(wp, normalize(glSide)) : wp.x;\n      float glUp = wp.y + 0.03 * kn(vec2(glAlong * 2.0, 0.0) + seed);\n      float glF = kn(vec2(glAlong * 1.6, glUp * p_glCreaseFreq) + seed * 1.7);\n      float glF2 = kn(vec2(glAlong * 3.1, glUp * p_glCreaseFreq * 2.3) + seed + 5.0);\n      glFold = p_glCrease * mix(0.35, pow(1.0 - abs(glF * 2.0 - 1.0), 6.0) * 0.75 + pow(1.0 - abs(glF2 * 2.0 - 1.0), 8.0) * 0.4,\n                                kfade(1.0 / p_glCreaseFreq));\n      float glB = fract(glUp / p_glBandHigh + 0.15 * kn(vec2(glAlong * 0.8, 3.0) + seed));\n      glBand = p_glBands * smoothstep(0.55, 0.62, glB) * (0.8 + 0.4 * kn(vec2(glAlong * 4.0, glUp * 6.0) + seed));\n    }\n    k.colour = mix(p_glTint, p_glTint2, wave) + seeds * p_glSeeds + vec3(0.12 * glRib + 0.25 * glFold + 0.06 * glBand);\n    k.rough = p_glRough + p_glRough * wave;\n    k.metal = 0.0;\n    k.height = p_glWaveDepth * (wave - 0.5) + 0.0003 * glFold;\n    k.alpha = clamp(p_glAlpha + p_glAlphaVar * wave + p_glRibAlpha * glRib + 0.35 * glFold + 0.18 * glBand, 0.0, 1.0);\n    k.glow = p_glGlow * (0.9 + 0.2 * wave) * (1.0 + 0.4 * glRib);\n\n}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nLook lookRun(int id) {\n  Look k = lookStart();\n  switch (id) {\n    case 0: look_0(k); break;\n    case 1: look_1(k); break;\n    case 2: look_2(k); break;\n    case 3: look_3(k); break;\n    case 4: look_4(k); break;\n    case 5: look_5(k); break;\n    case 6: look_6(k); break;\n    case 7: look_7(k); break;\n    case 8: look_8(k); break;\n    case 9: look_9(k); break;\n    case 10: look_10(k); break;\n    case 11: look_11(k); break;\n    case 12: look_12(k); break;\n    case 13: look_13(k); break;\n    case 14: look_14(k); break;\n    case 15: look_15(k); break;\n    case 16: look_16(k); break;\n    case 17: look_17(k); break;\n    case 18: look_18(k); break;\n    case 19: look_19(k); break;\n    case 20: look_20(k); break;\n    case 21: look_21(k); break;\n    case 22: look_22(k); break;\n    case 23: look_23(k); break;\n    case 24: look_24(k); break;\n  }\n  if (lookDebug > 0.5) {\n    switch (id) {\n      case 0: k.colour = vec3(0.019382360956935723, 0.22696587351009836, 0.7912979403326302); break;\n      case 1: k.colour = vec3(0.02315336617811041, 0.013702083047289686, 0.033104766570885055); break;\n      case 2: k.colour = vec3(0.033104766570885055, 0.033104766570885055, 0.026241221894849898); break;\n      case 3: k.colour = vec3(0.7912979403326302, 0.8713671191987972, 1.0); break;\n      case 4: k.colour = vec3(0.7156935005064807, 0.8307698767746546, 1.0); break;\n      case 5: k.colour = vec3(0.43415363617474895, 0.006995410187265387, 0.006995410187265387); break;\n      case 6: k.colour = vec3(0.467783796112159, 0.4910208498478356, 0.5271151257058131); break;\n      case 7: k.colour = vec3(0.019382360956935723, 0.019382360956935723, 0.02315336617811041); break;\n      case 8: k.colour = vec3(0.027320891639074894, 0.027320891639074894, 0.03189603307301153); break;\n      case 9: k.colour = vec3(0.02315336617811041, 0.019382360956935723, 0.01599629336550963); break;\n      case 10: k.colour = vec3(0.011612245179743885, 0.011612245179743885, 0.014443843596092545); break;\n      case 11: k.colour = vec3(0.017641954488384078, 0.01599629336550963, 0.012983032342173012); break;\n      case 12: k.colour = vec3(0.10224173308810132, 0.042311410620809675, 0.017641954488384078); break;\n      case 13: k.colour = vec3(0.009134058702220787, 0.009134058702220787, 0.010329823029626936); break;\n      case 14: k.colour = vec3(0.012983032342173012, 0.012983032342173012, 0.012983032342173012); break;\n      case 15: k.colour = vec3(0.042311410620809675, 0.042311410620809675, 0.04817182422688942); break;\n      case 16: k.colour = vec3(0.011612245179743885, 0.011612245179743885, 0.012983032342173012); break;\n      case 17: k.colour = vec3(0.6866853124353135, 0.7156935005064807, 0.7454042095403874); break;\n      case 18: k.colour = vec3(0.10224173308810132, 0.0024282158683907, 0.001821161901293025); break;\n      case 19: k.colour = vec3(0.43415363617474895, 0.10224173308810132, 0.0024282158683907); break;\n      case 20: k.colour = vec3(0.6866853124353135, 0.6866853124353135, 0.6583748172794485); break;\n      case 21: k.colour = vec3(0.005181516702338386, 0.005181516702338386, 0.006048833022857054); break;\n      case 22: k.colour = vec3(0.25415209433082675, 0.25415209433082675, 0.238397573812271); break;\n      case 23: k.colour = vec3(0.6724431569576875, 0.6583748172794485, 0.5775804404296506); break;\n      case 24: k.colour = vec3(0.38132601143253014, 0.5520114015120001, 0.6038273388553378); break;\n    }\n  }\n  return k;\n}\nfloat lookShadow(int id, vec3 Lview) {\n  \n  return 1.0;\n}\n",
+   "features": {
+    "clearcoat": true,
+    "sheen": true,
+    "iridescence": false,
+    "dispersion": false,
+    "transmission": false
+   }
+  }
+ },
+ "uniforms": {
+  "L0_stColour": {
+   "type": "vec3",
+   "value": [
+    0.55,
+    0.56,
+    0.58
+   ]
+  },
+  "L0_stMetal": {
+   "type": "float",
+   "value": 0.5
+  },
+  "L0_stRough": {
+   "type": "float",
+   "value": 0.22
+  },
+  "L0_stOil": {
+   "type": "float",
+   "value": 0
+  },
+  "L0_stOilColour": {
+   "type": "vec3",
+   "value": [
+    0.022,
+    0.015,
+    0.009
+   ]
+  },
+  "L0_stOilBrown": {
+   "type": "vec3",
+   "value": [
+    0.06,
+    0.034,
+    0.015
+   ]
+  },
+  "L0_stOilSize": {
+   "type": "float",
+   "value": 4
+  },
+  "L0_stOilRough": {
+   "type": "float",
+   "value": 0.32
+  },
+  "L0_stFinPitch": {
+   "type": "float",
+   "value": 0.011
+  },
+  "L0_stFinShare": {
+   "type": "float",
+   "value": 0.3
+  },
+  "L0_stFinDepth": {
+   "type": "float",
+   "value": 0.0045
+  },
+  "L1_plColour": {
+   "type": "vec3",
+   "value": [
+    0.02,
+    0.02,
+    0.022
+   ]
+  },
+  "L1_plStipple": {
+   "type": "float",
+   "value": 1400
+  },
+  "L1_plRelief": {
+   "type": "float",
+   "value": 0.00004
+  },
+  "L1_plRough": {
+   "type": "float",
+   "value": 0.58
+  },
+  "L1_plRoughVar": {
+   "type": "float",
+   "value": 0.08
+  },
+  "L1_plTone": {
+   "type": "float",
+   "value": 0.04
+  },
+  "L1_plThrough": {
+   "type": "float",
+   "value": 0
+  },
+  "L2_rbColour": {
+   "type": "vec3",
+   "value": [
+    0.018,
+    0.018,
+    0.018
+   ]
+  },
+  "L2_rbBloom": {
+   "type": "vec3",
+   "value": [
+    0.12,
+    0.12,
+    0.115
+   ]
+  },
+  "L2_rbBloomAmount": {
+   "type": "float",
+   "value": 0.12
+  },
+  "L2_rbGrit": {
+   "type": "float",
+   "value": 2000
+  },
+  "L2_rbRelief": {
+   "type": "float",
+   "value": 0.00006
+  },
+  "L2_rbRough": {
+   "type": "float",
+   "value": 0.78
+  },
+  "L2_rbSheen": {
+   "type": "vec3",
+   "value": [
+    0.06,
+    0.06,
+    0.06
+   ]
+  },
+  "L2_rbSheenRough": {
+   "type": "float",
+   "value": 0.6
+  },
+  "L3_chColour": {
+   "type": "vec3",
+   "value": [
+    0.45,
+    0.46,
+    0.47
+   ]
+  },
+  "L3_chRough": {
+   "type": "float",
+   "value": 0.05
+  },
+  "L3_chSwirl": {
+   "type": "float",
+   "value": 0.2
+  },
+  "L4_chColour": {
+   "type": "vec3",
+   "value": [
+    0.9,
+    0.91,
+    0.92
+   ]
+  },
+  "L4_chRough": {
+   "type": "float",
+   "value": 0.01
+  },
+  "L4_chSwirl": {
+   "type": "float",
+   "value": 0
+  },
+  "L5_apColour": {
+   "type": "vec3",
+   "value": [
+    0.42,
+    0.018,
+    0.012
+   ]
+  },
+  "L5_apFlake": {
+   "type": "float",
+   "value": 0
+  },
+  "L5_apFlakeColour": {
+   "type": "vec3",
+   "value": [
+    0.9,
+    0.85,
+    0.8
+   ]
+  },
+  "L5_apFlakeSize": {
+   "type": "float",
+   "value": 0.00035
+  },
+  "L5_apRough": {
+   "type": "float",
+   "value": 0.32
+  },
+  "L5_apCoat": {
+   "type": "float",
+   "value": 1
+  },
+  "L5_apCoatRough": {
+   "type": "float",
+   "value": 0.06
+  },
+  "L5_apPeel": {
+   "type": "float",
+   "value": 180
+  },
+  "L5_apPeelDepth": {
+   "type": "float",
+   "value": 0.00003
+  },
+  "L5_apDust": {
+   "type": "float",
+   "value": 0.35
+  },
+  "L5_apDustColour": {
+   "type": "vec3",
+   "value": [
+    0.32,
+    0.27,
+    0.2
+   ]
+  },
+  "L5_apDustHeight": {
+   "type": "float",
+   "value": 0.55
+  },
+  "L6_apColour": {
+   "type": "vec3",
+   "value": [
+    0.45,
+    0.46,
+    0.47
+   ]
+  },
+  "L6_apFlake": {
+   "type": "float",
+   "value": 0.7
+  },
+  "L6_apFlakeColour": {
+   "type": "vec3",
+   "value": [
+    0.9,
+    0.85,
+    0.8
+   ]
+  },
+  "L6_apFlakeSize": {
+   "type": "float",
+   "value": 0.00035
+  },
+  "L6_apRough": {
+   "type": "float",
+   "value": 0.32
+  },
+  "L6_apCoat": {
+   "type": "float",
+   "value": 1
+  },
+  "L6_apCoatRough": {
+   "type": "float",
+   "value": 0.1
+  },
+  "L6_apPeel": {
+   "type": "float",
+   "value": 180
+  },
+  "L6_apPeelDepth": {
+   "type": "float",
+   "value": 0.00003
+  },
+  "L6_apDust": {
+   "type": "float",
+   "value": 0.5
+  },
+  "L6_apDustColour": {
+   "type": "vec3",
+   "value": [
+    0.32,
+    0.27,
+    0.2
+   ]
+  },
+  "L6_apDustHeight": {
+   "type": "float",
+   "value": 0.7
+  },
+  "L7_tpColour": {
+   "type": "vec3",
+   "value": [
+    0.025,
+    0.025,
+    0.027
+   ]
+  },
+  "L7_tpFaded": {
+   "type": "vec3",
+   "value": [
+    0.11,
+    0.11,
+    0.115
+   ]
+  },
+  "L7_tpFade": {
+   "type": "float",
+   "value": 0.35
+  },
+  "L7_tpGrain": {
+   "type": "float",
+   "value": 450
+  },
+  "L7_tpGrainDepth": {
+   "type": "float",
+   "value": 0.00012
+  },
+  "L7_tpRough": {
+   "type": "float",
+   "value": 0.72
+  },
+  "L7_tpDust": {
+   "type": "float",
+   "value": 0.3
+  },
+  "L7_tpDustColour": {
+   "type": "vec3",
+   "value": [
+    0.3,
+    0.26,
+    0.2
+   ]
+  },
+  "L7_tpDustHeight": {
+   "type": "float",
+   "value": 0.6
+  },
+  "L8_tpColour": {
+   "type": "vec3",
+   "value": [
+    0.03,
+    0.03,
+    0.032
+   ]
+  },
+  "L8_tpFaded": {
+   "type": "vec3",
+   "value": [
+    0.06,
+    0.06,
+    0.062
+   ]
+  },
+  "L8_tpFade": {
+   "type": "float",
+   "value": 0.15
+  },
+  "L8_tpGrain": {
+   "type": "float",
+   "value": 700
+  },
+  "L8_tpGrainDepth": {
+   "type": "float",
+   "value": 0.00006
+  },
+  "L8_tpRough": {
+   "type": "float",
+   "value": 0.72
+  },
+  "L8_tpDust": {
+   "type": "float",
+   "value": 0
+  },
+  "L8_tpDustColour": {
+   "type": "vec3",
+   "value": [
+    0.3,
+    0.26,
+    0.2
+   ]
+  },
+  "L8_tpDustHeight": {
+   "type": "float",
+   "value": 0.6
+  },
+  "L9_trColour": {
+   "type": "vec3",
+   "value": [
+    0.022,
+    0.02,
+    0.019
+   ]
+  },
+  "L9_trScrub": {
+   "type": "vec3",
+   "value": [
+    0.05,
+    0.047,
+    0.043
+   ]
+  },
+  "L9_trDust": {
+   "type": "vec3",
+   "value": [
+    0.2,
+    0.17,
+    0.13
+   ]
+  },
+  "L9_trDustAmount": {
+   "type": "float",
+   "value": 0.25
+  },
+  "L9_trGrit": {
+   "type": "float",
+   "value": 1800
+  },
+  "L9_trRelief": {
+   "type": "float",
+   "value": 0.00006
+  },
+  "L9_trRough": {
+   "type": "float",
+   "value": 0.86
+  },
+  "L9_trSheen": {
+   "type": "float",
+   "value": 0.05
+  },
+  "L10_ucColour": {
+   "type": "vec3",
+   "value": [
+    0.018,
+    0.018,
+    0.02
+   ]
+  },
+  "L10_ucRough": {
+   "type": "float",
+   "value": 0.55
+  },
+  "L10_ucGrime": {
+   "type": "float",
+   "value": 0.5
+  },
+  "L10_ucGrimeColour": {
+   "type": "vec3",
+   "value": [
+    0.13,
+    0.11,
+    0.085
+   ]
+  },
+  "L10_ucDust": {
+   "type": "float",
+   "value": 0.3
+  },
+  "L10_ucDustColour": {
+   "type": "vec3",
+   "value": [
+    0.3,
+    0.26,
+    0.2
+   ]
+  },
+  "L10_ucChips": {
+   "type": "float",
+   "value": 0.25
+  },
+  "L10_ucRust": {
+   "type": "vec3",
+   "value": [
+    0.2,
+    0.07,
+    0.025
+   ]
+  },
+  "L10_ucOil": {
+   "type": "float",
+   "value": 0.2
+  },
+  "L11_ucColour": {
+   "type": "vec3",
+   "value": [
+    0.018,
+    0.018,
+    0.02
+   ]
+  },
+  "L11_ucRough": {
+   "type": "float",
+   "value": 0.55
+  },
+  "L11_ucGrime": {
+   "type": "float",
+   "value": 0.7
+  },
+  "L11_ucGrimeColour": {
+   "type": "vec3",
+   "value": [
+    0.13,
+    0.11,
+    0.085
+   ]
+  },
+  "L11_ucDust": {
+   "type": "float",
+   "value": 0.3
+  },
+  "L11_ucDustColour": {
+   "type": "vec3",
+   "value": [
+    0.3,
+    0.26,
+    0.2
+   ]
+  },
+  "L11_ucChips": {
+   "type": "float",
+   "value": 0.3
+  },
+  "L11_ucRust": {
+   "type": "vec3",
+   "value": [
+    0.2,
+    0.07,
+    0.025
+   ]
+  },
+  "L11_ucOil": {
+   "type": "float",
+   "value": 0.4
+  },
+  "L12_ucColour": {
+   "type": "vec3",
+   "value": [
+    0.09,
+    0.05,
+    0.03
+   ]
+  },
+  "L12_ucRough": {
+   "type": "float",
+   "value": 0.55
+  },
+  "L12_ucGrime": {
+   "type": "float",
+   "value": 0.4
+  },
+  "L12_ucGrimeColour": {
+   "type": "vec3",
+   "value": [
+    0.13,
+    0.11,
+    0.085
+   ]
+  },
+  "L12_ucDust": {
+   "type": "float",
+   "value": 0.3
+  },
+  "L12_ucDustColour": {
+   "type": "vec3",
+   "value": [
+    0.3,
+    0.26,
+    0.2
+   ]
+  },
+  "L12_ucChips": {
+   "type": "float",
+   "value": 0.8
+  },
+  "L12_ucRust": {
+   "type": "vec3",
+   "value": [
+    0.25,
+    0.09,
+    0.03
+   ]
+  },
+  "L12_ucOil": {
+   "type": "float",
+   "value": 0
+  },
+  "L13_ucColour": {
+   "type": "vec3",
+   "value": [
+    0.018,
+    0.018,
+    0.02
+   ]
+  },
+  "L13_ucRough": {
+   "type": "float",
+   "value": 0.4
+  },
+  "L13_ucGrime": {
+   "type": "float",
+   "value": 0.35
+  },
+  "L13_ucGrimeColour": {
+   "type": "vec3",
+   "value": [
+    0.13,
+    0.11,
+    0.085
+   ]
+  },
+  "L13_ucDust": {
+   "type": "float",
+   "value": 0.3
+  },
+  "L13_ucDustColour": {
+   "type": "vec3",
+   "value": [
+    0.3,
+    0.26,
+    0.2
+   ]
+  },
+  "L13_ucChips": {
+   "type": "float",
+   "value": 0.15
+  },
+  "L13_ucRust": {
+   "type": "vec3",
+   "value": [
+    0.2,
+    0.07,
+    0.025
+   ]
+  },
+  "L13_ucOil": {
+   "type": "float",
+   "value": 0
+  },
+  "L14_rmColour": {
+   "type": "vec3",
+   "value": [
+    0.02,
+    0.02,
+    0.02
+   ]
+  },
+  "L14_rmWorn": {
+   "type": "vec3",
+   "value": [
+    0.045,
+    0.043,
+    0.04
+   ]
+  },
+  "L14_rmDirt": {
+   "type": "vec3",
+   "value": [
+    0.16,
+    0.13,
+    0.09
+   ]
+  },
+  "L14_rmDirtAmount": {
+   "type": "float",
+   "value": 0.35
+  },
+  "L14_rmRibs": {
+   "type": "float",
+   "value": 120
+  },
+  "L14_rmDepth": {
+   "type": "float",
+   "value": 0.0015
+  },
+  "L14_rmRough": {
+   "type": "float",
+   "value": 0.8
+  },
+  "L15_upKind": {
+   "type": "float",
+   "value": 1
+  },
+  "L15_upColour": {
+   "type": "vec3",
+   "value": [
+    0.085,
+    0.086,
+    0.092
+   ]
+  },
+  "L15_upColour2": {
+   "type": "vec3",
+   "value": [
+    0.3,
+    0.3,
+    0.31
+   ]
+  },
+  "L15_upThread": {
+   "type": "float",
+   "value": 0.0009
+  },
+  "L15_upFleck": {
+   "type": "float",
+   "value": 0.45
+  },
+  "L15_upPrint": {
+   "type": "float",
+   "value": 0
+  },
+  "L15_upMotif": {
+   "type": "float",
+   "value": 0.05
+  },
+  "L15_upRelief": {
+   "type": "float",
+   "value": 0.0003
+  },
+  "L15_upSheen": {
+   "type": "float",
+   "value": 0.35
+  },
+  "L15_upRough": {
+   "type": "float",
+   "value": 0.9
+  },
+  "L16_upKind": {
+   "type": "float",
+   "value": 0
+  },
+  "L16_upColour": {
+   "type": "vec3",
+   "value": [
+    0.028,
+    0.028,
+    0.03
+   ]
+  },
+  "L16_upColour2": {
+   "type": "vec3",
+   "value": [
+    0.3,
+    0.3,
+    0.31
+   ]
+  },
+  "L16_upThread": {
+   "type": "float",
+   "value": 0.0003
+  },
+  "L16_upFleck": {
+   "type": "float",
+   "value": 0
+  },
+  "L16_upPrint": {
+   "type": "float",
+   "value": 0
+  },
+  "L16_upMotif": {
+   "type": "float",
+   "value": 0.05
+  },
+  "L16_upRelief": {
+   "type": "float",
+   "value": 0.00008
+  },
+  "L16_upSheen": {
+   "type": "float",
+   "value": 0.1
+  },
+  "L16_upRough": {
+   "type": "float",
+   "value": 0.45
+  },
+  "L17_sbColour": {
+   "type": "vec3",
+   "value": [
+    0.75,
+    0.78,
+    0.8
+   ]
+  },
+  "L17_sbCells": {
+   "type": "float",
+   "value": 90
+  },
+  "L17_sbDepth": {
+   "type": "float",
+   "value": 0.0006
+  },
+  "L17_sbGlow": {
+   "type": "float",
+   "value": 0
+  },
+  "L17_sbGlowColour": {
+   "type": "vec3",
+   "value": [
+    1,
+    0.86,
+    0.62
+   ]
+  },
+  "L18_lnColour": {
+   "type": "vec3",
+   "value": [
+    0.16,
+    0.006,
+    0.004
+   ]
+  },
+  "L18_lnGlow": {
+   "type": "vec3",
+   "value": [
+    0.015,
+    0,
+    0
+   ]
+  },
+  "L18_lnSize": {
+   "type": "float",
+   "value": 0.11
+  },
+  "L18_lnRings": {
+   "type": "float",
+   "value": 9
+  },
+  "L18_lnRingAmount": {
+   "type": "float",
+   "value": 0.3
+  },
+  "L18_lnFall": {
+   "type": "float",
+   "value": 0.55
+  },
+  "L18_lnRelief": {
+   "type": "float",
+   "value": 0.0004
+  },
+  "L19_lnColour": {
+   "type": "vec3",
+   "value": [
+    0.42,
+    0.14,
+    0.005
+   ]
+  },
+  "L19_lnGlow": {
+   "type": "vec3",
+   "value": [
+    0.03,
+    0.01,
+    0
+   ]
+  },
+  "L19_lnSize": {
+   "type": "float",
+   "value": 0.11
+  },
+  "L19_lnRings": {
+   "type": "float",
+   "value": 9
+  },
+  "L19_lnRingAmount": {
+   "type": "float",
+   "value": 0.3
+  },
+  "L19_lnFall": {
+   "type": "float",
+   "value": 0.55
+  },
+  "L19_lnRelief": {
+   "type": "float",
+   "value": 0.0004
+  },
+  "L20_lnColour": {
+   "type": "vec3",
+   "value": [
+    0.5,
+    0.5,
+    0.48
+   ]
+  },
+  "L20_lnGlow": {
+   "type": "vec3",
+   "value": [
+    0,
+    0,
+    0
+   ]
+  },
+  "L20_lnSize": {
+   "type": "float",
+   "value": 0.11
+  },
+  "L20_lnRings": {
+   "type": "float",
+   "value": 9
+  },
+  "L20_lnRingAmount": {
+   "type": "float",
+   "value": 0.35
+  },
+  "L20_lnFall": {
+   "type": "float",
+   "value": 0.55
+  },
+  "L20_lnRelief": {
+   "type": "float",
+   "value": 0.0004
+  },
+  "L21_gfFace": {
+   "type": "vec3",
+   "value": [
+    0.012,
+    0.012,
+    0.014
+   ]
+  },
+  "L21_gfMark": {
+   "type": "vec3",
+   "value": [
+    0.85,
+    0.85,
+    0.82
+   ]
+  },
+  "L21_gfRed": {
+   "type": "vec3",
+   "value": [
+    0.75,
+    0.05,
+    0.03
+   ]
+  },
+  "L21_gfRadius": {
+   "type": "float",
+   "value": 0.04
+  },
+  "L21_gfTicks": {
+   "type": "float",
+   "value": 40
+  },
+  "L21_gfSweep": {
+   "type": "float",
+   "value": 260
+  },
+  "L21_gfRead": {
+   "type": "float",
+   "value": 0.3
+  },
+  "L21_gfNeedle": {
+   "type": "vec3",
+   "value": [
+    0.95,
+    0.3,
+    0.05
+   ]
+  },
+  "L21_gfGlow": {
+   "type": "float",
+   "value": 0.6
+  },
+  "L21_gfTachSteps": {
+   "type": "float",
+   "value": 14
+  },
+  "L21_gfTachRed": {
+   "type": "float",
+   "value": 0.78
+  },
+  "L21_gfNumerals": {
+   "type": "float",
+   "value": 0
+  },
+  "L21_gfSpeedTop": {
+   "type": "float",
+   "value": 240
+  },
+  "L21_gfSpeedStep": {
+   "type": "float",
+   "value": 40
+  },
+  "L22_ucColour": {
+   "type": "vec3",
+   "value": [
+    0.2,
+    0.2,
+    0.19
+   ]
+  },
+  "L22_ucRough": {
+   "type": "float",
+   "value": 0.72
+  },
+  "L22_ucGrime": {
+   "type": "float",
+   "value": 0.45
+  },
+  "L22_ucGrimeColour": {
+   "type": "vec3",
+   "value": [
+    0.13,
+    0.11,
+    0.085
+   ]
+  },
+  "L22_ucDust": {
+   "type": "float",
+   "value": 0.35
+  },
+  "L22_ucDustColour": {
+   "type": "vec3",
+   "value": [
+    0.3,
+    0.26,
+    0.2
+   ]
+  },
+  "L22_ucChips": {
+   "type": "float",
+   "value": 0
+  },
+  "L22_ucRust": {
+   "type": "vec3",
+   "value": [
+    0.2,
+    0.07,
+    0.025
+   ]
+  },
+  "L22_ucOil": {
+   "type": "float",
+   "value": 0.3
+  },
+  "L23_plColour": {
+   "type": "vec3",
+   "value": [
+    0.62,
+    0.61,
+    0.55
+   ]
+  },
+  "L23_plStipple": {
+   "type": "float",
+   "value": 1400
+  },
+  "L23_plRelief": {
+   "type": "float",
+   "value": 0.00004
+  },
+  "L23_plRough": {
+   "type": "float",
+   "value": 0.45
+  },
+  "L23_plRoughVar": {
+   "type": "float",
+   "value": 0.08
+  },
+  "L23_plTone": {
+   "type": "float",
+   "value": 0.08
+  },
+  "L23_plThrough": {
+   "type": "float",
+   "value": 0.45
+  },
+  "L24_glTint": {
+   "type": "vec3",
+   "value": [
+    0.62,
+    0.72,
+    0.7
+   ]
+  },
+  "L24_glTint2": {
+   "type": "vec3",
+   "value": [
+    0.58,
+    0.66,
+    0.55
+   ]
+  },
+  "L24_glWaves": {
+   "type": "float",
+   "value": 2
+  },
+  "L24_glWaveDepth": {
+   "type": "float",
+   "value": 0.00005
+  },
+  "L24_glSeeds": {
+   "type": "float",
+   "value": 0
+  },
+  "L24_glRough": {
+   "type": "float",
+   "value": 0.02
+  },
+  "L24_glAlpha": {
+   "type": "float",
+   "value": 0.22
+  },
+  "L24_glAlphaVar": {
+   "type": "float",
+   "value": 0
+  },
+  "L24_glRibs": {
+   "type": "float",
+   "value": 0
+  },
+  "L24_glRibWide": {
+   "type": "float",
+   "value": 0.1
+  },
+  "L24_glRibAlpha": {
+   "type": "float",
+   "value": 0.25
+  },
+  "L24_glGlow": {
+   "type": "vec3",
+   "value": [
+    0,
+    0,
+    0
+   ]
+  },
+  "L24_glCrease": {
+   "type": "float",
+   "value": 0
+  },
+  "L24_glCreaseFreq": {
+   "type": "float",
+   "value": 28
+  },
+  "L24_glBands": {
+   "type": "float",
+   "value": 0
+  },
+  "L24_glBandHigh": {
+   "type": "float",
+   "value": 0.25
+  }
+ },
+ "needs": [],
+ "pictures": []
+}

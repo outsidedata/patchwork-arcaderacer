@@ -183,6 +183,8 @@ let gltf: Awaited<ReturnType<typeof glbOf>>['gltf']
 let bytes: Uint8Array
 beforeAll(async () => {
   ;({ gltf, bytes } = await glbOf(body(), Object.entries(KEYS).map(([name, [dur, keys]]) => clip(name, dur, keys))))
+  // Written once: a write refills every copy read from it, and a page's poses are kept per copy.
+  written('test/anim-plugin/paladin.glb', bytes)
 })
 
 // ---------------------------------------------------------------- the page
@@ -206,7 +208,6 @@ let files = 0
 function page(o: { rig?: Rig; numbers?: Numbers; rows?: Record<string, unknown>[]; landed?: boolean; waiting?: string[]; plugins?: string[] } = {}) {
   const url = `test/anim-plugin/${++files}.json`
   written(url, JSON.stringify(o.rig ?? RIG))
-  written('test/anim-plugin/paladin.glb', bytes)
   const scene = {
     plugins: o.plugins,
     world: { anim: structuredClone(o.numbers ?? ANIM), loader: { assets: { rig: { type: 'json', url, preload: true }, paladin: { type: 'model', url: 'paladin.glb' }, bytes: { type: 'binary', url: 'test/anim-plugin/paladin.glb', preload: true } } } },
@@ -443,6 +444,82 @@ test('the server poses every bone off the glb where this half draws it: a crossf
       expect(at.distanceTo(drawn), `${what}: ${name}`).toBeLessThan(1e-6)
     }
   }
+})
+
+// Every joint of two poses at the same matrix.
+const samePose = (a: Map<string, THREE.Matrix4>, b: Map<string, THREE.Matrix4>, what: string) => {
+  expect([...a.keys()], what).toEqual([...b.keys()])
+  for (const [name, m] of a) m.elements.forEach((x, i) => expect(x, `${what}: ${name}[${i}]`).toBeCloseTo(b.get(name)!.elements[i], 9))
+}
+// What a row of `data` is posed as on a page of its own, posed from nothing before.
+const fresh = (data: Record<string, unknown>, o: { rig?: Rig; numbers?: Numbers } = {}) => {
+  const p = page({ ...o, rows: [data] })
+  return posed(p.plugins.wire, p.row())
+}
+
+test('a row is posed once while nothing it is posed from changes, and posed again when any of its parts does', () => {
+  const data = { clip: 'idle', clipT: 0.5, blend: 0.6, from: 'walk', fromT: 0.2, upper: 'strike', upperT: 0.3, upperW: 0.4, was: 'wave', wasT: 0.7, wasW: 0.3 }
+  const p = page({ rows: [data] })
+  p.frame()
+  const first = posed(p.plugins.wire, p.row())
+  expect(posed(p.plugins.wire, p.row())).toBe(first)
+  const changes: [string, Record<string, unknown>][] = [
+    ['the playhead', { clipT: 0.6 }],
+    ['the blend', { blend: 0.7 }],
+    ['the clip faded from', { from: 'dash' }],
+    ['its playhead', { fromT: 0.4 }],
+    ['the upper gesture', { upper: 'wave' }],
+    ['its weight', { upperW: 0.2 }],
+    ['the gesture before it', { was: 'strike' }],
+    ['its playhead', { wasT: 0.1 }],
+    ['the clip', { clip: 'strafe', clipT: 0.3 }],
+  ]
+  let last = first
+  for (const [what, change] of changes) {
+    Object.assign(p.row().data, change)
+    const now = posed(p.plugins.wire, p.row())
+    expect(now, what).not.toBe(last)
+    samePose(now, fresh({ ...p.row().data }), what)
+    expect(posed(p.plugins.wire, p.row()), `${what}, asked again`).toBe(now)
+    last = now
+  }
+})
+
+test('a row standing still is posed again when its rig file is rewritten, world.anim\'s moves or turns change, or the aim\'s shares are edited', () => {
+  const data = { clip: 'turn', clipT: 0.6, upper: 'strike', upperT: 0.3, upperW: 0.5, look: { pitch: 0.3 } }
+  const p = page({ numbers: AIMED, rows: [data] })
+  p.frame()
+  const first = posed(p.plugins.wire, p.row())
+  // The mask moved down to the left arm: the spine is no longer the gesture's.
+  const masked: Rig = { ...RIG, mask: 'LeftArm' }
+  written(p.url, JSON.stringify(masked))
+  const remasked = posed(p.plugins.wire, p.row())
+  expect(remasked).not.toBe(first)
+  samePose(remasked, fresh(data, { rig: masked, numbers: AIMED }), 'a new mask')
+  // The turn's table row turned the other way.
+  const turned: Rig = { ...masked, table: { ...masked.table, turn: measure(1, u => [0.2 * u, 0, -180 * u]) } }
+  written(p.url, JSON.stringify(turned))
+  const retabled = posed(p.plugins.wire, p.row())
+  expect(retabled).not.toBe(remasked)
+  samePose(retabled, fresh(data, { rig: turned, numbers: AIMED }), 'a new table')
+  // `turns` above the turn's 180 degrees: it keeps its yaw no more.
+  const world = p.plugins.wire.scene.world.anim as Numbers
+  world.turns = 200
+  const unturned = posed(p.plugins.wire, p.row())
+  expect(unturned).not.toBe(retabled)
+  samePose(unturned, fresh(data, { rig: turned, numbers: { ...AIMED, turns: 200 } }), 'new turns')
+  // The aim's shares edited in place, as a dev page's panel edits a scene.
+  world.kinds.hero.aim!.bones.Spine = 1
+  const reaimed = posed(p.plugins.wire, p.row())
+  expect(reaimed).not.toBe(unturned)
+  const shares: Numbers = { ...AIMED, turns: 200, kinds: { hero: { ...AIMED.kinds.hero, aim: { bones: { Spine: 1, Spine1: 0.5 } } } } }
+  samePose(reaimed, fresh(data, { rig: turned, numbers: shares }), 'new shares')
+  // A new pitch, then a pitch that is no number, which turns no joint.
+  ;(p.row().data.look as { pitch: unknown }).pitch = -0.2
+  samePose(posed(p.plugins.wire, p.row()), fresh({ ...data, look: { pitch: -0.2 } }, { rig: turned, numbers: shares }), 'a new pitch')
+  ;(p.row().data.look as { pitch: unknown }).pitch = 'up'
+  samePose(posed(p.plugins.wire, p.row()), fresh({ ...data, look: {} }, { rig: turned, numbers: shares }), 'a pitch that is no number')
+  expect(posed(p.plugins.wire, p.row()), 'asked again').toBe(posed(p.plugins.wire, p.row()))
 })
 
 test('a mirrored clip swaps its Left and Right tracks, negates x positions and the quaternions\' y and z', () => {
@@ -787,7 +864,7 @@ test('props go with their row and on close, are made again when the kind\'s prop
   const p = page({ numbers: ARMED, rows: [{}, {}] })
   p.frame()
   const [a, b] = [p.me.props(2), p.me.props(3)]
-  // Written in place, as the editor writes a scene: the gun moves and is made again.
+  // Written in place, as a dev page's panel writes a scene: the gun moves and is made again.
   p.plugins.wire.scene.world.anim.kinds.hero.props[0].at = [0, 0, 0.3]
   p.frame()
   const moved = p.me.props(2)[0]
@@ -805,6 +882,27 @@ test('props go with their row and on close, are made again when the kind\'s prop
   expect(p.me.props(3)).toEqual([])
   const tail: Numbers = { ...ANIM, kinds: { hero: { ...ANIM.kinds.hero, props: [{ model: 'gun', bone: 'Tail', at: [0, 0, 0], turn: [0, 0, 0] }] } } }
   expect(() => page({ numbers: tail }).frame()).toThrow('anim: the model paladin has no bone ending Tail')
+})
+
+test('props are kept while the kind\'s props stay the same, a fresh copy of them included, and made again when a number deep in them is written in place', () => {
+  const p = page({ numbers: ARMED, rows: [{}] })
+  p.frame()
+  const [gun, scabbard] = p.me.props(2)
+  p.frame()
+  expect(p.me.props(2).map((o, i) => o === [gun, scabbard][i])).toEqual([true, true])
+  // One number of one prop's offset written in place, in the list they were hung by, as a dev page's panel
+  // writes a scene.
+  const hero = p.plugins.wire.scene.world.anim.kinds.hero
+  hero.props[0].at[2] = 0.3
+  p.frame()
+  const [moved, again] = p.me.props(2)
+  expect([moved === gun, again === scabbard, gun.parent === null]).toEqual([false, false, true])
+  hangs(moved, bone(p.me.model(2)!, 'RightHand'), [GUN_AT[0], GUN_AT[1], 0.3], GUN_TURN)
+  p.frame()
+  expect(p.me.props(2).map((o, i) => o === [moved, again][i])).toEqual([true, true])
+  hero.props = structuredClone(hero.props)
+  p.frame()
+  expect(p.me.props(2).map((o, i) => o === [moved, again][i])).toEqual([true, true])
 })
 
 test('anim must come before render3d in the scene\'s plugins, or render3d would draw the props a frame late', () => {

@@ -62,6 +62,9 @@ a rewritten map redraws the whole.
 - **nav**: pathfinds over `blocked`.
 - **mapgen**: writes Tiled maps tilemap draws and collides.
 - **light2d** and **sprite2d**: light and draw what stands on the map.
+- **particle2d**: `tilemap.particle2d.ts` (`world.particle2d.mods: { solids: ['tilemap'] }`) hands over
+  the map's walls, with the row's edits in them, as the solids a particle with a `bounce` bounces off,
+  a one-way tile met from above alone.
 - **grid** is the counterpart for maps whose every cell changes.
 
 ## Keywords

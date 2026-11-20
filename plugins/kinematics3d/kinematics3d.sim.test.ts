@@ -30,7 +30,7 @@ const K = {
   triangles: { radius: 0.3, height: 1.8, step: 0.45, maxSlope: 0.9, slopeBand: 0.2, slide: 4, wade: 0.8, span: 0.3, probe: 0.5 },
   move: { accel: 12, turnRate: 12, still: 0.05 },
   fall: { gravity: 20, airAccel: 2 },
-  jump: { jumpH: 1 },
+  jump: { jumpH: 1, jumpVelocityBoostMagnitude: 1 },
 }
 const BLOCK = { pos: [0, 0, 0], size: [2, 1, 2] }
 const STAIR = { pos: [0, 0, 6], size: [2, 0.3, 2] }

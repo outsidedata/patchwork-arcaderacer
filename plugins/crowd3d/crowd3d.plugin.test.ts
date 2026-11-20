@@ -9,9 +9,15 @@
 // its line), a clip going on across a new line and a new clip starting afresh, the bodies'
 // runs, a full pool, a row of no body or no end to its line, a body of other bones, the order it is listed in, an item on a place of the
 // body against the same item as a child of the bone in three, its copies and what each is put
-// through, a row's `holding` that names what no item or place has, and `close`.
-import { expect, test } from 'vitest'
+// through, a row's `holding` changed in place drawn at once and the same one drawn once, a row's
+// `holding` that names what no item or place has, and `close`.
+import { expect, onTestFinished, test } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import * as THREE from 'three'
+import { prepare } from '#addons/scenemanager/scenemanager.addon.ts'
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js'
 import type { Row, Scene } from '#engine/engine.ts'
 import { render3d } from '#plugins/render3d/render3d.plugin.ts'
@@ -576,6 +582,33 @@ test('an item is one mesh a group, its vertices where they stand in its glb, dra
   expect(cup.geometry.instanceCount).toBe(3)
 })
 
+test('a row\'s holding changed in place is drawn at once; the same holding, or a fresh copy of it, writes nothing', async () => {
+  const holding: Record<string, string> = { leftHand: 'cup' }
+  const { me, plugins, r3 } = await page({ rows: [person(1, { holding })], world: { items: { cup: CUP } } })
+  const mesh = r3.scene.children.find(o => o.name.startsWith('crowd3d item cup')) as THREE.Mesh
+  const shader = { uniforms: {} as Record<string, THREE.IUniform>, vertexShader: '#include <common>\n#include <beginnormal_vertex>\n#include <begin_vertex>\n#include <project_vertex>', fragmentShader: '#include <common>' }
+  ;(mesh.material as THREE.Material).onBeforeCompile(shader as any, {} as THREE.WebGLRenderer)
+  const texture = shader.uniforms.crowdHeld.value as THREE.DataTexture
+  expect(me.items()).toEqual({ cup: { copies: 1, groups: 1 } })
+  const version = texture.version
+  // The same object again, and a fresh copy of it on a fresh row: the held texture is not written.
+  me.tick(plugins)
+  plugins.wire.rows = [person(1, { holding: { leftHand: 'cup' } })]
+  me.tick(plugins)
+  expect(texture.version).toBe(version)
+  // A place added to the same object, in place: drawn the next frame.
+  plugins.wire.rows = [person(1, { holding })]
+  holding.hips = 'cup'
+  me.tick(plugins)
+  expect(me.items()).toEqual({ cup: { copies: 2, groups: 1 } })
+  expect(texture.version).toBeGreaterThan(version)
+  // And taken off it in place.
+  delete holding.leftHand
+  me.tick(plugins)
+  expect(me.items()).toEqual({ cup: { copies: 1, groups: 1 } })
+  expect(heldOf(r3, 'cup')[1]).toBe(0)
+})
+
 test('an item on no place, of no item, on a place its item does not list, or on a bone the skeleton has not got throws', async () => {
   const held = async (holding: Record<string, string>) => {
     const { me, plugins } = await page({ world: { items: { cup: CUP } } })
@@ -583,10 +616,55 @@ test('an item on no place, of no item, on a place its item does not list, or on 
     return () => me.tick(plugins)
   }
   expect(await held({ tail: 'cup' })).toThrow('crowd3d: person 4 holds cup on tail, which is no place')
-  expect(await held({ leftHand: 'mug' })).toThrow('crowd3d: person 4 holds mug, which is none of world.crowd3d.items')
-  expect(await held({ rightHand: 'cup' })).toThrow('crowd3d: person 4 holds cup on rightHand, which world.crowd3d.items.cup does not list')
+  expect(await held({ leftHand: 'mug' })).toThrow('crowd3d: person 4 holds mug, which is none of crowd3d\'s items: cup')
+  expect(await held({ rightHand: 'cup' })).toThrow('crowd3d: person 4 holds cup on rightHand, which the item cup does not list')
   await expect(page({ world: { items: { cup: { model: 'cup', head: {} } } } })).rejects.toThrow('crowd3d item cup: its place head is the bone Head, which bob\'s skeleton has not got')
   await expect(page({ world: { items: { cup: { model: 'cup', tail: {} } } } })).rejects.toThrow('crowd3d item cup: tail is no place')
+})
+
+test('an items mod that carries an item is told each afterTick where every held copy of it is: its person\'s place, its bone at the clock, its offset', async () => {
+  const home = mkdtempSync(join(tmpdir(), 'crowd3d-carried-'))
+  onTestFinished(() => rmSync(home, { recursive: true }))
+  mkdirSync(join(home, 'plugins', 'hands'), { recursive: true })
+  writeFileSync(join(home, 'plugins', 'hands', 'hands.crowd3d.ts'), 'export const items = () => (globalThis as any).hands\n')
+  let told: { key: string; item: string; matrix: number[] }[] = []
+  ;(globalThis as any).hands = {
+    held: () => ({ torch: { item: 'torch', leftHand: { at: [0, 0.05, 0], turn: [0, 90, 0] } }, cap: { item: 'cap', hips: {} } }),
+    ready: () => true,
+    parts: () => [{ call: 'solid', geometry: new THREE.BoxGeometry(0.1, 0.1, 0.1) }],
+    material: () => new THREE.MeshStandardMaterial(),
+    carries: (item: string) => item === 'torch',
+    carried: (copies: typeof told) => { told = copies },
+  }
+  const rows = [person(1, { speed: 0, clip: 'idle', holding: { leftHand: 'torch', hips: 'cap' } }), person(2, { holding: { hips: 'cap' } })]
+  const scene = {
+    plugins: ['loader', 'shipped', 'crowd3d', 'render3d'],
+    world: { crowd3d: { ...structuredClone(NUMBERS), mods: { items: 'hands' } }, loader: { assets: {} }, shipped: { plugins: ['hands'] }, scenemanager: { home: pathToFileURL(home + '/').href } },
+    prefabs: { engine: { dt: DT } },
+  } as unknown as Scene
+  await prepare({} as any, [], scene.world!)
+  const plugins: any = {
+    wire: { n: 10, rows, scene },
+    render3d: render3d(),
+    loader: { on: (_name: string, f: () => void) => f(), model: (name: string) => ({ scene: SkeletonUtils.clone(MODELS[name].scene), animations: MODELS[name].animations }) },
+  }
+  const me = crowd3d()
+  me.tick(plugins)
+  me.afterTick(plugins)
+  // the one copy of the item it carries; the cap, which it does not, is not told
+  expect(told.map(c => [c.key, c.item])).toEqual([['1 leftHand', 'torch']])
+  // person 1 stands at its pos facing its yaw, its idle as far in as its id puts it
+  const start = ((1 * 0.6180339887498949) % 1) * 2
+  const want = new THREE.Matrix4().makeTranslation(5, 0, 6).multiply(new THREE.Matrix4().makeRotationY(1)).multiply(new THREE.Matrix4().fromArray(me.holds('bob', 'idle', start, 'torch', 'leftHand')))
+  told[0].matrix.forEach((v, i) => expect(v).toBeCloseTo(want.elements[i], 5))
+  // a step on, the clip has gone on with the clock
+  plugins.wire.n = 40
+  me.tick(plugins)
+  me.afterTick(plugins)
+  const later = new THREE.Matrix4().makeTranslation(5, 0, 6).multiply(new THREE.Matrix4().makeRotationY(1)).multiply(new THREE.Matrix4().fromArray(me.holds('bob', 'idle', start + 30 * DT, 'torch', 'leftHand')))
+  told[0].matrix.forEach((v, i) => expect(v).toBeCloseTo(later.elements[i], 5))
+  expect(later.equals(want)).toBe(false)
+  delete (globalThis as any).hands
 })
 
 test('close takes everything it made off the scene', async () => {

@@ -6,8 +6,26 @@
 // and nothing while it plays:
 //   message    the row's `message` worded by `messages`, in { at, anchor, style }: "waiting for match
 //              to finish" while a match runs, and that the leader disconnected.
-//   lobby      { at, anchor, text, style }, while the match is in the lobby, to every seat but the
-//              leader's, whose screen is the title card's course select.
+// Solo (the row's `solo`, `index.html`: one player in one tab) none of the lobby, the staging list or the
+// results' countdown is shown: the title card's screens go from the car select straight to the course,
+// and the results stand with their exit until it is pressed.
+//
+//   lobby      while the match is in the lobby, to every seat, once the intro is done:
+//     roster     { at, step, style, mine, line, host, you, picking }: every connection on a line `step`
+//                pixels under the last from `at`, `line` with {name} (`player` with {n}, its place in join
+//                order), {tags} (`host` for the leader, `you` for this page's) and {car} (the car it
+//                picked by `names`, or `picking`); this page's in the style `mine`.
+//     course     { at, anchor, text, style }: `text` with {course}, the chosen course's word on the title
+//                card, once the leader has chosen one.
+//     text       { choosing, picking, waiting } and `at`, `anchor`, `style`: to a seat that has picked its
+//                car, what the match waits on: the leader's course ({host}), the cars of the seats that
+//                have picked none ({names}), or the leader's start ({host}); until it has picked, a seat's
+//                screens are the title card's.
+//     start      { at, label }: the leader's button once a course is chosen and every seat has picked a
+//                car, in the `button` style; pressed, it sends `start` at the row.
+//   staging    on a course, while the race is on its `staging` phase, to a racer: `title` { at, anchor,
+//              text, style } and a line `step` pixels down from `at` for each racer, its name and its state
+//              (`ready` or `loading`) `columns` pixels right of `at`, in `style` ( `mine` for this page's).
 //   spectate   { at, label }: a button in the `button` style, while a match runs, to a `waiting`
 //              connection; pressed, it sends `spectate` at the row.
 // On a course:
@@ -26,8 +44,9 @@
 //   pixels down per racer in the race's order, its three cells `columns` pixels right of `at`: `place`
 //   with {place}, the name (the car the seat holds `you`, another the kind's `name` with {grid}) and its
 //   finishing time, or `racing` while it is still racing; the seat's own line in the style `mine`, the
-//   rest in `style`. The leader is shown the button `exit` { at, label }; pressed, it sends `exit` at the
-//   row.
+//   rest in `style`. Every seat is shown the button `exit` { at, label }; pressed, it sends `exit` at the
+//   row, which takes every seat back to the lobby, and `countdown` { at, anchor, text, style }, `text`
+//   with {seconds}, the seconds left of the race definition's `results` before it does so itself.
 import type * as PIXI from 'pixi.js'
 import type * as THREE from 'three'
 import type { Row } from '#engine/engine.ts'
@@ -35,7 +54,7 @@ import type { Plugins } from '#engine/browser.ts'
 import { def } from '#plugins/loader/loader.sim.ts'
 import { holding, possessed } from '#plugins/player/player.plugin.ts'
 import { clock, fill } from '../dash/dash.plugin.ts'
-import { driven, entryOf, leads } from './match.sim.ts'
+import { driven, entryOf, leads, numberOf, pending, type Entry } from './match.sim.ts'
 
 const OWNER = 'match'
 
@@ -78,6 +97,56 @@ export function match() {
     removeEventListener('pointermove', move)
   }
 
+  // "PLAYER n" for a connection, its place in join order.
+  const named = (D: any, list: Entry[], e: Entry) => fill(D.player, { n: numberOf(list, e) })
+
+  // Every connection on the lobby's roster, the leader and this page's marked, and the car each picked.
+  function roster(p: Plugins, m: Row) {
+    const { wire } = p
+    const T = p.ui.PIXI as typeof PIXI
+    const D = def(wire, m.kind)
+    const R = D.lobby.roster
+    const list = m.data.roster as Entry[]
+    const mine = entryOf(wire.rows)
+    list.forEach((e, i) => {
+      const t = p.ui.show('title', `match.roster.${e.id}`, () => new T.Text({ text: '', style: p.ui.style(e.id === mine?.id ? R.mine : R.style) })) as PIXI.Text
+      const tags = (e.id === m.data.leader ? R.host : '') + (e.id === mine?.id ? R.you : '')
+      t.position.set(R.at[0], R.at[1] + i * R.step)
+      t.text = fill(R.line, { name: named(D, list, e), tags, car: e.car === '' ? R.picking : D.names[e.car] })
+    })
+  }
+
+  // What the match waits on, said to a seat that has picked its car; and the leader's start.
+  function status(p: Plugins, m: Row) {
+    const { wire } = p
+    const T = p.ui.PIXI as typeof PIXI
+    const D = def(wire, m.kind)
+    const L = D.lobby
+    const list = m.data.roster as Entry[]
+    if (m.data.chosen) {
+      const word = (def(wire, 'titlecard').courses as { scene: string; word: string }[]).find(c => c.scene === m.data.chosen)!.word
+      const t = p.ui.show('title', 'match.course', () => new T.Text({ text: '', style: p.ui.style(L.course.style) })) as PIXI.Text
+      t.anchor.set(L.course.anchor[0], L.course.anchor[1])
+      t.position.set(L.course.at[0], L.course.at[1])
+      t.text = fill(L.course.text, { course: word })
+    }
+    if (entryOf(wire.rows)?.car === '') return
+    const unpicked = list.filter(e => e.car === '')
+    // the leader's connection is on the roster once its page has had its first packet
+    const leader = list.find(e => e.id === m.data.leader)
+    if (!leader) return
+    const say = (text: string) => {
+      const t = p.ui.show('title', 'match.lobby', () => new T.Text({ text: '', style: p.ui.style(L.style) })) as PIXI.Text
+      t.anchor.set(L.anchor[0], L.anchor[1])
+      t.position.set(L.at[0], L.at[1])
+      t.text = text
+    }
+    if (unpicked.length) return say(fill(L.text.picking, { names: unpicked.map(e => named(D, list, e)).join(', ') }))
+    if (!leads(wire.rows)) return say(fill(L.text[m.data.chosen ? 'waiting' : 'choosing'], { host: named(D, list, leader) }))
+    const b = p.ui.show('title', 'match.start', () => p.ui.button({ ...p.ui.style(D.button), label: L.start.label }).on('pointertap', () => wire.send(m.id, 'start'))) as PIXI.Container
+    b.position.set(L.start.at[0], L.start.at[1])
+  }
+
   function lobby(p: Plugins, m: Row) {
     const { wire } = p
     const intro = wire.rows.find(r => r.kind === 'cutscene')
@@ -91,10 +160,9 @@ export function match() {
       t.text = D.messages[m.data.message]
     }
     if (m.data.match === 'lobby') {
-      if (leads(wire.rows)) return
-      const t = p.ui.show('title', 'match.lobby', () => new T.Text({ text: D.lobby.text, style: p.ui.style(D.lobby.style) })) as PIXI.Text
-      t.anchor.set(D.lobby.anchor[0], D.lobby.anchor[1])
-      t.position.set(D.lobby.at[0], D.lobby.at[1])
+      if (m.data.solo) return
+      roster(p, m)
+      status(p, m)
       return
     }
     if (entryOf(wire.rows)?.mode !== 'waiting') return
@@ -155,6 +223,28 @@ export function match() {
     camera.lookAt(free.pos[0] + fwd[0], free.pos[1] + fwd[1], free.pos[2] + fwd[2])
   }
 
+  // Staging, to a racer: who is on the course with their art in, and who is still coming.
+  function staging(p: Plugins, m: Row) {
+    const { wire } = p
+    const T = p.ui.PIXI as typeof PIXI
+    const D = def(wire, m.kind)
+    const S = D.staging
+    const list = m.data.roster as Entry[]
+    const waiting = pending(wire.rows) ?? []
+    const mine = entryOf(wire.rows)
+    const head = p.ui.show('hud', 'match.staging', () => new T.Text({ text: S.title.text, style: p.ui.style(S.title.style) })) as PIXI.Text
+    head.anchor.set(S.title.anchor[0], S.title.anchor[1])
+    head.position.set(S.title.at[0], S.title.at[1])
+    list.filter(e => e.mode === 'racer').forEach((e, i) => {
+      const cells: [string, string][] = [['name', named(D, list, e)], ['state', waiting.some(w => w.id === e.id) ? S.loading : S.ready]]
+      cells.forEach(([cell, value], k) => {
+        const t = p.ui.show('hud', `match.staging.${e.id}.${cell}`, () => new T.Text({ text: '', style: p.ui.style(e.id === mine?.id ? S.mine : S.style) })) as PIXI.Text
+        t.position.set(S.at[0] + S.columns[k], S.at[1] + i * S.step)
+        t.text = value
+      })
+    })
+  }
+
   function results(p: Plugins, m: Row, race: Row, car: Row | undefined) {
     const { wire } = p
     const T = p.ui.PIXI as typeof PIXI
@@ -173,9 +263,15 @@ export function match() {
         t.text = value
       })
     })
-    if (!leads(wire.rows)) return
     const b = p.ui.show('results', 'match.exit', () => p.ui.button({ ...p.ui.style(def(wire, m.kind).button), label: Rs.exit.label }).on('pointertap', () => wire.send(m.id, 'exit'))) as PIXI.Container
     b.position.set(Rs.exit.at[0], Rs.exit.at[1])
+    // solo, the results stand until the player exits
+    if (m.data.solo) return
+    const C = Rs.countdown
+    const left = p.ui.show('results', 'match.countdown', () => new T.Text({ text: '', style: p.ui.style(C.style) })) as PIXI.Text
+    left.anchor.set(C.anchor[0], C.anchor[1])
+    left.position.set(C.at[0], C.at[1])
+    left.text = fill(C.text, { seconds: Math.max(0, Math.ceil(def(wire, race.kind).results - race.data.over)) })
   }
 
   return {
@@ -191,6 +287,7 @@ export function match() {
         watching(p, m, own)
       }
       const race = wire.rows.find(r => r.kind === 'race')
+      if (race?.data.phase === 'staging' && own.data.watch === null && !m.data.solo) staging(p, m)
       if (race?.data.phase === 'results') results(p, m, race, holding(wire.rows))
     },
     close(p: Plugins) {

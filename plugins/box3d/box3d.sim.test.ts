@@ -7,7 +7,7 @@
 // Every number a test holds a feature to is worked out apart from Box3D: a fall's speed from
 // √(2gh), a body's mass from its shape's volume, a push's change of speed from J/m, a pendulum's
 // period and a spring's sag from their formulas, a ray's hit from where the thing it meets stands.
-import { afterAll, expect, test } from 'vitest'
+import { afterAll, expect, test, vi } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
@@ -843,6 +843,40 @@ test('truths of a scene with joints land on the same bytes', () => {
 })
 
 // ---------------------------------------------------------------- the world
+
+test('a live field is handed to Box3D when it changes, a list or an object written into in place too, and never again while it holds', () => {
+  const locked = body({ box: [0.5, 0.5, 0.5] })
+  const truth = boot(scene([{ is: 'locked', pos: [0, 5, 0], motionLocks: { linearX: true } }], { kinds: { locked }, gravity: [0, 0, 0], static: [] }, { locked: at([0, 5, 0]) }), simOf(['locked']))
+  const row = of(truth, 'box3d')[0], box = of(truth, 'locked')[0]
+  row.data.gravity = [0, 0, 0]
+  run(truth, 1)
+  const gravity = vi.spyOn(b3, 'b3World_SetGravity'), locks = vi.spyOn(b3, 'b3Body_SetMotionLocks')
+  try {
+    // Copies of the fields as they were are not handed again: the box hangs, and a push along x is held.
+    row.data.gravity = [0, 0, 0]
+    box.data.motionLocks = { linearX: true }
+    box.data.pushes = [{ impulse: [1000, 0, 0] }]
+    run(truth, 10)
+    expect([gravity.mock.calls.length, locks.mock.calls.length]).toEqual([0, 0])
+    expect(box.data.pos).toEqual([0, 5, 0])
+    // One item of the list written into: it falls.
+    row.data.gravity[1] = -G
+    run(truth, 10)
+    expect(box.data.pos[1]).toBeLessThan(5)
+    // One field of the object written into: a push along x moves it.
+    box.data.motionLocks.linearX = false
+    box.data.pushes = [{ impulse: [1000, 0, 0] }]
+    run(truth, 10)
+    expect(box.data.pos[0]).toBeGreaterThan(0)
+    // A field set to undefined is no field: the locks stay as they were.
+    box.data.motionLocks.linearY = undefined
+    run(truth, 10)
+    expect([gravity.mock.calls.length, locks.mock.calls.length]).toEqual([1, 1])
+  } finally {
+    gravity.mockRestore()
+    locks.mockRestore()
+  }
+})
 
 test('the box3d row\'s gravity and subStepCount are the live world\'s', () => {
   const truth = boot(scene([{ is: 'pebble', pos: [0, 10, 0] }]), sim)

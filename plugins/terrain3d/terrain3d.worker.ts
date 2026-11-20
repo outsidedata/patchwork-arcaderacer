@@ -43,7 +43,7 @@ function groundOf(l: Land) {
     depth: (x: number, z: number) => l.depth(x, z),
     at: (x: number, z: number) => l.analyse(x, z),
     cover: (x: number, z: number) => l.paint(x, z).cover,
-    spray: (x: number, z: number) => l.paint(x, z).spray,
+    drivers: (x: number, z: number) => l.paint(x, z).drivers,
     mark: (x: number, z: number) => l.paint(x, z).mark,
     ramp: (rule: Rule, x: number, z: number) => l.ramp(rule, x, z),
     rules: (list: Rule[], what: string) => l.rules(list, what),

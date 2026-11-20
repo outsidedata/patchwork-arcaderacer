@@ -1,6 +1,6 @@
 ---
 name: prime-directive
-description: Use in core, or any clone of it, when making a game with it, before writing or changing any code, before choosing which folder or file something goes in, before editing anything in engine/, before giving a plugin a new setting, before working around something that is missing, and before asking how something should be built. It holds the frozen engine, the wire, the one home of every new thing, the words core uses, and which skill carries each kind of work: starting a game (starting-a-game), your game's things (designing-a-kind, designing-a-seat, input-and-seats, building-a-level), scenes and flow (scene-flow, session-flow, building-the-hud, building-a-controls-screen, building-a-cutscene-intro), art and assets (bringing-in-art, importing-external-assets, using-mixamo-assets, making-3d-assets-in-blender, asset-workshop), how it looks and feels (writing-the-look, tuning-feel, tuning-particles, guide-to-smooth-gameplay), sound (sound), systems your game shares (building-a-plugin, connecting-plugins-using-mods), checking it (proving-a-game, benchmarking-a-game, experimenting-with-features, using-the-dev-page), whole-game jobs (porting-a-game, auditing-a-game), shipping it (going-multiplayer, persisting-players, committing-a-game, publishing-a-game) and using a plugin (using-terrain3d, using-3d-physics, using-audiodaw). Trigger: /prime-directive.
+description: Use in core, or any clone of it, when making a game with it, before writing or changing any code, before choosing which folder or file something goes in, before editing anything in engine/, before giving a plugin a new setting, before working around something that is missing, and before asking how something should be built. It holds the frozen engine, the wire, the one home of every new thing, the words core uses, and which skill carries each kind of work: starting a game (starting-a-game), your game's things (designing-a-kind, designing-a-seat, input-and-seats, building-a-level), scenes and flow (scene-flow, session-flow, building-the-hud, building-a-controls-screen, building-a-cutscene-intro), art and assets (bringing-in-art, importing-external-assets, using-mixamo-assets, making-3d-assets-in-blender, asset-workshop), how it looks and feels (writing-the-look, tuning-feel, tuning-particles, guide-to-smooth-gameplay), sound (sound), systems your game shares (building-a-plugin, connecting-plugins-using-mods), checking it (proving-a-game, benchmarking-a-game, experimenting-with-features, using-the-dev-page), whole-game jobs (porting-a-game, auditing-a-game), shipping it (going-multiplayer, persisting-players, committing-a-game, publishing-a-game) and using a plugin (using-terrain3d, using-3d-physics, using-shapes3d, using-audiodaw, using-the-loader, using-lights3d, using-render3d, using-supershader3d, using-ui3d, using-motion3d, using-puppet3d, using-gpgpu3d, using-fabric3d, using-grass3d, using-hair3d). Trigger: /prime-directive.
 ---
 
 # The prime directive
@@ -362,7 +362,38 @@ Using a plugin, the whole of one top-level plugin in one place, `using-<plugin>`
 - `using-terrain3d`: the 3D ground, its field file, its queries, its rings and its mods.
 - `using-3d-physics`: box3d, box3dvehicle, walker, hitscan3d, volley3d, flight3d, ragdoll3d,
   interact, cover3d, shapes3d and nav3d, and which mods make a thing solid, stood on or hit in each.
+- `using-shapes3d`: what stands in a 3D world, said once: its words, a kind's entry, a shape a rule
+  moves and the body it carries, shapes from a file, walking on it as the ground, spaces, points and
+  crowd paths, and every `shapes3d.<p>.ts` mod, with the scene line that names it and the demo game
+  that uses it.
 - `using-audiodaw`: songs written as data and played behind a game.
+- `using-the-loader`: how a scene's art comes down without stalling the game (four models at once,
+  meshopt workers, a few landing each tick with their textures sent to the GPU first), the loading
+  screen a game asks for through the ui's mods, and measuring a load.
+- `using-lights3d`: many point and spot lights, their shadows from a still atlas drawn once and a
+  moving atlas drawn each frame, lit fog, reflection
+  probes, particle3d's lamps, area lights (rectangles that shine a picture, and what glows in
+  supershader3d's materials), and what each costs.
+- `using-render3d`: the renderer's prefab, `dress` and splices, passes, the overlay, drawing between
+  steps, screen-space reflections and mirrors.
+- `using-supershader3d`: one shader for every surface, from the library's pro-ng looks, which the game's bake
+  composes into its looks file; drawing in it with or without world3d, and how world3d hands a pro-ng place to the
+  plugins that use it.
+- `using-ui3d`: 3D things over the game, a scene's looks file shown by name, words, particles driven by a
+  thing's state, a game's logo title, and tuning it in the particle workshop's ui3d mode.
+- `using-motion3d`: a body animated by motion3d given a new clip or a new motion: its rig, its motion
+  file, a clip's sidecar and the bake; its hair, its cloth and its capsules.
+- `using-puppet3d`: a body posed by procedure: a kind's layouts and drivers, cue sheets, a solver a game
+  delivers, the land it stands on, its hair and its capsules, its feet measured, clips written from it
+  for crowd3d, and the puppet3d workshop.
+- `using-gpgpu3d`: the things of a scene held on the GPU, who hands them, who delivers their words and
+  who meets what, for the particles, cloth, hair and grass that are moved there; a body's capsules.
+- `using-fabric3d`: cloth moved on the GPU, a flag, a cape, a ribbon, a banner, a cloth over a table:
+  the fabrics file, pins, what holds a fabric and what it drapes on.
+- `using-grass3d`: a meadow made blade by blade round the camera on terrain3d's land: the grasses file,
+  where grass grows, wind and gusts, and the cars and bodies that bend and trample it.
+- `using-hair3d`: hair, fur and manes grown on a posed body's skin: the hairs file, where a hair grows,
+  how it lies and moves, what it lies on, and the hair workshop.
 
 ## Questions never asked
 

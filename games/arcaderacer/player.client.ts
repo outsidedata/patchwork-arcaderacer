@@ -5,19 +5,28 @@
 // handbrake on the space bar and the pad's left button. Each is sent to the seat's `player` row as it
 // changes, which passes it on to the car it holds. A racer has no key back to the title.
 //
+// The first frame the page is whole (every file in, no shader compiling, the world it draws made: what
+// the loading screen waits on) it sends its `player` row `ready`, once, which the race's staging waits
+// on for every racer before the lights start.
+//
 // The camera rides the car the seat holds: `back` metres behind it along its `cam` heading (which the
 // drive plugin swings toward the car's course, so a drift shows the car's side) and `high` over it,
 // looking at a point `ahead` metres along that heading and `aim` over the car. It is set from the
-// frame's rows alone, with nothing kept from frame to frame, so it moves exactly as the car is drawn.
+// frame's rows alone, with nothing kept from frame to frame but the field of view's last two steps
+// (below), so it moves exactly as the car is drawn.
 // Its field of view is `fov` degrees, `fast` more at the car's top speed and `boosted` more while it
-// boosts, eased out over its last `ease` seconds. The speed is felt in the standoff too: at top speed
+// boosts, eased out over its last `ease` seconds. render3d draws the camera's place and turn between the
+// last two steps, but not its field of view, so the field of view is blended here the same way: each
+// step's worked out from that step's car, and the one drawn `(n − 1 + between − was) / (n − was)` of the
+// way from the step before the newest to the newest, `was` the step drawn on the frame before the
+// newest's, so it widens a little every frame and not once a step. The speed is felt in the standoff too: at top speed
 // the camera stands `stretch` metres further back and `drop` lower, `kick` further while it boosts,
 // and it rumbles `rumble` { fast, boosted, wave, cross }: up to `fast` metres × the square of the
 // share of top speed it goes, `boosted` more boosting, up and down along a wave of `wave` radians a
 // metre the car travels (its `far`), and side to side along one `cross` [times as fast, a phase
 // ahead], so it moves with the car's own travel and never with a frame or a step counter. The
 // numbers are the `player` definition's `camera`. While anything else holds render3d's
-// camera, the editor's orbit say, it is left alone.
+// camera, the match's watch view or the title card say, it is left alone.
 import type * as THREE from 'three'
 import type { Row } from '#engine/engine.ts'
 import type { Plugins } from '#engine/browser.ts'
@@ -53,7 +62,17 @@ function tickOurs(row: Row, car: Row, plugins: Plugins) {
   camera.position.set(pos[0] - fx * back + fz * amp2, pos[1] + high, pos[2] - fz * back - fx * amp2)
   camera.up.set(0, 1, 0)
   camera.lookAt(pos[0] + fx * C.ahead, pos[1] + C.aim, pos[2] + fz * C.ahead)
-  const fov = C.fov + C.fast * fast + C.boosted * boosting
+  // this step's field of view, and the one drawn between it and the step's before (the header)
+  const newest = C.fov + C.fast * fast + C.boosted * boosting
+  const n = wire.n
+  if (!wide) wide = { was: newest, now: newest, wasN: n, n }
+  else if (n !== wide.n) {
+    const back = n < wide.n
+    wide = { was: back ? newest : wide.now, now: newest, wasN: back ? n : wide.n, n }
+  }
+  const between = wire.between
+  const f = between === undefined || wide.n === wide.wasN ? 1 : Math.min(1, Math.max(0, (wide.n - 1 + between - wide.wasN) / (wide.n - wide.wasN)))
+  const fov = wide.was + (wide.now - wide.was) * f
   if (camera.fov !== fov) {
     camera.fov = fov
     camera.updateProjectionMatrix()
@@ -65,13 +84,31 @@ function tickOurs(row: Row, car: Row, plugins: Plugins) {
 // the keys the first frame the car it holds stands on the grid.
 let ours = false
 let bound = false
+// whether this page has said its art is in (`ready`, sent once)
+let said = false
+// the field of view on the last two steps this page drew, and those steps, undefined before the first
+let wide: { was: number; now: number; wasN: number; n: number } | undefined
 
 export function setup(row: Row) {
   ours = row.data.mine === true
+  wide = undefined
+  said = false
+}
+
+// The course's art is in and the loading screen is done with: every file, every shader and the world it
+// draws, the three things the screen waits on (`loader.ui.ts`).
+const loaded = ({ loader }: Plugins) => {
+  const { done, of } = loader.preloads()
+  return done >= of && loader.shaders() === 0 && loader.settled()
 }
 
 export function tick(row: Row, plugins: Plugins) {
   if (!ours) return
+  // the race waits on every racer's page (`staging`, race.sim.ts): said once, as soon as this page is whole
+  if (!said && loaded(plugins)) {
+    said = true
+    plugins.wire.send(row.id, 'ready')
+  }
   const car = holding(plugins.wire.rows)
   if (!car || car.data.seg < 0) return
   if (!bound) { bindOurs(plugins); bound = true }

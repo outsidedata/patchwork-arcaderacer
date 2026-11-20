@@ -80,7 +80,18 @@ const twice = { places: [flat(0, 0), flat(0, 0)], ways: [] }
 const loose = { places: [flat(0, 0), flat(5, 0)], ways: [line(g0(0, 0), g0(4, 0), {})] }
 const doubled = { places: [flat(0, 0), flat(0, 0.0001), flat(5, 0)], ways: [line(g0(0, 0), g0(5, 0), {})] }
 const bare = { nodes: [], links: [] }
-const urls = Object.fromEntries(['land', 'field', 'hand', 'staff', 'levels', 'short', 'long', 'broken', 'curved', 'askew', 'walls', 'unnormal', 'slant', 'twice', 'loose', 'doubled', 'bare']
+// A start, a landing 2 m up and an end, each spread over a square 2 m wide; the landing reached by a line
+// and the end by a spline. unspread: a moe below 0.
+const spread: Graph = {
+  places: [
+    { point: { at: [0, 0, 0] }, data: { nav3d: { tags: ['start'], moe: 2 } } },
+    { point: { at: [10, 2, 0] }, data: { nav3d: { moe: 2 } } },
+    { point: { at: [20, 2, 0] }, data: { nav3d: { tags: ['end'], moe: 2 } } },
+  ],
+  ways: [line([0, 0, 0], [10, 2, 0], { nav3d: { word: 'ground' } }), { spline: { points: [[10, 2, 0], [15, 2, 3], [20, 2, 0]] }, data: { nav3d: { word: 'ground' } } }],
+}
+const unspread = { places: [{ point: { at: [0, 0, 0] }, data: { nav3d: { moe: -1 } } }], ways: [] }
+const urls = Object.fromEntries(['land', 'field', 'hand', 'staff', 'levels', 'short', 'long', 'broken', 'curved', 'askew', 'walls', 'unnormal', 'slant', 'twice', 'loose', 'doubled', 'bare', 'spread', 'unspread']
   .map(k => [k, `/nav3d-sim-test/${k}.nav.json`])) as Record<string, string>
 written(urls.land, JSON.stringify(field))
 written(urls.field, JSON.stringify({ places: [], ways: [] }))
@@ -99,12 +110,15 @@ written(urls.twice, JSON.stringify(twice))
 written(urls.loose, JSON.stringify(loose))
 written(urls.doubled, JSON.stringify(doubled))
 written(urls.bare, JSON.stringify(bare))
+written(urls.spread, JSON.stringify(spread))
+written(urls.unspread, JSON.stringify(unspread))
 
 const BAKE = { area: [-20, -20, 20, 20], clearance: 0.5, around: 8, sample: 1, slope: 0.5, wade: 0.3 }
 const json = (url: string) => ({ type: 'json', url, preload: true })
 const names = Object.keys(urls).filter(k => k !== 'land')
 const yard = {
   world: {
+    seed: 7,
     loader: { assets: Object.fromEntries(Object.entries(urls).map(([k, u]) => [k, json(u)])) },
     terrain3d: { field: 'land' },
     shapes3d: { kinds: { wall: { shape: { box: { size: [6, 3, 0.4] } } } } },
@@ -294,7 +308,8 @@ test('a graph file of the wrong shape and a graph not named throw, naming them',
   expect(() => route(w, 'unnormal', [0, 0, 0], [5, 0, 0])).toThrow('nav3d graph unnormal: place 0\'s normal is not [x, y, z]')
   expect(() => route(w, 'slant', [0, 0, 0], [5, 0, 0])).toThrow('nav3d graph slant: place 0\'s normal is not a unit vector')
   expect(() => route(w, 'bare', [0, 0, 0], [5, 0, 0])).toThrow('nav3d graph bare: a graph is { places: [], ways: [] }')
-  expect(() => route(w, 'gone', [0, 0, 0], [5, 0, 0])).toThrow(`nav3d has no graph gone: world.nav3d.graphs names ${[...names, 'unbaked'].join(', ')}`)
+  expect(() => route(w, 'unspread', [0, 0, 0], [5, 0, 0])).toThrow('nav3d graph unspread: place 0\'s data.nav3d.moe is not a number of 0 or more')
+  expect(() => route(w, 'gone', [0, 0, 0], [5, 0, 0])).toThrow(`nav3d has no graph gone: world.nav3d.graphs and its graphs mods name ${[...names, 'unbaked'].join(', ')}`)
   // Two places at one spot are a graph, until a way's end stands on both.
   expect(route(w, 'twice', [0, 0, -1], [0, 0, 1])).toBeDefined()
 })
@@ -310,6 +325,40 @@ test('a graph whose places give their ground\'s up carries it on each step, the 
   expect(npcRoute(only, [1, 0, 0.2], [0, 1.5, 0])).toEqual([
     { at: [1, 0, 0], normal: [0, 1, 0] }, { at: [0, 0, 0], normal: [S, S, 0] }, { at: [0, 1, 0], normal: [1, 0, 0] }, { at: [0, 1.5, 0], normal: [1, 0, 0] },
   ])
+})
+
+test('a place with a moe is gone to at a spot of its own in each route, within moe / 2 across the ground at its own height, its courses meeting it', async () => {
+  const w = await booted()
+  const ends: number[][] = []
+  for (let k = 0; k < 200; k++) {
+    const steps = route(w, 'spread', [-1, 0, 0], 'end')!
+    expect(steps.map(s => s.place)).toEqual([0, 1, 2])
+    steps.forEach((s, i) => {
+      const at = spread.places[i].point.at
+      expect(Math.abs(s.at[0] - at[0])).toBeLessThanOrEqual(1)
+      expect(Math.abs(s.at[2] - at[2])).toBeLessThanOrEqual(1)
+      expect(s.at[1]).toBe(at[1])
+    })
+    // The line into the landing runs from the start's spot to the landing's; the spline out of it from the
+    // landing's spot to the end's, its middle point the graph's.
+    const into = steps[1].course as { line: { from: number[]; to: number[] } }
+    const out = steps[2].course as { spline: { points: number[][] } }
+    expect(into.line).toEqual({ from: steps[0].at, to: steps[1].at })
+    expect(out.spline.points).toEqual([steps[1].at, [15, 2, 3], steps[2].at])
+    ends.push(steps[2].at)
+  }
+  // The spots spread over the square, and the graph's own places are left as they were.
+  const xs = ends.map(p => p[0]), zs = ends.map(p => p[2])
+  expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(1.8)
+  expect(Math.max(...zs) - Math.min(...zs)).toBeGreaterThan(1.8)
+  expect(route(w, 'spread', [-1, 0, 0], 'end')![0].way).toBeNull()
+  expect(spread.places.map(p => p.point.at)).toEqual([[0, 0, 0], [10, 2, 0], [20, 2, 0]])
+  // npc3d's legs go to the spots too.
+  const only = Object.assign(Object.create(w), { world: { ...w.world, nav3d: { ...w.world.nav3d, graphs: { spread: w.world.nav3d.graphs.spread } } } }) as W
+  const legs = npcRoute(only, [-1, 0, 0], [20, 2, 0])!
+  expect(legs).toHaveLength(4)
+  expect(Math.abs((legs[1] as number[])[0] - 10)).toBeLessThanOrEqual(1)
+  expect((legs[1] as number[])[1]).toBe(2)
 })
 
 test('the bake throws on a graph with no rules and on rules of the wrong value', async () => {

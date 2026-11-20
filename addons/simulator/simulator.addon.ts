@@ -54,8 +54,8 @@
 // timers did to it.
 //
 // `tap` records a page in a real browser the same way, from the page's own address (`?tap=<name>`),
-// and sends its lines to the simulator's routes (`simulator.route.ts`), which keep every recording in
-// `addons/simulator/runs/`, where the simulator's Runs panel (`simulator.extension.tsx`) shows them.
+// and sends its lines to the dev server (`simulator.serve.ts`), which keeps every recording in
+// `addons/simulator/runs/`, where `summary` reads them back.
 //
 // The records, each with its `type`:
 // - `run`: what was played: the mode, the seed, the milliseconds, the server's and each page's
@@ -145,7 +145,7 @@ const spent = typeof process !== 'undefined' && typeof process.cpuUsage === 'fun
   : wall
 
 // Where the recordings are kept, from the repo, and the name a recording may have, which is its
-// file's: letters, digits, _, . and - only (`simulator.route.ts`).
+// file's: letters, digits, _, . and - only (`simulator.serve.ts`).
 export const RUNS = 'addons/simulator/runs'
 export const NAME = /^[\w.-]+$/
 
@@ -700,12 +700,12 @@ export async function real(run: RealRun): Promise<Record_[]> {
 // and the function that makes its view on it, and frames what `tap` hands back as it would the view.
 // It records only when the page's address asks, `?tap=<name>`: then every frame is a frame record,
 // its envelopes the ones that arrived since the frame before (when they were sent is the server's
-// to know, and is null), and the lines go to the simulator's route (`simulator.route.ts`), which
+// to know, and is null), and the lines go to the dev server (`simulator.serve.ts`), which
 // writes them to `addons/simulator/runs/<name>.jsonl`, the run line first, then a batch a second and
 // the last as the page is hidden. The address's `kinds` and `fields`, each a list split by commas,
 // and `own`, fields split by dots, are the watch, and `drawn`, present, records where each frame drew
 // things. Without `?tap` it is the view, untouched.
-// `send` is how the lines leave the page, `fetch` to the route unless another is handed in, and
+// `send` is how the lines leave the page, `fetch` to the dev server unless another is handed in, and
 // `search` the address's query, the page's own unless another is handed in.
 // `input` before the page's steps, as `client.html`'s loop calls it; `frame` handed the time
 // `requestAnimationFrame` handed the loop, which a page that runs its scene ahead steps its copy on.
@@ -724,8 +724,8 @@ export function tap<V extends Tapped>(wire: Wire<Up | Got, Diff>, make: (wire: W
     : undefined
   const send = options.send ?? ((body, last) => {
     const json = JSON.stringify(body)
-    if (last && typeof navigator !== 'undefined' && navigator.sendBeacon) navigator.sendBeacon('/api/x/simulator/tap', new Blob([json], { type: 'application/json' }))
-    else void fetch('/api/x/simulator/tap', { method: 'POST', headers: { 'content-type': 'application/json' }, body: json })
+    if (last && typeof navigator !== 'undefined' && navigator.sendBeacon) navigator.sendBeacon('/@simulator/tap', new Blob([json], { type: 'application/json' }))
+    else void fetch('/@simulator/tap', { method: 'POST', headers: { 'content-type': 'application/json' }, body: json })
   })
   const start = performance.now()
   const now = () => performance.now() - start

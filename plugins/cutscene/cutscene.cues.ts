@@ -1,8 +1,6 @@
 // A cue file as the cutscene's panel shows it and changes it (`cutscene.panel.ts`, a game's dev page):
 // the model of the file the panel draws, every change it makes, the check every change is held to, and
-// the measure pass. Lifted from the editor's Cutscene panel (`cutscene.extension.tsx`), its numbers,
-// names and rules carried over; what the editor read off its session and its files is handed in here
-// (`Context`), so the panel and the dev server's check before a save (`cutscene.cued.ts`) share it, and
+// the measure pass. What it needs of the scene and the game is handed in (`Context`), so the panel and the dev server's check before a save (`cutscene.cued.ts`) share it, and
 // it runs in node.
 //
 // The model (`build`), in elapsed seconds. A chip is drawn at its `at` plus every hold before it, and a
@@ -82,7 +80,7 @@ export type Measured = {
 
 export type Chip = { id: string; lane: string; at: number; length?: number; open?: boolean; look?: 'bar' | 'stripe' | 'ramp' | 'loop'; label: string; warn: boolean; lanes?: string[]; resize?: boolean }
 
-// What the editor read off its session: the scene the cue file is played in and the game round it.
+// The scene the cue file is played in and the game round it.
 //   scene, name   the scene's name and the cue file's catalogue key, `world.cutscene.script`
 //   marks         the scene's marks, `{ name, at }`
 //   sounds        the scene's sound cues, `world.audio.cues`

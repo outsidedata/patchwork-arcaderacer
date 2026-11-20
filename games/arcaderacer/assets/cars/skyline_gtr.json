@@ -1,0 +1,32 @@
+{
+  "name": "SKYLINE",
+  "form": "kit",
+  "turn": 3.141592653589793,
+  "body": { "glb": "skyline_gtr.body", "looks": "skyline_gtr.body.looks" },
+  "wheels": {
+    "fl": { "glb": "skyline_gtr.wheel-left", "looks": "skyline_gtr.wheel-left.looks", "at": [0.74, 0.327, 1.3325], "radius": 0.327 },
+    "fr": { "glb": "skyline_gtr.wheel-right", "looks": "skyline_gtr.wheel-right.looks", "at": [-0.74, 0.327, 1.3325], "radius": 0.327 },
+    "rl": { "glb": "skyline_gtr.wheel-left", "looks": "skyline_gtr.wheel-left.looks", "at": [0.745, 0.327, -1.3325], "radius": 0.327 },
+    "rr": { "glb": "skyline_gtr.wheel-right", "looks": "skyline_gtr.wheel-right.looks", "at": [-0.745, 0.327, -1.3325], "radius": 0.327 }
+  },
+  "steer": 0.45,
+  "steering": { "bone": "steer wheel", "lock": 3 },
+  "lamps": {
+    "brake": { "material": "r34_lamp_red", "setting": "lpGlow", "off": [0.3, 0.01, 0.005], "on": [3, 0.1, 0.05] },
+    "heads": { "material": "r34_headlamp", "setting": "glGlow", "off": [0, 0, 0], "on": [3, 2.86, 2.58] }
+  },
+  "tracks": [[0.745, -1.3325], [-0.745, -1.3325]],
+  "paint": {
+    "material": "r34_paint_bayside_blue",
+    "options": [
+      { "name": "bayside_blue", "settings": { "apColour": [0.02, 0.13, 0.55], "apFlake": 0.55, "apFlakeColour": [0.6, 0.82, 1], "apFlakeSize": 0.0003, "apRough": 0.24, "apCoat": 1, "apCoatRough": 0.03, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } },
+      { "name": "white_pearl", "settings": { "apColour": [0.8, 0.79, 0.74], "apFlake": 0.35, "apFlakeColour": [1, 0.96, 0.88], "apFlakeSize": 0.00035, "apRough": 0.26, "apCoat": 1, "apCoatRough": 0.03, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } },
+      { "name": "black_pearl", "settings": { "apColour": [0.006, 0.006, 0.008], "apFlake": 0.4, "apFlakeColour": [0.35, 0.4, 0.55], "apFlakeSize": 0.00035, "apRough": 0.24, "apCoat": 1, "apCoatRough": 0.03, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } },
+      { "name": "athlete_silver", "settings": { "apColour": [0.46, 0.48, 0.5], "apFlake": 0.6, "apFlakeColour": [0.98, 0.98, 1], "apFlakeSize": 0.00035, "apRough": 0.24, "apCoat": 1, "apCoatRough": 0.03, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } },
+      { "name": "sonic_silver", "settings": { "apColour": [0.62, 0.64, 0.66], "apFlake": 0.65, "apFlakeColour": [1, 1, 1], "apFlakeSize": 0.00035, "apRough": 0.22, "apCoat": 1, "apCoatRough": 0.03, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } },
+      { "name": "active_red", "settings": { "apColour": [0.44, 0.01, 0.014], "apFlake": 0, "apFlakeColour": [0.9, 0.85, 0.8], "apFlakeSize": 0.00035, "apRough": 0.22, "apCoat": 1, "apCoatRough": 0.03, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } },
+      { "name": "lightning_yellow", "settings": { "apColour": [0.86, 0.52, 0], "apFlake": 0, "apFlakeColour": [0.9, 0.85, 0.8], "apFlakeSize": 0.00035, "apRough": 0.22, "apCoat": 1, "apCoatRough": 0.03, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } },
+      { "name": "millennium_jade", "settings": { "apColour": [0.2, 0.25, 0.21], "apFlake": 0.55, "apFlakeColour": [0.8, 0.92, 0.88], "apFlakeSize": 0.00035, "apRough": 0.24, "apCoat": 1, "apCoatRough": 0.03, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } }
+    ]
+  }
+}

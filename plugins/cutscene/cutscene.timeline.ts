@@ -1,6 +1,5 @@
-// A timeline: a ruler over lanes, chips on the lanes, a playhead, and an end bracket. The editor's
-// (`editor/ui/timeline.tsx`), carried over to the cutscene's panel (`cutscene.panel.ts`), which draws
-// with the DOM itself:
+// A timeline: a ruler over lanes, chips on the lanes, a playhead, and an end bracket, for the
+// cutscene's panel (`cutscene.panel.ts`), drawn with the DOM itself:
 // `timeline(el)` draws into `el` and hands back `set(props)`, which draws it again from `props`, and
 // `close()`.
 //

@@ -2,13 +2,16 @@
 // `load`, so its mods are loaded as a game's are: shapes3d hands its shapes as spaces
 // (`shapes3d.motion3d.ts`). The ground is level land (terrain3d's). A `party` zone, a mat 4 m square,
 // offers `party`, whose `emote` plays `backflip`; a `stage`, a mat 2 m square on the party zone's far
-// half, offers `show` at priority 2, whose `emote` plays `bow`: the body's motion3d file says so, and its
+// half, offers `show` at priority 2, whose `emote` plays `bow` and then the party's emote, an activity of
+// its own named across (`party.emote`): the body's motion3d file says so, and its
 // baked file holds each clip's spot (the root) and offsets (none). The body is a `body` row kinematics3d
 // walks on the level ground and motion3d plays by a rig the test writes (its kind's entry of
 // `world.motion3d.kinds`): its rule picks `stand` or `walk`
 // while it is free, and holds it, until its clip has played out, while it is in a zone's activity. Its
 // walk has moves played over it from `Spine1` up (`UPPER`): a held aim, a shot from it, a wave; and its rig
-// an `aim`. A `probe` row hands the test the truth's `w`.
+// an `aim`. The backflip marks its tuck and holds a `strike` window open from half its length to three
+// quarters; the walk marks a step at half its lap; the shot marks itself. A `probe` row hands the test
+// the truth's `w`.
 import { afterAll, expect, test } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -19,16 +22,23 @@ import { load } from '#addons/scenemanager/scenemanager.addon.ts'
 import { scenemanager } from '#plugins/scenemanager/scenemanager.sim.ts'
 import { written } from '#plugins/loader/loader.sim.ts'
 import type { Field } from '#plugins/terrain3d/terrain3d.sim.ts'
-import { press } from './motion3d.sim.ts'
+import { press, queue } from './motion3d.sim.ts'
+import { clipOf, timesOf } from './motion3d.play.ts'
 
 const DT = 1 / 60
 const measure = (dur: number, forward = 0) => ({ dur, forward, left: 0, yaw: 0, travel: [[0, 0, 0, 0], [dur, forward, 0, 0]] })
 // The feet on the floor, every frame of each clip.
 const floor = { fps: 30, footL: [[0, 0.08, 0, 0, 0, 0.2]], footR: [[0, 0.08, 0, 0, 0, 0.2]], torso: [[0, 1, 0, 0, 1.5, 0]] }
 const RIG = {
-  clips: { idle: { loop: true }, walk: { loop: true, gear: 0 }, backflip: {}, bow: {}, aiming: { loop: true }, fire: {}, wave: {}, crawling: { loop: true }, low: { loop: true }, lighting: {}, stowing: {} },
+  clips: {
+    idle: { loop: true }, walk: { loop: true, gear: 0, markers: { step: '50%' } }, backflip: { markers: { tuck: 0.3, strike: ['50%', '75%'] } }, bow: {}, aiming: { loop: true },
+    fire: { markers: { shot: 0.1 } }, wave: {}, crawling: { loop: true }, low: { loop: true }, lighting: {}, stowing: {},
+    shut: { markers: { x: ['75%', '25%'] } },
+    flinch: { markers: { jolt: 0.1 } }, breathe: { loop: true },
+  },
   roles: { still: 'idle' },
   table: {
+    shut: measure(2), flinch: measure(0.6), breathe: measure(3),
     idle: measure(2), walk: measure(1, 1.4), backflip: measure(1.2), bow: measure(0.8), aiming: measure(1), fire: measure(0.5), wave: measure(1.5),
     crawling: measure(1.2, 0.6), low: measure(1.5), lighting: measure(0.8), stowing: measure(0.8),
   },
@@ -54,11 +64,21 @@ const UPPER = {
 }
 const MOTION = {
   rig: 'rig.json', moves: 0.05, turns: 30,
+  // A key cuts the backflip from half its length; any other one-shot a key played, at any time.
+  buffer: { hold: 0.4, cancel: { emote: { '*': '50%' } } },
   carries: { torch: { prop: 'torch', anchor: { bone: 'LeftHand', at: [0, 0, 0], turn: [0, 0, 0], point: 'grip' }, limbs: [] } },
   activities: {
-    walk: { normal: [0, 1, 0], motions: { walk: { target: 'triangles', clips: ['walk'], when: ['ground', 'pushed'] }, stand: { target: 'triangles', clips: ['idle'], when: ['ground', '!pushed'] }, ...UPPER } },
+    walk: {
+      normal: [0, 1, 0],
+      motions: {
+        walk: { target: 'triangles', clips: ['walk'], when: ['ground', 'pushed'] }, stand: { target: 'triangles', clips: ['idle'], when: ['ground', '!pushed'] }, ...UPPER,
+        // Laid on top: a flinch by its key over anything, breathing at half weight while the stick is let go.
+        flinch: { clips: ['flinch'], add: true, press: 'hit' },
+        breathe: { clips: ['breathe'], add: true, when: ['!pushed'], weight: 0.5 },
+      },
+    },
     party: { motions: { emote: { clips: ['backflip'], press: 'emote' } } },
-    show: { motions: { emote: { clips: ['bow'], press: 'emote' } } },
+    show: { motions: { emote: { clips: ['bow'], press: 'emote', then: 'party.emote' } } },
     crawl: { motions: CRAWL },
     light_torch: { motions: TORCH },
   },
@@ -87,7 +107,7 @@ const K = {
   triangles: { radius: 0.3, height: 1.8, step: 0.45, maxSlope: 0.9, slopeBand: 0.2, slide: 4, wade: 0.8, span: 0.3, probe: 0.5 },
   move: { accel: 12, turnRate: 12, still: 0.05 },
   fall: { gravity: 20, airAccel: 2 },
-  jump: { jumpH: 1.1 },
+  jump: { jumpH: 1.1, jumpVelocityBoostMagnitude: 1 },
 }
 // The anywhere shape: a box at the middle of the world holding every point, offering walking.
 const ANYWHERE = { shape: { box: { size: [1e9, 1e9, 1e9] } }, activities: ['walk'], priority: 0, data: { motion3d: { autoChange: true } } }
@@ -114,7 +134,7 @@ const yard: Scene = {
       },
     },
     motion3d: {
-      kinds: { body: { motion: 'motion', baked: 'baked', rig: 'rig', model: 'figure', fade: 0.2, reads: { pos: 'pos', yaw: 'yaw', vel: 'vel', grounded: 'grounded', limp: 'limp' } } },
+      kinds: { body: { motion: 'motion', baked: 'baked', rig: 'rig', model: 'figure', fade: 0.2, blend: 'cross', reads: { pos: 'pos', yaw: 'yaw', vel: 'vel', grounded: 'grounded', limp: 'limp' }, lean: { most: 0.3, ease: 0.1 } } },
       anywhere: ANYWHERE,
       mods: { spaces: 'shapes3d' },
     },
@@ -210,6 +230,9 @@ test('where two zones hold the body, the key plays the higher priority one\'s', 
   expect(emote(body, w)).toBe(true)
   expect(body.data.activity).toBe('show')
   expect(body.data.clip).toBe('bow')
+  // The bow's then names the party's emote, an activity of another shape: played once the bow is over.
+  until(t, () => body.data.clip === 'backflip', steps(RIG.table.bow.dur) + 2)
+  expect(body.data.activity).toBe('party')
 })
 
 const key = (body: Row, w: W, k: string): boolean => press(body, w, k, [0, 0])
@@ -302,4 +325,152 @@ test('walked into the cave the arms draw the torch and hold it, the legs walking
   expect(body.data).toMatchObject({ upper: 'stowing', activity: 'walk' })
   until(t, () => body.data.upperMotion === null, steps(RIG.table.stowing.dur) + 2)
   expect(body.data).toMatchObject({ upperActivity: null, upperSpace: null })
+})
+
+test('the clips\' markers reach the row the step they are crossed, and a blow lands only while its window is open', async () => {
+  const { t, w, body } = await open()
+  // A lap of the walk marks one step, at half the lap.
+  body.data.want = [2, 0]
+  until(t, () => body.data.clip === 'walk', steps(1))
+  // Marked on exactly the steps whose playhead passes half the lap, however fast the walk plays.
+  let stepped = 0
+  for (let i = 0; i < steps(2); i++) {
+    const was = body.data.clipT
+    t.step(DT)
+    const now = body.data.clipT
+    const passed = now >= was ? was < 0.5 && 0.5 <= now : was < 0.5 || 0.5 <= now
+    expect(body.data.markers.some((m: { name: string }) => m.name === 'step'), `step ${i}`).toBe(passed)
+    if (passed) stepped++
+    expect(body.data.windows).toEqual([])
+  }
+  expect(stepped).toBeGreaterThanOrEqual(2)
+  until(t, () => body.data.offered.includes('party'), steps(5))
+  body.data.want = [0, 0]
+  t.step(DT)
+
+  // The backflip: its tuck, then its strike window, the blow landing only while it is open.
+  expect(emote(body, w)).toBe(true)
+  const marked: string[] = []
+  const landed: number[] = []
+  until(t, () => {
+    for (const m of body.data.markers) if (m.clip === 'backflip') marked.push(m.name)
+    if (body.data.clip === 'backflip' && body.data.windows.includes('strike')) landed.push(body.data.clipT)
+    return body.data.activity === 'walk'
+  }, steps(RIG.table.backflip.dur) + 3)
+  expect(marked).toEqual(['tuck', 'strike', 'strike.end'])
+  expect(landed.length).toBe(steps(0.3))
+  for (const at of landed) {
+    expect(at).toBeGreaterThanOrEqual(0.6)
+    expect(at).toBeLessThan(0.9)
+  }
+
+  // The upper half's markers reach the row as the body's do.
+  expect(key(body, w, 'aim')).toBe(true)
+  for (let i = 0; i < steps(0.5); i++) t.step(DT)
+  expect(key(body, w, 'fire')).toBe(true)
+  until(t, () => body.data.markers.some((m: { name: string; clip: string }) => m.name === 'shot' && m.clip === 'fire'), steps(0.2))
+  expect(body.data.upperT).toBeGreaterThanOrEqual(0.1)
+})
+
+test('a key during the backflip plays nothing before its cancel point; queued, it plays there; a key nothing plays is dropped after its hold', async () => {
+  const { t, w, body } = await open()
+  body.data.want = [2, 0]
+  until(t, () => body.data.offered.includes('party'), steps(5))
+  body.data.want = [0, 0]
+  t.step(DT)
+  expect(emote(body, w)).toBe(true)
+  t.step(DT)
+  // Before half the backflip, the wave is refused.
+  expect(key(body, w, 'wave')).toBe(false)
+  queue(body, w, 'wave')
+  expect(body.data.queued).toEqual([{ key: 'wave', age: 0 }])
+  // Held, its seconds not counted, until the backflip has played half of itself, and played there.
+  until(t, () => body.data.upperMotion === 'wave', steps(1))
+  expect(body.data.clip).toBe('backflip')
+  expect(body.data.clipT).toBeGreaterThanOrEqual(0.6)
+  expect(body.data.clipT).toBeLessThan(0.6 + 2 * DT)
+  expect(body.data.queued).toEqual([])
+
+  // A key no move plays: dropped once it has been free to play for the hold, the wave on the upper half
+  // not counting, nor the backflip before its cancel point.
+  until(t, () => body.data.activity === 'walk' && body.data.upper === null, steps(2))
+  queue(body, w, 'nothing')
+  let held = 0
+  until(t, () => {
+    if (body.data.queued.length) held++
+    return body.data.queued.length === 0
+  }, steps(1))
+  expect(held).toBe(Math.floor(0.4 / DT) + 1)
+})
+
+test('a flinch by its key is laid over the walk, the legs walking on, and taken off at its end; breathing is laid on while still', async () => {
+  const { t, w, body } = await open()
+  // Standing: breathing laid on, fading in to half its weight.
+  until(t, () => body.data.adds.some((l: { name: string; w: number }) => l.name === 'walk.breathe' && l.w === 0.5), steps(0.5))
+  // Walking: breathing let go, faded out and taken off.
+  body.data.want = [2, 0]
+  until(t, () => body.data.adds.length === 0, steps(1))
+  until(t, () => body.data.clip === 'walk', steps(1))
+  // The flinch over the walk, even before a one-shot's cancel point: the body walks on beneath it.
+  expect(key(body, w, 'hit')).toBe(true)
+  expect(body.data.adds).toEqual([{ name: 'walk.flinch', clip: 'flinch', t: 0, w: 0, most: 1, loop: false, ending: false, bone: null }])
+  const at = body.data.pos[0]
+  const marks: string[] = []
+  until(t, () => {
+    marks.push(...body.data.markers.map((m: { name: string }) => m.name))
+    expect(body.data.clip).toBe('walk')
+    return body.data.adds.length === 0
+  }, steps(0.6) + 2)
+  expect(marks).toContain('jolt')
+  expect(body.data.pos[0]).toBeGreaterThan(at + 0.5)
+})
+
+test('a body turning as it walks leans into the turn, by the speed and the rate it turns, and stands up again going straight', async () => {
+  const { t, body } = await open()
+  body.data.want = [0, 2]
+  until(t, () => body.data.clip === 'walk' && body.data.speed > 1, steps(2))
+  for (let i = 0; i < steps(0.5); i++) t.step(DT)
+  expect(Math.abs(body.data.lean)).toBeLessThan(1e-3)
+  // Turning left (the want swung round toward +x and on): leaning into it, its head over the inside.
+  let most = 0
+  for (let i = 0; i < steps(1.5); i++) {
+    const a = (i / steps(1.5)) * Math.PI
+    body.data.want = [2 * Math.sin(a), 2 * Math.cos(a)]
+    t.step(DT)
+    most = Math.max(most, Math.abs(body.data.lean))
+    if (Math.abs(body.data.lean) > 0.01) {
+      // The body's up, tilted: toward the side it turns to.
+      const [x, y, z, ww] = body.data.tilt
+      const q = { x, y, z, w: ww }
+      const up = [2 * (q.x * q.y - q.w * q.z), 1 - 2 * (q.x * q.x + q.z * q.z), 2 * (q.y * q.z + q.w * q.x)]
+      // The turn's centre is to the side the facing (sin yaw, cos yaw) swings toward as the yaw grows.
+      const side = [Math.cos(body.data.yaw), 0, -Math.sin(body.data.yaw)]
+      expect(up[0] * side[0] + up[2] * side[2]).toBeGreaterThan(0)
+    }
+  }
+  expect(most).toBeGreaterThan(0.05)
+  expect(most).toBeLessThanOrEqual(0.3)
+  // Straight again: upright.
+  body.data.want = [0, -2]
+  for (let i = 0; i < steps(1.5); i++) t.step(DT)
+  expect(Math.abs(body.data.lean)).toBeLessThan(0.01)
+})
+
+test('queueing a key on a body whose motion3d file gives no buffer throws, naming it', async () => {
+  const { w, body } = await open()
+  const file = JSON.parse(JSON.stringify(MOTION))
+  delete file.buffer
+  written('/motion3d-sim-test/motion.json', JSON.stringify(file))
+  try {
+    expect(() => queue(body, w, 'wave')).toThrow('motion3d: body\'s motion3d file gives no buffer, which a queued key wave is held by')
+  } finally {
+    written('/motion3d-sim-test/motion.json', JSON.stringify(MOTION))
+  }
+})
+
+test('a marker at a moment the bake did not measure, or a window that closes before it opens, throws naming it', async () => {
+  const { w, body } = await open()
+  const bad = { ...RIG, clips: { ...RIG.clips, idle: { loop: true, markers: { x: 'soon' } } } }
+  expect(() => clipOf(bad as any, 'idle')).toThrow('motion3d: idle\'s marker x is at "soon", which is no seconds, "NN%" or one of peak, strike, takeoff, landing')
+  expect(() => timesOf(w, body, 'shut')).toThrow('motion3d: shut\'s window x opens at 1.5 s, after it closes at 0.5 s')
 })

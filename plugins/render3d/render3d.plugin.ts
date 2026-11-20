@@ -12,6 +12,9 @@
 //   shadows     `soft`, `hard` or `none`.
 //   background  a colour the scene is cleared to. Through the composer it is tone mapped with the
 //               rest of the frame; drawn straight, three clears to it as given.
+//   transparent true: the canvas drawn see-through wherever the scene draws nothing (the renderer made
+//               with `alpha` and cleared to nothing), so a shot of it is a picture with no backdrop, an
+//               icon. A scene with a `background` too throws.
 //   ao          { on, radius, thickness, falloff, scale, intensity, samples }: three's GTAOPass, run
 //               through an EffectComposer, while `on` is true; off when it is false or left out, so a
 //               scene keeps its AO's settings with the AO off. An `ao` that is off is as no `ao`
@@ -90,6 +93,27 @@
 // once the renderer is made makes the composer again. A pass handed over is render3d's from then on:
 // it is disposed when render3d closes.
 //
+// Reflections. `ssr` on the prefab, `{ steps, distance, thickness, roughness }`, is screen-space
+// reflections: the frame is drawn through the composer, and after the scene and its effects a pass keeps
+// it for the next frame (its colour with mips, each pixel's distance from the camera, and the camera's
+// view and projection). Every dressed program, last of every splice, where three adds an envMap's light
+// in the shaders that take light from round them (standard and physical): a surface smoother than
+// `roughness` walks its reflected ray `distance` metres in `steps` steps through the world, puts each
+// step through the last frame's camera, and where it first passes behind the last frame's depth by less
+// than `thickness` metres, halved back to the edge, takes the last frame's colour there, read blurred by
+// its roughness, in place of the reflection it had, faded near the frame's edge, toward the ray's end
+// and as its roughness nears `roughness`. A ray that meets nothing keeps the reflection the surface had:
+// lights3d's probes, an envMap, or none. Each number is read every frame.
+// A mirror is a flat mesh whose face is its local +z (a PlaneGeometry) with `userData.mirror =
+// { resolution }`: each frame the scene is drawn from the camera reflected in its plane, the mirror
+// hidden and everything behind its plane clipped away, into a picture `resolution` of the frame's size,
+// with mips; its material, dressed if it was not, reads that picture where the fragment falls in it,
+// blurred by its roughness, as its whole reflection, and its colour, metalness and roughness work on it
+// as on any light round it (a metal of roughness 0 is a looking glass; a polished dielectric reflects
+// more as the eye grazes it). A mirror seen from behind keeps its last picture. Each mirror's material
+// is its own: two mirrors sharing one throw, naming both. A mirror in another mirror shows its own
+// picture as the last frame left it.
+//
 // `finish(key, pass)` draws every frame through a pass after the tone mapping, once per key, in the
 // order they were handed over: it reads the frame's colours as the screen shows them, in sRGB from 0
 // to 1, which is where a look made of the screen's own colours, a palette or a dither, has to work.
@@ -133,6 +157,19 @@
 // flag is the object's own: a child moved with its parent needs none, and a child moved itself needs
 // its own.
 //
+// Shaders compiled before the first draw. An object put straight into the scene or the overlay, or
+// handed to `prepare(object)` (one already there, given a material it has not been drawn with), is
+// compiled for that scene the next time the scene is drawn, last of the scene's own `onBeforeRender`,
+// so with the lights exactly as the draw has them (lights3d takes its own out of three's there), and
+// everything put in one scene since its last draw in one `renderer.compile`; and it is drawn in no
+// frame, a mirror's neither, until every program it needs has finished compiling on the GPU's own
+// threads (`KHR_parallel_shader_compile`): it shows a few frames later instead of stalling the frame
+// that first draws it. Its `visible` is lowered only for each draw and put back after, so whatever sets
+// it, sets it as ever. One whose programs are compiled already is drawn that frame. `compiling()` is how
+// many are waiting or compiling, what a loading screen waits on (`render3d.loader.ts`). Objects added
+// inside one already in the scene are compiled when first drawn, as is everything where the GPU has no
+// `KHR_parallel_shader_compile`.
+//
 // The camera has one driver at a time. Whoever places it claims it: `claim(owner)` is true when
 // `owner` now holds it and false while another does, `release(owner)` lets go of the owner's own
 // claim only, and `claimed()` is the owner or undefined.
@@ -152,7 +189,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
-import { Pass } from 'three/addons/postprocessing/Pass.js'
+import { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js'
 import { steps, type Plugins } from '#engine/browser.ts'
 
 type V3 = [number, number, number]
@@ -163,9 +200,15 @@ export type Prefab = {
   exposure?: number
   shadows?: 'soft' | 'hard' | 'none'
   background?: THREE.ColorRepresentation
+  transparent?: boolean
   ao?: { on?: boolean; radius: number; thickness: number; falloff: number; scale: number; intensity: number; samples: number }
   bloom?: { strength: number; radius: number; threshold: number }
+  ssr?: Ssr
 }
+// Screen-space reflections (Reflections, the header).
+export type Ssr = { steps: number; distance: number; thickness: number; roughness: number }
+// A mesh's `userData.mirror` (Reflections, the header).
+export type Mirror = { resolution: number }
 type Stage = 'vertex' | 'fragment'
 export type Splice = { uniforms?: Record<string, THREE.IUniform>; vertex?: Record<string, string>; fragment?: Record<string, string> }
 // A pass another plugin draws the frame through, handed the depth the scene was drawn with.
@@ -193,6 +236,158 @@ const WORLD: Splice = {
     ].join('\n'),
   },
   fragment: { common: 'varying vec3 vDressWorld;' },
+}
+
+// A number from 0 to 1 that changes from pixel to pixel with no pattern the eye picks up.
+const JITTER = 'float rdJitter( vec2 p ) { return fract( 52.9829189 * fract( dot( p, vec2( 0.06711056, 0.00583715 ) ) ) ); }'
+
+// Screen-space reflections, the last of every dressed program's splices, where three adds an envMap's
+// light (`lights_fragment_maps`), in the shaders that take light from round them (standard and
+// physical): a surface smoother than `roughness` traces its reflected ray through the world and finds,
+// through the last frame's camera, where it passes behind the last frame's depth; the last frame's
+// colour there, read blurred by the surface's roughness, takes the place of the reflection the surface
+// had (a probe's, an envMap's, or none), faded as the surface nears `roughness` and as the point nears
+// the frame's edge. A ray that meets nothing keeps the reflection there was.
+const SSR: Splice = {
+  fragment: {
+    common: `
+      uniform float uRdSsrOn; uniform highp sampler2D uRdSsrColour; uniform highp sampler2D uRdSsrDepth;
+      uniform mat4 uRdSsrPrevView; uniform mat4 uRdSsrPrevProj; uniform mat4 uRdSsrCamera;
+      uniform float uRdSsrSteps; uniform float uRdSsrDistance; uniform float uRdSsrThickness; uniform float uRdSsrRough; uniform float uRdSsrMips;
+      ${JITTER}
+      // where world point q falls in the last frame, its uv and how far behind the last frame's depth
+      // there it is (its distance from that camera less the depth's), and false off that frame
+      bool rdSsrAt( vec3 q, out vec2 uv, out float behind ) {
+        vec4 v = uRdSsrPrevView * vec4( q, 1.0 );
+        vec4 c = uRdSsrPrevProj * v;
+        if ( c.w <= 0.0 ) return false;
+        uv = c.xy / c.w * 0.5 + 0.5;
+        if ( uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0 ) return false;
+        behind = - v.z - texture2D( uRdSsrDepth, uv ).r;
+        return true;
+      }`,
+    '?lights_fragment_maps': `
+      #if defined( RE_IndirectSpecular )
+      if ( uRdSsrOn > 0.5 && material.roughness < uRdSsrRough ) {
+        vec3 rdFrom = ( uRdSsrCamera * vec4( geometryPosition, 1.0 ) ).xyz;
+        vec3 rdWay = normalize( ( uRdSsrCamera * vec4( reflect( - geometryViewDir, geometryNormal ), 0.0 ) ).xyz );
+        float rdStride = uRdSsrDistance / uRdSsrSteps;
+        float rdT = rdStride * ( 0.5 + rdJitter( gl_FragCoord.xy ) );
+        float rdLast = 0.0;
+        vec2 rdUv = vec2( 0.0 );
+        float rdHit = 0.0;
+        for ( int i = 0; i < 256; i ++ ) {
+          if ( float( i ) >= uRdSsrSteps ) break;
+          float behind;
+          if ( !rdSsrAt( rdFrom + rdWay * rdT, rdUv, behind ) ) break;
+          if ( behind > 0.0 && behind < uRdSsrThickness ) {
+            // halved back and forth between the last step in front and this one behind
+            float lo = rdLast, hi = rdT;
+            for ( int j = 0; j < 6; j ++ ) {
+              float mid = 0.5 * ( lo + hi );
+              vec2 u; float b;
+              if ( rdSsrAt( rdFrom + rdWay * mid, u, b ) && b > 0.0 ) { hi = mid; rdUv = u; } else lo = mid;
+            }
+            vec2 edge = min( rdUv, 1.0 - rdUv );
+            rdHit = smoothstep( 0.0, 0.08, min( edge.x, edge.y ) ) * ( 1.0 - rdT / uRdSsrDistance );
+            break;
+          }
+          rdLast = rdT;
+          rdT += rdStride;
+        }
+        if ( rdHit > 0.0 ) {
+          vec3 rdSeen = textureLod( uRdSsrColour, rdUv, material.roughness * uRdSsrMips ).rgb;
+          radiance = mix( radiance, rdSeen, rdHit * ( 1.0 - smoothstep( 0.5 * uRdSsrRough, uRdSsrRough, material.roughness ) ) );
+        }
+      }
+      #endif`,
+  },
+}
+
+// A mirror's reflection, after everything else where three adds an envMap's light: the picture drawn
+// from the mirrored camera, read where the fragment falls in it, blurred by the surface's roughness, as
+// its whole reflection. The surface's colour, metalness and roughness work on it as on any light round it.
+const MIRROR = `
+      #if defined( RE_IndirectSpecular )
+      vec4 rdMirrorAt = uRdMirrorMatrix * vec4( vDressWorld, 1.0 );
+      radiance = textureLod( uRdMirror, rdMirrorAt.xy / rdMirrorAt.w, material.roughness * uRdMirrorMips ).rgb;
+      #endif`
+
+// The frame as the scene and its effects left it, kept for the next frame's screen-space reflections:
+// its colour, with mips to read a rough surface's blurred reflection from, and each pixel's distance
+// along the view from the camera, with the camera's view and projection as they were. It draws nothing
+// into the frame.
+class HistoryPass extends Pass {
+  colour: THREE.WebGLRenderTarget
+  depth: THREE.WebGLRenderTarget
+  view = new THREE.Matrix4()
+  projection = new THREE.Matrix4()
+  // whether a frame has been kept yet
+  kept = false
+  frameDepth: THREE.DepthTexture | null = null
+  private copy: THREE.ShaderMaterial
+  private far: THREE.ShaderMaterial
+  private quad: FullScreenQuad
+  constructor(private camera: THREE.PerspectiveCamera) {
+    super()
+    this.needsSwap = false
+    const target = (format: THREE.PixelFormat, mips: boolean) => new THREE.WebGLRenderTarget(1, 1, {
+      type: THREE.HalfFloatType, format, depthBuffer: false, generateMipmaps: mips,
+      minFilter: mips ? THREE.LinearMipmapLinearFilter : THREE.NearestFilter, magFilter: mips ? THREE.LinearFilter : THREE.NearestFilter,
+    })
+    this.colour = target(THREE.RGBAFormat, true)
+    this.depth = new THREE.WebGLRenderTarget(1, 1, { type: THREE.FloatType, format: THREE.RedFormat, depthBuffer: false, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter })
+    const vertexShader = 'varying vec2 vUv;\nvoid main() { vUv = uv; gl_Position = vec4( position.xy, 0.0, 1.0 ); }'
+    this.copy = new THREE.ShaderMaterial({ uniforms: { src: { value: null } }, vertexShader, fragmentShader: 'uniform sampler2D src;\nvarying vec2 vUv;\nvoid main() { gl_FragColor = texture2D( src, vUv ); }', depthTest: false, depthWrite: false })
+    this.far = new THREE.ShaderMaterial({
+      uniforms: { tDepth: { value: null }, cameraNear: { value: 0.1 }, cameraFar: { value: 1000 } },
+      vertexShader,
+      fragmentShader: [
+        '#include <packing>',
+        'uniform sampler2D tDepth; uniform float cameraNear; uniform float cameraFar;',
+        'varying vec2 vUv;',
+        'void main() {',
+        '  float d = texture2D( tDepth, vUv ).x;',
+        '  #ifdef USE_REVERSED_DEPTH_BUFFER',
+        '  bool sky = d <= 0.0;',
+        '  #else',
+        '  bool sky = d >= 1.0;',
+        '  #endif',
+        '  gl_FragColor = vec4( sky ? 1e9 : - perspectiveDepthToViewZ( d, cameraNear, cameraFar ), 0.0, 0.0, 1.0 );',
+        '}',
+      ].join('\n'),
+      depthTest: false,
+      depthWrite: false,
+    })
+    this.quad = new FullScreenQuad(this.copy)
+  }
+  setSize(width: number, height: number) {
+    this.colour.setSize(width, height)
+    this.depth.setSize(width, height)
+  }
+  render(renderer: THREE.WebGLRenderer, _write: THREE.WebGLRenderTarget, read: THREE.WebGLRenderTarget) {
+    this.copy.uniforms.src.value = read.texture
+    this.quad.material = this.copy
+    renderer.setRenderTarget(this.colour)
+    this.quad.render(renderer)
+    const u = this.far.uniforms
+    u.tDepth.value = this.frameDepth
+    u.cameraNear.value = this.camera.near
+    u.cameraFar.value = this.camera.far
+    this.quad.material = this.far
+    renderer.setRenderTarget(this.depth)
+    this.quad.render(renderer)
+    this.view.copy(this.camera.matrixWorldInverse)
+    this.projection.copy(this.camera.projectionMatrix)
+    this.kept = true
+  }
+  dispose() {
+    this.colour.dispose()
+    this.depth.dispose()
+    this.copy.dispose()
+    this.far.dispose()
+    this.quad.dispose()
+  }
 }
 
 // The part of a surface that makes a program, as text: its glsl and its uniform names. Two surfaces
@@ -295,6 +490,52 @@ export type Drift = { object: THREE.Object3D; path: string; step: number; was: n
 export function render3d() {
   const scene = new THREE.Scene()
   const overlay = { scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera() }
+  // Shaders compiled before the first draw: each object put into the scene or the overlay and not yet
+  // compiled, with the scene it is in; and each one compiling, with the materials it still waits on.
+  const fresh = new Map<THREE.Object3D, THREE.Scene>()
+  const compiling = new Map<THREE.Object3D, { scene: THREE.Scene; waiting: Set<THREE.Material> }>()
+  const unready: THREE.Object3D[] = [] // what this frame's draws leave out, made visible again after
+  const hooked: [THREE.Scene, THREE.Scene['onBeforeRender']][] = [] // each scene's own hook, put back after the frame
+  // What was put into scene `s` since it was last drawn compiled in one call, as the draw now under way
+  // has the lights (three walks the whole scene for its lights once a call, so a call an object would
+  // walk it once an object); and everything of `s` still compiling left out of this frame's draws.
+  const warm = (r: THREE.WebGLRenderer, s: THREE.Scene, cam: THREE.Camera) => {
+    const put = [...fresh].filter(([, at]) => at === s).map(([o]) => o)
+    if (put.length) {
+      const all = {
+        traverse: (f: (o: THREE.Object3D) => void) => { for (const o of put) o.traverse(f) },
+        traverseVisible: (f: (o: THREE.Object3D) => void) => { for (const o of put) o.traverseVisible(f) },
+      }
+      // three's compile reads nothing of the object it is handed but these two walks
+      r.compile(all as unknown as THREE.Object3D, cam, s)
+      for (const o of put) {
+        fresh.delete(o)
+        const materials = new Set<THREE.Material>()
+        o.traverse(c => { for (const m of [(c as THREE.Mesh).material ?? []].flat()) materials.add(m) })
+        compiling.set(o, { scene: s, waiting: materials })
+      }
+    }
+    for (const [o, { scene: at, waiting }] of compiling) {
+      if (at !== s) continue
+      for (const m of waiting) {
+        // three keeps each material's program in its properties, whose type it leaves open
+        const program = (r.properties.get(m) as { currentProgram?: { isReady(): boolean } }).currentProgram
+        if (program === undefined || program.isReady()) waiting.delete(m)
+      }
+      if (!waiting.size) compiling.delete(o)
+      else if (o.visible) {
+        o.visible = false
+        unready.push(o)
+      }
+    }
+  }
+  for (const s of [scene, overlay.scene]) {
+    s.addEventListener('childadded', ({ child }) => { fresh.set(child, s) })
+    s.addEventListener('childremoved', ({ child }) => {
+      fresh.delete(child)
+      compiling.delete(child)
+    })
+  }
   const splices = new Map<string, Splice>()
   const effects = new Map<string, Effect>()
   const finishes = new Map<string, Pass>()
@@ -305,8 +546,20 @@ export function render3d() {
   let size: [number, number] = [0, 0]
   let mounted: HTMLCanvasElement | undefined
   let renderer: THREE.WebGLRenderer | undefined
-  let post: { composer: EffectComposer; gtao?: DepthAO; own: Pass[] } | undefined
+  let post: { composer: EffectComposer; gtao?: DepthAO; history?: HistoryPass; own: Pass[] } | undefined
   let holder: unknown
+  // render3d's own splices, after every other plugin's: the screen-space reflections, when the prefab
+  // asks for them.
+  const late = new Map<string, Splice>()
+  const ssrUniforms: Record<string, THREE.IUniform> = {
+    uRdSsrOn: { value: 0 }, uRdSsrColour: { value: null }, uRdSsrDepth: { value: null },
+    uRdSsrPrevView: { value: new THREE.Matrix4() }, uRdSsrPrevProj: { value: new THREE.Matrix4() }, uRdSsrCamera: { value: new THREE.Matrix4() },
+    uRdSsrSteps: { value: 1 }, uRdSsrDistance: { value: 1 }, uRdSsrThickness: { value: 1 }, uRdSsrRough: { value: 1 }, uRdSsrMips: { value: 0 },
+  }
+  // Each mirror: the picture drawn from its mirrored camera, that camera, and its material's uniforms;
+  // and each mirror's material, the splice it reads its picture by.
+  const mirrors = new Map<THREE.Mesh, { target: THREE.WebGLRenderTarget; camera: THREE.PerspectiveCamera; uniforms: Record<string, THREE.IUniform> }>()
+  const mirrored = new Map<THREE.Material, Splice>()
   // Whoever `drew` hands each frame's drawn places to.
   const watchers = new Set<(drawn: Drawn) => void>()
   // Whoever `drifted` hands each drifting object to, every object's place on the frame of the newest
@@ -353,7 +606,8 @@ export function render3d() {
     if (renderer || !mounted || !prefab) return
     const p = prefab
     const [width, height] = size
-    const r = new THREE.WebGLRenderer({ canvas: mounted, reversedDepthBuffer: !!aoOf(p) })
+    const r = new THREE.WebGLRenderer({ canvas: mounted, reversedDepthBuffer: !!aoOf(p), alpha: !!p.transparent })
+    if (p.transparent) r.setClearColor(0x000000, 0)
     r.setPixelRatio(ratioOf(p))
     r.setSize(width, height)
     if (p.tone !== undefined) r.toneMapping = TONES[p.tone]
@@ -379,10 +633,10 @@ export function render3d() {
       post.composer.dispose()
       post = undefined
     }
-    if (!ao && !p.bloom && !effects.size && !finishes.size) return
-    // With AO or an effect the scene is drawn into a target carrying the depth they read; without,
-    // the composer's own half-float targets.
-    const composer = ao || effects.size
+    if (!ao && !p.bloom && !effects.size && !finishes.size && !p.ssr) return
+    // With AO, an effect or screen-space reflections the scene is drawn into a target carrying the
+    // depth they read; without, the composer's own half-float targets.
+    const composer = ao || effects.size || p.ssr
       ? new EffectComposer(r, new THREE.WebGLRenderTarget(width, height, { type: THREE.HalfFloatType, depthTexture: new THREE.DepthTexture(width, height, THREE.FloatType) }))
       : new EffectComposer(r)
     composer.setSize(width, height)
@@ -401,6 +655,14 @@ export function render3d() {
       effect.setSize(width * r.getPixelRatio(), height * r.getPixelRatio())
       composer.addPass(effect)
     }
+    // the frame as the scene and its effects left it, kept for the next frame's reflections
+    let history: HistoryPass | undefined
+    if (p.ssr) {
+      history = new HistoryPass(me.camera!)
+      history.setSize(width * r.getPixelRatio(), height * r.getPixelRatio())
+      composer.addPass(history)
+      own.push(history)
+    }
     const after: Pass[] = [new OverlayPass(overlay.scene, overlay.camera)]
     if (p.bloom) {
       const { strength, radius, threshold } = p.bloom
@@ -412,7 +674,94 @@ export function render3d() {
       finish.setSize(width * r.getPixelRatio(), height * r.getPixelRatio())
       composer.addPass(finish)
     }
-    post = { composer, gtao, own: [...own, ...after] }
+    post = { composer, gtao, history, own: [...own, ...after] }
+  }
+
+  // The camera reflected in a mirror's plane (its face is its local +z), as three's Reflector reflects
+  // it: its place, the point it looks at and its up each mirrored. False when the camera stands behind
+  // the mirror, which then shows nothing new.
+  const at = new THREE.Vector3(), eye = new THREE.Vector3(), normal = new THREE.Vector3(), look = new THREE.Vector3(), turn = new THREE.Matrix4()
+  const reflected = (mesh: THREE.Mesh, camera: THREE.PerspectiveCamera, into: THREE.PerspectiveCamera) => {
+    at.setFromMatrixPosition(mesh.matrixWorld)
+    eye.setFromMatrixPosition(camera.matrixWorld)
+    turn.extractRotation(mesh.matrixWorld)
+    normal.set(0, 0, 1).applyMatrix4(turn)
+    const toward = at.clone().sub(eye)
+    if (toward.dot(normal) > 0) return false
+    into.position.copy(toward.reflect(normal).negate().add(at))
+    turn.extractRotation(camera.matrixWorld)
+    look.set(0, 0, -1).applyMatrix4(turn).add(eye)
+    const target = at.clone().sub(look).reflect(normal).negate().add(at)
+    into.up.set(0, 1, 0).applyMatrix4(turn).reflect(normal)
+    into.lookAt(target)
+    into.near = camera.near
+    into.far = camera.far
+    into.updateMatrixWorld()
+    into.projectionMatrix.copy(camera.projectionMatrix)
+    into.projectionMatrixInverse.copy(camera.projectionMatrixInverse)
+    return true
+  }
+
+  // Every mirror of the scene drawn: each visible mesh with `userData.mirror` gets a picture of its own
+  // the frame's size times its `resolution`, and its material the splice that reads it, the first frame
+  // it is seen; then the scene, the mirror hidden and everything behind its plane clipped away, is
+  // drawn from the reflected camera into it. A mirror gone from the scene lets its picture go.
+  const reflect = (r: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera) => {
+    const seen = new Set<THREE.Mesh>()
+    scene.traverseVisible(o => {
+      const m = o as THREE.Mesh
+      if (m.isMesh && m.userData.mirror) seen.add(m)
+    })
+    for (const [mesh, held] of mirrors) {
+      if (seen.has(mesh)) continue
+      held.target.dispose()
+      mirrors.delete(mesh)
+    }
+    if (!seen.size) return
+    const buffer = r.getDrawingBufferSize(new THREE.Vector2())
+    const was = r.getRenderTarget(), planes = r.clippingPlanes
+    try {
+      for (const mesh of seen) {
+        const m = mesh.userData.mirror as Mirror
+        if (!(m.resolution > 0 && m.resolution <= 1)) throw new Error(`render3d mirror ${mesh.name || mesh.id} has a resolution of ${m.resolution}, and it is above 0 and no more than 1`)
+        if (Array.isArray(mesh.material)) throw new Error(`render3d mirror ${mesh.name || mesh.id} has more than one material, and a mirror reads its picture through one`)
+        const w = Math.max(1, Math.round(buffer.x * m.resolution)), h = Math.max(1, Math.round(buffer.y * m.resolution))
+        let held = mirrors.get(mesh)
+        if (!held) {
+          const target = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter })
+          held = { target, camera: new THREE.PerspectiveCamera(), uniforms: { uRdMirror: { value: target.texture }, uRdMirrorMatrix: { value: new THREE.Matrix4() }, uRdMirrorMips: { value: Math.log2(Math.max(w, h)) } } }
+          mirrors.set(mesh, held)
+        }
+        if (held.target.width !== w || held.target.height !== h) {
+          held.target.setSize(w, h)
+          held.uniforms.uRdMirrorMips.value = Math.log2(Math.max(w, h))
+        }
+        const material = mesh.material as THREE.Material
+        const owner = [...mirrors].find(([other, h]) => other !== mesh && mirrored.get(material)?.uniforms === h.uniforms)
+        if (owner) throw new Error(`render3d mirrors ${mesh.name || mesh.id} and ${owner[0].name || owner[0].id} share a material, and each mirror reads its own picture through its own`)
+        if (!mirrored.has(material)) {
+          mirrored.set(material, {
+            uniforms: held.uniforms,
+            fragment: { common: 'uniform highp sampler2D uRdMirror; uniform mat4 uRdMirrorMatrix; uniform float uRdMirrorMips;', '?lights_fragment_maps': MIRROR },
+          })
+          if (!dressed.has(material)) me.dress(material)
+          material.needsUpdate = true
+        }
+        if (!reflected(mesh, camera, held.camera)) continue
+        held.camera.layers.mask = camera.layers.mask
+        // from the world to the picture's uv: its projection and view, from -1..1 to 0..1
+        held.uniforms.uRdMirrorMatrix.value.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1)
+          .multiply(held.camera.projectionMatrix).multiply(held.camera.matrixWorldInverse)
+        r.clippingPlanes = [new THREE.Plane().setFromNormalAndCoplanarPoint(normal, at)]
+        mesh.visible = false
+        r.setRenderTarget(held.target)
+        r.render(scene, held.camera)
+        mesh.visible = true
+      }
+    } finally {
+      r.clippingPlanes = planes
+      r.setRenderTarget(was)
+    }
   }
 
   const me = {
@@ -440,6 +789,13 @@ export function render3d() {
       if (!p.camera) throw new Error('the render3d prefab has no camera')
       if (p.tone !== undefined && !Object.hasOwn(TONES, p.tone)) throw new Error(`render3d tone ${p.tone} is none of ${tones.join(', ')}`)
       if (p.shadows !== undefined && p.shadows !== 'none' && !Object.hasOwn(SHADOWS, p.shadows)) throw new Error(`render3d shadows ${p.shadows} is none of ${shadowings.join(', ')}`)
+      if (p.ssr) {
+        const s = p.ssr
+        if (!(Number.isInteger(s.steps) && s.steps > 0 && s.steps <= 256)) throw new Error(`render3d ssr steps ${s.steps} is not a whole number from 1 to 256`)
+        if (!(s.distance > 0)) throw new Error(`render3d ssr distance ${s.distance} is not above 0`)
+        if (!(s.thickness > 0)) throw new Error(`render3d ssr thickness ${s.thickness} is not above 0`)
+        if (!(s.roughness > 0 && s.roughness <= 1)) throw new Error(`render3d ssr roughness ${s.roughness} is not above 0 and no more than 1`)
+      }
       const { width, height } = plugins.wire.scene.prefabs.engine
       size = [width, height]
       const { fov, near, far, at, look } = p.camera
@@ -447,9 +803,28 @@ export function render3d() {
       camera.position.fromArray(at)
       camera.lookAt(...look)
       me.camera = camera
+      if (p.background !== undefined && p.transparent) throw new Error('render3d: a transparent scene is cleared to nothing, and this one gives a background too')
       if (p.background !== undefined) scene.background = new THREE.Color(p.background)
+      if (p.ssr) {
+        late.set('ssr', { ...SSR, uniforms: ssrUniforms })
+        for (const m of dressed) m.needsUpdate = true
+      }
       prefab = p
       make()
+    },
+    // An object already in the scene or the overlay, given a material it has not been drawn with, is
+    // compiled as one just put in: left out of every draw until its programs are ready.
+    prepare(o: THREE.Object3D) {
+      let root: THREE.Object3D = o
+      while (root.parent) root = root.parent
+      const s = root === scene ? scene : root === overlay.scene ? overlay.scene : undefined
+      if (!s) throw new Error('render3d prepares only what is in its scene or its overlay')
+      fresh.set(o, s)
+    },
+    // How many objects are waiting to compile or compiling: what a loading screen waits on. None where
+    // nothing is compiled ahead, with no renderer or no `KHR_parallel_shader_compile`.
+    compiling(): number {
+      return renderer && renderer.extensions.get('KHR_parallel_shader_compile') !== null ? fresh.size + compiling.size : 0
     },
     project(p: number[]): { x: number; y: number; behind: boolean } {
       const camera = me.camera
@@ -488,12 +863,16 @@ export function render3d() {
     dress<M extends THREE.Material>(material: M, { surface }: { surface?: Splice } = {}): M {
       const own = text(surface)
       material.onBeforeCompile = shader => {
-        const parts: [string, Splice][] = [['vDressWorld', WORLD], ...(surface ? [['the surface', surface] as [string, Splice]] : []), ...splices]
+        const mirror = mirrored.get(material)
+        const parts: [string, Splice][] = [
+          ['vDressWorld', WORLD], ...(surface ? [['the surface', surface] as [string, Splice]] : []), ...splices, ...late,
+          ...(mirror ? [['the mirror', mirror] as [string, Splice]] : []),
+        ]
         for (const [, part] of parts) Object.assign(shader.uniforms, part.uniforms)
         shader.vertexShader = insert(shader.vertexShader, 'vertex', parts)
         shader.fragmentShader = insert(shader.fragmentShader, 'fragment', parts)
       }
-      material.customProgramCacheKey = () => [...splices.keys(), own].join('|')
+      material.customProgramCacheKey = () => [...splices.keys(), ...late.keys(), own, mirrored.has(material) ? 'mirror' : ''].join('|')
       if (!dressed.has(material)) {
         dressed.add(material)
         const drop = () => { dressed.delete(material); material.removeEventListener('dispose', drop) }
@@ -572,6 +951,39 @@ export function render3d() {
         }
         if (!renderer) return
         if (overlay.scene.children.length) follow(overlay.camera, camera)
+        camera.updateMatrixWorld()
+        // What was put in since the last frame starts compiling, and what is still compiling is out of
+        // every draw of this frame: done the first time each scene is drawn this frame, last of its
+        // `onBeforeRender`, so the lights are as the draw has them (lights3d takes its own out there).
+        if (renderer.extensions.get('KHR_parallel_shader_compile') !== null) {
+          for (const s of [scene, overlay.scene]) {
+            const was = s.onBeforeRender
+            hooked.push([s, was])
+            s.onBeforeRender = function (r, s3, cam, target, material, group) {
+              was.call(this, r, s3, cam, target, material, group)
+              s.onBeforeRender = was
+              warm(r, s, cam)
+            }
+          }
+        } else fresh.clear()
+        reflect(renderer, camera)
+        // the screen-space reflections read the frame the history pass kept last frame, through the
+        // camera it was drawn with, from where the camera stands now
+        const history = post?.history
+        if (history && prefab?.ssr) {
+          const s = prefab.ssr, u = ssrUniforms
+          u.uRdSsrOn.value = history.kept ? 1 : 0
+          u.uRdSsrColour.value = history.colour.texture
+          u.uRdSsrDepth.value = history.depth.texture
+          u.uRdSsrPrevView.value.copy(history.view)
+          u.uRdSsrPrevProj.value.copy(history.projection)
+          u.uRdSsrCamera.value.copy(camera.matrixWorld)
+          u.uRdSsrSteps.value = s.steps
+          u.uRdSsrDistance.value = s.distance
+          u.uRdSsrThickness.value = s.thickness
+          u.uRdSsrRough.value = s.roughness
+          u.uRdSsrMips.value = Math.log2(Math.max(history.colour.width, history.colour.height))
+        }
         if (!post) {
           renderer.render(scene, camera)
           if (!overlay.scene.children.length) return
@@ -587,8 +999,11 @@ export function render3d() {
         const depth = post.composer.readBuffer.depthTexture
         post.gtao?.setGBuffer(depth!)
         for (const effect of effects.values()) effect.depth = depth
+        if (post.history) post.history.frameDepth = depth ?? null
         post.composer.render()
       } finally {
+        for (const [s, was] of hooked.splice(0)) s.onBeforeRender = was
+        for (const o of unready.splice(0)) o.visible = true
         between.restore()
       }
     },
@@ -604,6 +1019,11 @@ export function render3d() {
       effects.clear()
       for (const finish of finishes.values()) finish.dispose()
       finishes.clear()
+      for (const held of mirrors.values()) held.target.dispose()
+      mirrors.clear()
+      mirrored.clear()
+      fresh.clear()
+      compiling.clear()
       renderer?.dispose()
       renderer?.forceContextLoss()
       renderer = undefined

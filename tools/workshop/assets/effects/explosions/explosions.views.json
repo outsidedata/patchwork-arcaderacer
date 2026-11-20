@@ -1,0 +1,22 @@
+[
+  { "name": "grenade-0.05", "file": "grenade.json", "effect": "grenade", "camera": [7, 3, 9], "target": [0, 1.2, 0], "preroll": 0.05 },
+  { "name": "grenade-0.3", "file": "grenade.json", "effect": "grenade", "camera": [7, 3, 9], "target": [0, 1.2, 0], "preroll": 0.3 },
+  { "name": "grenade-1.0", "file": "grenade.json", "effect": "grenade", "camera": [7, 3, 9], "target": [0, 1.2, 0], "preroll": 1.0 },
+  { "name": "grenade-2.5", "file": "grenade.json", "effect": "grenade", "camera": [7, 3, 9], "target": [0, 1.2, 0], "preroll": 2.5 },
+  { "name": "mushroom-0.1", "file": "mushroom.json", "effect": "mushroom", "camera": [24, 6, 30], "target": [0, 7, 0], "preroll": 0.1 },
+  { "name": "mushroom-1.0", "file": "mushroom.json", "effect": "mushroom", "camera": [24, 6, 30], "target": [0, 7, 0], "preroll": 1.0 },
+  { "name": "mushroom-3.0", "file": "mushroom.json", "effect": "mushroom", "camera": [24, 6, 30], "target": [0, 7, 0], "preroll": 3.0 },
+  { "name": "mushroom-6.0", "file": "mushroom.json", "effect": "mushroom", "camera": [24, 6, 30], "target": [0, 7, 0], "preroll": 6.0 },
+  { "name": "plasma-0.05", "file": "plasma.json", "effect": "plasma", "camera": [6, 2.5, 8], "target": [0, 1.2, 0], "preroll": 0.05 },
+  { "name": "plasma-0.25", "file": "plasma.json", "effect": "plasma", "camera": [6, 2.5, 8], "target": [0, 1.2, 0], "preroll": 0.25 },
+  { "name": "plasma-0.8", "file": "plasma.json", "effect": "plasma", "camera": [6, 2.5, 8], "target": [0, 1.2, 0], "preroll": 0.8 },
+  { "name": "plasma-2.0", "file": "plasma.json", "effect": "plasma", "camera": [6, 2.5, 8], "target": [0, 1.2, 0], "preroll": 2.0 },
+  { "name": "firework-0.8", "file": "firework.json", "effect": "firework", "camera": [14, 4, 22], "target": [0, 8, 0], "preroll": 0.8 },
+  { "name": "firework-1.55", "file": "firework.json", "effect": "firework", "camera": [14, 4, 22], "target": [0, 8, 0], "preroll": 1.55 },
+  { "name": "firework-2.2", "file": "firework.json", "effect": "firework", "camera": [14, 4, 22], "target": [0, 8, 0], "preroll": 2.2 },
+  { "name": "firework-3.0", "file": "firework.json", "effect": "firework", "camera": [14, 4, 22], "target": [0, 8, 0], "preroll": 3.0 },
+  { "name": "implosion-0.6", "file": "implosion.json", "effect": "implosion", "camera": [8, 3, 10], "target": [0, 1.4, 0], "preroll": 0.6 },
+  { "name": "implosion-1.2", "file": "implosion.json", "effect": "implosion", "camera": [8, 3, 10], "target": [0, 1.4, 0], "preroll": 1.2 },
+  { "name": "implosion-1.4", "file": "implosion.json", "effect": "implosion", "camera": [8, 3, 10], "target": [0, 1.4, 0], "preroll": 1.4 },
+  { "name": "implosion-2.0", "file": "implosion.json", "effect": "implosion", "camera": [8, 3, 10], "target": [0, 1.4, 0], "preroll": 2.0 }
+]

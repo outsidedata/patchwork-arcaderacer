@@ -4,7 +4,7 @@
 //
 // First the intro: core's cutscene, its cue file the scene's `world.cutscene.script`
 // (`assets/intro.json`, written by `assets/intro.ts` from the race itself): the camera's cuts and
-// sweeps, the bars and the fades, and no words. Its cast are the scene's eight `rival` rows, a race of
+// sweeps, the bars and the fades, and no words. Its cast are the scene's six `rival` rows, a race of
 // CPU drivers alone on the grid, each driving by its own pilot as it would on the course; the cutscene
 // only films them. The `curtain` starts the intro and flags the race off in the same step, once the
 // page has its models and textures, or after its wait (`curtain.sim.ts`), so the cars are where the cue

@@ -371,6 +371,25 @@ test('what throws: no body mod, ik3d before anim, render3d before ik3d, a bone, 
   expect(() => page({ ik: shoulder => ({ anchor: { ...anchorOf(shoulder, 0), at: [0, 0] } }) }).frame()).toThrow(/anchor.at is not three numbers/)
 })
 
+test('world.ik3d is checked again when it changes in place deep inside it, as a dev page\'s panel changes it, and a fresh copy of good numbers frames as before', () => {
+  const p = page()
+  p.frame()
+  p.frame()
+  const ik = (p.plugins.wire.scene.world as any).ik3d
+  // The same object, one limb's pole made no direction: the next frame throws naming it.
+  ik.kinds.dummy.limbs[1].pole[0] = 0
+  ik.kinds.dummy.limbs[1].pole[1] = 0
+  expect(() => p.frame()).toThrow(/limbs\[1\]\.pole is not a direction/)
+  ik.kinds.dummy.limbs[1].pole[0] = 1
+  ik.kinds.dummy.limbs[1].pole[1] = -1
+  p.frame()
+  ;(p.plugins.wire.scene.world as any).ik3d = structuredClone(ik)
+  p.frame()
+  expect(world(p.bone('LeftHand')).distanceTo(world(p.point('support')))).toBeLessThan(1e-5)
+  ;(p.plugins.wire.scene.world as any).ik3d.kinds.dummy.anchor.at.pop()
+  expect(() => p.frame()).toThrow(/anchor\.at is not three numbers/)
+})
+
 // ---------------------------------------------------------------- limbs another plugin hands
 
 // The seat, standing where the body stands and turned as it is, its grips at chest height 30 cm in

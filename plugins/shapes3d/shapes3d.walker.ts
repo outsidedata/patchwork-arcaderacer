@@ -27,17 +27,17 @@
 // a body on a ground of a thousand shapes reads the few round it. A shape moved (`move`) has the truth's
 // shapes read again, the next time any is asked.
 //
-// The ground's `footing(pos, yaw)` is where a body standing at `pos` is now that the shape under it has
-// moved: the highest shape `move` moved whose top, where it stood before (its row's `was`), over (pos x,
-// pos z) is at the body's feet or no more than its `step` under them (a body stood across a slope stands
-// over its middle's top). The body's point in that shape's frame as it stood is put back through the
-// shape as it stands now, by quaternions, so a tilt and a roll carry it as a turn does, and its yaw is
-// the heading its facing is turned to by the shape's turn. Undefined on any other ground, so a body on
-// the land or a still shape is left as it is.
+// Its `roof(x, z, r)` is the lowest underside at or over the body's head (`feet` + `height`) of the
+// shapes reaching within r of (x, z), Infinity where there is none: walker stops a rising head there.
+//
+// The ground's `footing(pos, yaw, me, grounded)` is where the body `me` standing at `pos` is now that the
+// shape under it has moved, among the shapes whose rows carry `was` (found once with the rest, never
+// every shape's row a call): shapes3d's `carried`, by how far the floor the body stood on has moved since
+// it was last carried. Undefined on any other ground, so a body on the land or a still shape is left as
+// it is.
 import type { W } from '#engine/engine.ts'
 import type { Behavior, Ground, Numbers } from '#plugins/walker/walker.sim.ts'
-import * as math from '#plugins/math/math.sim.ts'
-import { conj, corners, land, moves, mul, rotate, shapes, turnOf, words, type Placed } from './shapes3d.sim.ts'
+import { carried, corners, land, moves, shapes, words, type Placed } from './shapes3d.sim.ts'
 
 // A top at the body's reach to the rounding of the sums, as walker's own step rule takes it.
 const TOLERANCE = 1e-9
@@ -46,7 +46,7 @@ const SQUARE = 2
 // A truth's shapes as walker reads them: `placed`, every one in `shapes`' order; `crown`, the top over
 // the middle of each one that stands in the way; and `squares`, by square, the places in `placed` of the
 // shapes whose footprint's box takes in some of it.
-type Standing = { placed: Placed[]; crown: (number | undefined)[]; squares: Map<number, number[]>; moves: number }
+type Standing = { placed: Placed[]; crown: (number | undefined)[]; squares: Map<number, number[]>; moves: number; movers: number[] }
 const stood = new WeakMap<object, Standing>()
 const squareOf = (i: number, j: number) => (i + 32768) * 65536 + (j + 32768)
 
@@ -68,7 +68,10 @@ function standing(w: W): Standing {
     }
     return known.base ? known.top(shape, x, z) : undefined
   })
-  stood.set(w.world, (s = { placed, crown, squares, moves: moves(w) }))
+  // The shapes that may move: a kind whose rows move gives `was` in its prefab, and a row with none
+  // was never moved.
+  const movers = placed.flatMap((p, n) => (p.id > 0 && 'was' in w.get(p.id).data ? [n] : []))
+  stood.set(w.world, (s = { placed, crown, squares, moves: moves(w), movers }))
   return s
 }
 
@@ -116,32 +119,17 @@ export function ground(w: W, feet: number, k: Pick<Numbers, 'step' | 'height'>):
       return y
     },
     solids: (x, z, r) => around(s, x, z, r).filter(n => reaches(s, n, x, z, r) && wall(n)).map(n => s.placed[n].shape),
-    footing: (pos, yaw) => footing(w, s, pos, yaw, k.step),
-  }
-}
-
-// Where a body at `pos` facing `yaw` is carried by the moved shape whose top it stood on (`ground`).
-function footing(w: W, s: Standing, pos: number[], yaw: number, step: number): { pos: number[]; yaw: number } | undefined {
-  let on: { row: ReturnType<W['get']>; was: number[]; top: number } | undefined
-  for (const p of s.placed) {
-    const row = w.get(p.id)
-    const was = row.data.was as number[] | null | undefined
-    if (!was) continue
-    // The shape as it stood the step before.
-    const before = { ...p.shape[p.word], pos: [was[0], was[1], was[2]], ...(was.length === 7 ? { rot: was.slice(3) } : { yaw: was[3] }) }
-    const t = words[p.word].top(before, pos[0], pos[2])
-    if (t === undefined || t > pos[1] + TOLERANCE || t < pos[1] - step || (on && t <= on.top)) continue
-    on = { row, was, top: t }
-  }
-  if (!on) return undefined
-  const { row, was } = on
-  const from = was.length === 7 ? was.slice(3) : [0, math.sin(was[3] / 2), 0, math.cos(was[3] / 2)]
-  const to = turnOf(row), at = row.data.pos as number[]
-  const local = rotate(conj(from), [pos[0] - was[0], pos[1] - was[1], pos[2] - was[2]])
-  const there = rotate(to, local)
-  const facing = rotate(mul(to, conj(from)), [math.sin(yaw), 0, math.cos(yaw)])
-  return {
-    pos: [at[0] + there[0], at[1] + there[1], at[2] + there[2]],
-    yaw: math.hypot(facing[0], facing[2]) > 1e-9 ? math.atan2(facing[0], facing[2]) : yaw,
+    // The undersides at or over its head of the shapes reaching within r, the lowest of them.
+    roof(x, z, r) {
+      let low = Infinity
+      for (const n of around(s, x, z, r)) {
+        if (!reaches(s, n, x, z, r)) continue
+        const p = s.placed[n]
+        const b = words[p.word].base!(p.shape[p.word])
+        if (b >= head - TOLERANCE) low = Math.min(low, b)
+      }
+      return low
+    },
+    footing: (pos, yaw, me, grounded) => carried(w, s.movers.map(n => s.placed[n]), me, pos, yaw, k.step, grounded),
   }
 }

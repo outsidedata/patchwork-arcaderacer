@@ -1,0 +1,72 @@
+{
+  "cap": 2000,
+  "ppm": 256,
+  "forceGenerators": {"breeze":[{"turbulence":0.5,"noiseFrequency":0.8,"noiseScroll":[0,0.3,0],"drag":0.15,"wind":[0.12,0.5,0]}]},
+  "flipbooks": [
+    {
+      "name": "smoke",
+      "clip": "billow",
+      "frames": 48,
+      "loop": 0,
+      "across": 8,
+      "cell": [256,256],
+      "plane": 2,
+      "samples": 6,
+      "fps": 30,
+      "pivot": [0.5,0.5],
+      "nodes": [
+        {"id":"coord","type":"ShaderNodeTexCoord"},
+        {"id":"grow","type":"ShaderNodeVectorMath","props":{"operation":"SCALE"},"inputs":{"0":{"link":"coord.Object"},"Scale":{"keys":[[0,2.4],[0.25,1.6],[1,1.3]]}}},
+        {"id":"rise","type":"ShaderNodeVectorMath","props":{"operation":"ADD"},"inputs":{"0":{"link":"grow.Vector"},"1":{"keys":[[0,[0,0,0]],[1,[0,-0.2,0]]]}}},
+        {"id":"warp","type":"ShaderNodeTexNoise","props":{"noise_dimensions":"4D","noise_type":"FBM"},"inputs":{"Vector":{"link":"rise.Vector"},"W":{"keys":[[0,0],[1,2.4]]},"Scale":1.3,"Detail":3,"Roughness":0.5,"Lacunarity":2,"Distortion":0}},
+        {"id":"centred","type":"ShaderNodeVectorMath","props":{"operation":"SUBTRACT"},"inputs":{"0":{"link":"warp.Color"},"1":[0.5,0.5,0.5]}},
+        {"id":"warped","type":"ShaderNodeVectorMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"centred.Vector"},"1":{"keys":[[0,[0.45,0.45,0.45]],[1,[1,1,1]]]},"2":{"link":"rise.Vector"}}},
+        {"id":"r2","type":"ShaderNodeVectorMath","props":{"operation":"DOT_PRODUCT"},"inputs":{"0":{"link":"warped.Vector"},"1":{"link":"warped.Vector"}}},
+        {"id":"ball","type":"ShaderNodeMath","props":{"operation":"SUBTRACT"},"inputs":{"0":1,"1":{"link":"r2.Value"}}},
+        {"id":"lobes","type":"ShaderNodeTexVoronoi","props":{"voronoi_dimensions":"4D","feature":"SMOOTH_F1"},"inputs":{"Vector":{"link":"warped.Vector"},"W":{"keys":[[0,1],[1,3.2]]},"Scale":1.9,"Smoothness":1,"Randomness":1}},
+        {"id":"domes","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"lobes.Distance"},"1":-1,"2":{"link":"ball.Value"}}},
+        {"id":"lobes2","type":"ShaderNodeTexVoronoi","props":{"voronoi_dimensions":"4D","feature":"SMOOTH_F1"},"inputs":{"Vector":{"link":"warped.Vector"},"W":{"keys":[[0,7],[1,10]]},"Scale":4.6,"Smoothness":1,"Randomness":1}},
+        {"id":"domes2","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"lobes2.Distance"},"1":-0.4,"2":{"link":"domes.Value"}}},
+        {"id":"billows","type":"ShaderNodeTexNoise","props":{"noise_dimensions":"4D","noise_type":"FBM"},"inputs":{"Vector":{"link":"warped.Vector"},"W":{"keys":[[0,3],[1,6]]},"Scale":5,"Detail":6,"Roughness":0.55,"Lacunarity":2.1,"Distortion":0}},
+        {"id":"body","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"billows.Fac"},"1":0.35,"2":{"link":"domes2.Value"}}},
+        {"id":"edge","type":"ShaderNodeMath","props":{"operation":"SUBTRACT"},"inputs":{"0":{"link":"body.Value"},"1":{"keys":[[0,-0.15],[0.2,-0.2],[0.6,-0.14],[1,0.02]]}}},
+        {"id":"density","type":"ShaderNodeMath","props":{"operation":"MULTIPLY","use_clamp":true},"inputs":{"0":{"link":"edge.Value"},"1":{"keys":[[0,1.8],[0.3,1.4],[1,0.8]]}}}
+      ],
+      "images": [
+        {
+          "file": "smoke.png",
+          "channels": [
+            {"field":"edge.Value","op":"volume","dir":"+x","depth":110,"slices":32,"through":"density.Value","absorb":7,"soften":3},
+            {"field":"edge.Value","op":"volume","dir":"+y","depth":110,"slices":32,"through":"density.Value","absorb":7,"soften":3},
+            {"field":"edge.Value","op":"volume","dir":"-x","depth":110,"slices":32,"through":"density.Value","absorb":7,"soften":3},
+            {"field":"edge.Value","op":"volume","dir":"hidden","depth":110,"slices":32,"through":"density.Value","absorb":7,"soften":3}
+          ]
+        },
+        {
+          "file": "smoke.light.png",
+          "channels": [
+            {"field":"edge.Value","op":"volume","dir":"-y","depth":110,"slices":32,"through":"density.Value","absorb":7,"soften":3},
+            {"field":"edge.Value","op":"volume","dir":"+z","depth":110,"slices":32,"through":"density.Value","absorb":7,"soften":3},
+            {"field":"edge.Value","op":"volume","dir":"-z","depth":110,"slices":32,"through":"density.Value","absorb":7,"soften":3},
+            {"field":"density.Value","op":"value"}
+          ]
+        },
+        {
+          "file": "smoke.motion.png",
+          "channels": [
+            {"field":"density.Value","op":"motion","axis":"x","window":9,"range":12},
+            {"field":"density.Value","op":"motion","axis":"y","window":9,"range":12},
+            {"field":"density.Value","op":"const","value":0.5},
+            {"field":"density.Value","op":"const","value":1}
+          ]
+        }
+      ]
+    }
+  ],
+  "effects": {
+    "smoke": [
+      {"n":[1,1],"every":0.18,"life":[3.5,4.5],"sheet":"smoke","clip":"billow","size":[0.6,0.9],"start":[0,0.15],"blend":true,"erode":[[0,0],[0.5,0.12],[1,0.7]],"channels":{"value":[0.55,0.45,0,0],"alpha":[0,0,0,1],"hot":[0,0,0,0]},"box":[-0.15,0,-0.15,0.15,0.1,0.15],"dir":[0,1,0],"spread":0.2,"speed":[0.6,0.8],"g":-0.15,"drag":0.2,"forces":{"breeze":[0.7,1.2]},"grows":[[0,0.5],[1,2.6]],"tints":[[0,2762790],[0.4,4868166],[1,7236714]],"alphas":[[0,0],[0.15,0.8],[0.6,0.5],[1,0]]},
+      {"n":[1,1],"every":0.3,"life":[4,6],"shape":"puff2","size":[0.8,1.1],"box":[-0.2,0.8,-0.2,0.2,1.1,0.2],"dir":[0,1,0],"spread":0.3,"speed":[0.3,0.45],"drag":0.3,"forces":{"breeze":[1,1.5]},"grows":[[0,0.6],[1,3]],"tints":[[0,6184026],[1,9078918]],"alphas":[[0,0],[0.25,0.25],[1,0]]}
+    ]
+  }
+}

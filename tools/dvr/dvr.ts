@@ -2,7 +2,7 @@
 // with no screen recording. Run from the repo:
 //
 //   node --experimental-strip-types tools/dvr/dvr.ts serve [--port 5180]
-//     The repo served as `yarn editor` serves it (Vite, no reloads), with the take routes. Open
+//     The repo served through Vite, as `yarn dev` serves it but with no reloads, with the take routes. Open
 //     http://localhost:5180/tools/dvr/dvr.html?game=<g>&record=<name> in Chrome and play: the
 //     take is kept in tools/dvr/takes/<g>/<name>.json every five seconds and as the tab goes.
 //
@@ -56,7 +56,7 @@ const GAME = /^[\w-]+$/
 
 // ------------------------------------------------------------------ the server
 
-// The repo through Vite, as the editor's server serves it, with no socket and no reloads, and
+// The repo through Vite, as `yarn dev` serves it, with no socket and no reloads, and
 // `/dvr/take/<game>/<name>` to keep and hand back a take.
 async function serve(port: number): Promise<{ port: number; close(): Promise<void> }> {
   const vite: ViteDevServer = await createServer({

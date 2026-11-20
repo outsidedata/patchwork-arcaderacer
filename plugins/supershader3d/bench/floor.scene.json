@@ -1,0 +1,28 @@
+{
+  "world": {
+    "loader": { "assets": {} },
+    "supershader3d": { "looks": "looks" }
+  },
+  "plugins": ["loader", "scenemanager", "supershader3d", "environment3d", "render3d"],
+  "seats": 1,
+  "prefabs": {
+    "engine": { "dt": 0.016666666666666666, "width": 1280, "height": 800 },
+    "scenemanager": { "out": {} },
+    "loader": {},
+    "render3d": {
+      "camera": { "fov": 60, "near": 0.1, "far": 2000, "at": [0, 3, 0], "look": [0, 0, 3] },
+      "pixelRatio": 1,
+      "tone": "neutral",
+      "exposure": 1,
+      "shadows": "none",
+      "background": "#9fb8cf"
+    },
+    "environment3d": {
+      "sun": { "at": [200, 300, -150], "color": "#fff3df", "power": 2.6 },
+      "sky": { "color": "#cfe0f2", "ground": "#5a5048", "power": 0.9 },
+      "ambient": { "color": "#ffffff", "power": 0.15 }
+    },
+    "swatch": { "material": "none" }
+  },
+  "actors": [{ "is": "scenemanager" }, { "is": "loader" }, { "is": "swatch" }]
+}

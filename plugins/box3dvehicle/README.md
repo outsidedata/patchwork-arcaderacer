@@ -46,7 +46,12 @@ placed each frame from its rows. Without `model` it builds the body box and cabi
 (tub, hood, dash, seats, steering wheel, windshield, roll bar), fenders, bumpers, grille, headlights
 that throw spot lights, tail, brake and reverse lights, a spare, revolved tyres with chevron tread on
 dished rims, and at each corner a coil spring, damper and arms that squash with the wheel, or a solid
-axle (`solid`) with links, shocks and a driveshaft. With `model` a baked glb is drawn on the chassis
+axle (`solid`) with links, shocks and a driveshaft, or independent suspension (`independent`): double
+wishbones, knuckles, a rack and tie rods at the front, trailing arms held by radius rods at the rear,
+coilovers with a main and a tender spring and a piggyback reservoir, anti-roll bars with end links,
+half-shafts, hubs and brakes, every arm rigid and swinging about its pivots, each wheel drawn on the
+arc its arms give it (its camber, toe and how far it moves in and out) while its physics wheel slides
+straight up and down on its spring. With `model` a baked glb is drawn on the chassis
 instead, its lamps and steering wheel found by node name. `points` are named empties (a seat, the
 grips on the wheel) for a body to sit at and hold. Parts that never move against each other are
 merged into one mesh per material.
@@ -60,22 +65,42 @@ still glow as it brakes and backs), and its headlight beams are dark until the c
 on. Every light is made with the car and kept, so switching one never changes how many lights a
 frame draws.
 
-`exhaust`, `dust`, `sprays` and `skid` throw particle3d effects. An exhaust runs at the rate its `rpm`
-curve (`[[rpm, rate], …]`) gives for the car's rpm. Dust is thrown from under each wheel on the
-ground going faster than `speed`, or the effect the ground there sprays instead. Each of `sprays`,
-`{ effect, clear, speed: [from, to], rpm? }`, is thrown beside the dust while the tread goes faster
-than `from` and the wheel slower than `to`, so only a car pulling away throws it. `skid`,
-`{ effect, clear, speed, rate?, force? }`, is thrown from each wheel sliding sideways faster than
-`speed`, on any ground, more often (`rate`, `[[m/s, rate], …]`) and harder (`force` per m/s) the harder
-it slides. Dust, sprays and skid are thrown with the ground under the wheel as their floor, so their
-particles rest on it. `tracks` lays fading tyre ribbons on the land, and `sound` plays the engine as
-layered loops crossfaded by `rpm` and throttle.
+A car throws no particles itself. Its mod for particle3d, `box3dvehicle.particle3d.ts`
+(`world.particle3d.mods.sources: ['box3dvehicle']`), hands particle3d every car's sources each frame: a
+`wheel` at the ground under each wheel, and an `exhaust` at each tailpipe `{ at, dir, pipe }` of its look,
+each `of` the car's vehicle. The scene's `world.particle3d.attach` says which effect each throws, so
+every car's dirt and smoke is one list in the scene:
+
+```json
+"particle3d": {
+  "effects": "effects",
+  "mods": { "sources": ["box3dvehicle"] },
+  "attach": [{ "on": "wheel", "effect": "tyre" }, { "on": "exhaust", "effect": "exhaust" }]
+}
+```
+
+Each source drives its own effect alone: `rpm`, `throttle`, `speed`, `slide` (how fast the tread
+slides over the ground), `slip` (how fast the wheel goes sideways), `load` (newtons the wheel's
+suspension pushes it down on the ground with), and a wheel's own `compression`, `grounded`, `height`
+over the land, the way its tread pushes the ground (`backX`, `backZ`) and the way it slides (`sideX`,
+`sideZ`), with the drivers the ground under it hands (terrain3d's surfaces' `drivers`, a mud's tint).
+So the dynamics of the car are in its dirt: how many a wheel kicks up is its load, which way is its
+slide and its slip, and what colour is the ground's.
+
+```json
+"drivers": { "load": 0, "slip": 0, "sideX": 0, "sideZ": 0, "tint": 9075296 },
+"effects": {
+  "tyre": [{ "every": "load > 500 ? 0.4 / load * 1000 : 0", "tint": "tint", "dir": ["sideX", 0.2, "sideZ"], "speed": ["0.3 * slip", "0.6 * slip"], "life": [0.5, 0.8] }]
+}
+```
+
+`tracks` lays fading tyre ribbons on the land, and `sound` plays the engine as layered loops
+crossfaded by `rpm` and throttle.
 
 ## Using it
 
-1. List `box3d`, `box3dvehicle` and `render3d` in that order in `plugins` (with `particle3d` after
-   box3dvehicle for exhaust, dust, sprays or skid, and the land's plugin before it for dust, sprays,
-   skid or tracks).
+1. List `box3d`, `box3dvehicle` and `render3d` in that order in `plugins` (with `particle3d` before
+   `render3d` for the cars' effects, and the land's plugin before box3dvehicle for tracks).
 2. Give `world.box3d.mods.kinds: ['box3dvehicle']`, so box3d is handed the parts' kinds, and
    `world.box3dvehicle`:
    - `chassis`, `wheel`, `joint`: the kinds of the parts' rows.
@@ -97,24 +122,35 @@ read at `x`), `automatic(v)`, `pedals(v, car)`,
 empty as drawn this frame.
 
 `truck/` holds the Blender scripts that build a vehicle's `look.model` to its scene numbers
-(`truck.py`, on the building blocks of `kit.py`), and the checker (`parts.ts` then `look.py`) that
-measures the model's clearance against every wheel at rest, full bump, full droop, crossed and at
-full lock, and prints coplanar faces that z-fight:
+(`truck.py`, the monster truck on solid axles, and `utv.py`, a long-travel side-by-side on
+independent suspension, both on the building blocks of `kit.py`), and the checker (`parts.ts` then
+`look.py`) that measures the model's clearance against every wheel at rest, full bump, full droop,
+crossed and at full lock, and prints coplanar faces that z-fight. For independent suspension it also
+prints how far each drawn wheel sits from its physics wheel and its camber and steer in every state
+(`parts.ts`'s OFFSET lines), and each part's room against the body, the tyres and every other part it
+is not joined to, and each coilover's stroke and springs:
 
 ```
 Blender -b --factory-startup --python plugins/box3dvehicle/truck/truck.py -- <scene.json> <vehicle> <out.glb>
+Blender -b --factory-startup --python plugins/box3dvehicle/truck/utv.py -- <scene.json> <vehicle> <out.glb>
 node --experimental-strip-types plugins/box3dvehicle/truck/parts.ts <scene.json> <vehicle> <outdir>
 Blender -b --python plugins/box3dvehicle/truck/look.py -- <scene.json> <vehicle> <model.glb> <outdir>
 ```
 
 ## Plugins it works with
 
+- **gpgpu3d**: the mod `box3dvehicle.gpgpu3d.ts` (`world.gpgpu3d.mods: { things: ['box3dvehicle'],
+  behaviors: ['box3dvehicle'] }`) hands gpgpu3d every car's body and wheels, the same boxes lod3d is
+  handed, each a `hyperbox`, a box turned any way, so what is moved on the GPU meets a car.
+- **grass3d**: the mod `box3dvehicle.grass3d.ts` (`world.grass3d.mods: { pressed: 'gpgpu3d', behaviors:
+  ['box3dvehicle'] }`) says how a `hyperbox` presses the grass: the grass bends away from the car, and
+  the wheels lay tracks of grass lying down behind it.
 - **box3d**: every part is a box3d body or joint. box3dvehicle's mod `box3dvehicle.box3d.ts`
   (`world.box3d.mods.kinds`) builds them; box3d's mod `box3d.box3dvehicle.ts`
   (`mods: { gravity: 'box3d' }`) hands back the gravity the springs are preloaded against.
 - **terrain3d**: the mod `terrain3d.box3dvehicle.ts` (`mods: { land: 'terrain3d' }`, and `grip` and
-  `drag` from the ground's surfaces) gives the ground height for dust and tracks, what each surface
-  sprays, how marked it gets, how well it grips and how much it drags.
+  `drag` from the ground's surfaces) gives the ground height for tracks and the wheels' effects, the
+  drivers each surface hands what is on it, how marked it gets, how well it grips and how much it drags.
 - **audio**: the mod `audio.box3dvehicle.ts` (`mods: { sound: 'audio' }`) plays each engine.
 - **hitscan3d**: the mod `hitscan3d.box3dvehicle.ts` (`mods: { bodies: 'hitscan3d', strike:
   'hitscan3d' }`) hands the bodies a shot can hit as the bodies a car runs into, and hurts each one
@@ -124,9 +160,13 @@ Blender -b --python plugins/box3dvehicle/truck/look.py -- <scene.json> <vehicle>
   ragdoll3d.
 - **interact**: the mod `box3dvehicle.interact.ts` (`world.interact.mods: { point: 'box3dvehicle',
   object: 'box3dvehicle' }`) places a body getting in, driving and getting out at the car's points.
-- **scatter3d**: the mod `box3dvehicle.scatter3d.ts` (`world.scatter3d.mods: { hollows:
-  ['box3dvehicle'] }`) keeps grass and bushes from drawing inside a car.
-- **particle3d**: exhaust and dust effects.
+- **lod3d**: the mod `box3dvehicle.lod3d.ts` (`world.lod3d.mods: { hollows: ['box3dvehicle'] }`, with
+  `world.lod3d.hollows`) hands lod3d each car's body and wheels as boxes, so no grass or bush is drawn
+  inside a car.
+- **particle3d**: the mod `box3dvehicle.particle3d.ts` (`world.particle3d.mods.sources:
+  ['box3dvehicle']`) hands every wheel and tailpipe as a source, for `world.particle3d.attach`.
+- **gpuparticle3d**: the mod `box3dvehicle.gpuparticle3d.ts` (`world.gpuparticle3d.mods.sources:
+  ['box3dvehicle']`) hands it the same sources, for `world.gpuparticle3d.attach`.
 - **render3d**: draws the car and dresses its materials, so the sky, wet and snow reach it.
 - **loader**: a `look.model` glb and the engine sound manifest.
 - **player**: a seat's `player` row relays presses to the car it holds.

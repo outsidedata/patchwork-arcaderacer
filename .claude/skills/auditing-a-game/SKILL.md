@@ -450,15 +450,18 @@ the way of. Each phase skill lists once every file its move touches; the audit p
 ### The scene's look (writing-the-look)
 
 - **A plugin listed where nothing says so.** Most plugins listed out of order throw, and the tests
-  show it; some do not. Before render3d: skydome3d, terrain3d, ocean3d, scatter3d, environment3d,
-  solids, flight3d and box3dvehicle. Before render2d: sprite2d, tilemap, vision and volley2d. Listed
+  show it; some do not. Before render3d: skydome3d, terrain3d, ocean3d, instances3d, lod3d,
+  environment3d, solids, flight3d and box3dvehicle. Before render2d: sprite2d, tilemap, vision and volley2d. Listed
   after, each draws a frame behind and nothing says so. Find: read each scene's `plugins`. The rest of
   the order is under The order of things, below.
 - **The camera's `far` short of the sky.** skydome3d's dome is clipped where its depth along the
   view passes `far`, so `far` is past `look.radius`. Find: render3d's `camera.far`, in
   `world.render3d` once the move above is made, against `world.skydome3d.look.radius`, read.
-- **scatter3d with no `land` mod.** It draws nothing until one hands it a ground. Find: `grep -n
-  '"scatter3d"' games/<game>/*.scene.json`, read for `world.scatter3d.mods.land`.
+- **lod3d's trees with no `solid`.** walker, hitscan3d, cover3d, box3d and ragdoll3d meet only the
+  instances of a row that gives `solid`; a scene that names `lod3d` in their `solids`, `fixed` or
+  `props` while no row of its layers gives one has bodies, shots and cars pass through every trunk,
+  and nothing says so. Find: `grep -n '"lod3d"' games/<game>/*.scene.json`, read each layer's `rows`
+  for `solid` (and `tall`, which box3d needs).
 - **environment3d's floor as the ground under a sky or a shadow.** It is not dressed and takes no
   shadow, so it stays dry in the rain and nothing casts on it. Home: terrain3d, or a change to
   environment3d in its home. Find: a scene listing environment3d with a `floor` beside skydome3d or a
@@ -855,8 +858,7 @@ check here is run on every game whose seat controls anything.
   empty after every step and every seek, and reads the child again after each, since every seek boots
   a new truth (`proving-a-game`). A scene of N seats replays with N pages, each on a recorder seat
   of its own; the recorder holds one, so its seats are built in `addons/recorder/` first, with
-  `addons/recorder/recorder.addon.test.ts`, and a `player` row a recorder edit spawned is never taken
-  for a seat. Find: `grep -rln "recorder(" games/<game> --include='*.test.ts'`, read for those
+  `addons/recorder/recorder.addon.test.ts`. Find: `grep -rln "recorder(" games/<game> --include='*.test.ts'`, read for those
   checks and for the scene's `seats`, and `grep -rnF ".link.send(" games/<game>`.
 
 ## Migrating

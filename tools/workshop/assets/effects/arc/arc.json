@@ -1,0 +1,851 @@
+{
+  "frames": [
+    {
+      "filename": "arc 0",
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 1",
+      "frame": {
+        "x": 1024,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 2",
+      "frame": {
+        "x": 2048,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 3",
+      "frame": {
+        "x": 3072,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 4",
+      "frame": {
+        "x": 0,
+        "y": 256,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 5",
+      "frame": {
+        "x": 1024,
+        "y": 256,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 6",
+      "frame": {
+        "x": 2048,
+        "y": 256,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 7",
+      "frame": {
+        "x": 3072,
+        "y": 256,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 8",
+      "frame": {
+        "x": 0,
+        "y": 512,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 9",
+      "frame": {
+        "x": 1024,
+        "y": 512,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 10",
+      "frame": {
+        "x": 2048,
+        "y": 512,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 11",
+      "frame": {
+        "x": 3072,
+        "y": 512,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 12",
+      "frame": {
+        "x": 0,
+        "y": 768,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 13",
+      "frame": {
+        "x": 1024,
+        "y": 768,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 14",
+      "frame": {
+        "x": 2048,
+        "y": 768,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 15",
+      "frame": {
+        "x": 3072,
+        "y": 768,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 16",
+      "frame": {
+        "x": 0,
+        "y": 1024,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 17",
+      "frame": {
+        "x": 1024,
+        "y": 1024,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 18",
+      "frame": {
+        "x": 2048,
+        "y": 1024,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 19",
+      "frame": {
+        "x": 3072,
+        "y": 1024,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 20",
+      "frame": {
+        "x": 0,
+        "y": 1280,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 21",
+      "frame": {
+        "x": 1024,
+        "y": 1280,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 22",
+      "frame": {
+        "x": 2048,
+        "y": 1280,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 23",
+      "frame": {
+        "x": 3072,
+        "y": 1280,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 24",
+      "frame": {
+        "x": 0,
+        "y": 1536,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 25",
+      "frame": {
+        "x": 1024,
+        "y": 1536,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 26",
+      "frame": {
+        "x": 2048,
+        "y": 1536,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 27",
+      "frame": {
+        "x": 3072,
+        "y": 1536,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 28",
+      "frame": {
+        "x": 0,
+        "y": 1792,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 29",
+      "frame": {
+        "x": 1024,
+        "y": 1792,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 30",
+      "frame": {
+        "x": 2048,
+        "y": 1792,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "arc 31",
+      "frame": {
+        "x": 3072,
+        "y": 1792,
+        "w": 1024,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 1024,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 256
+      },
+      "pivot": {
+        "x": 0,
+        "y": 0.5
+      },
+      "duration": 33
+    }
+  ],
+  "meta": {
+    "app": "flipbooks.py",
+    "image": "arc.png",
+    "size": {
+      "w": 4096,
+      "h": 2048
+    },
+    "frameTags": [
+      {
+        "name": "crackle",
+        "from": 0,
+        "to": 31
+      }
+    ]
+  }
+}

@@ -28,9 +28,23 @@ first tick:
   drawn once a frame.
 - `bloom`: `{ strength, radius, threshold }`, three's UnrealBloomPass on the frame's light before tone
   mapping.
+- `ssr`: `{ steps, distance, thickness, roughness }`, screen-space reflections (Reflections, below),
+  each number read every frame.
 
-With no `ao`, `bloom` or pass there is no composer and the scene draws straight to the canvas;
+With no `ao`, `bloom`, `ssr` or pass there is no composer and the scene draws straight to the canvas;
 otherwise the frame is drawn into half-float targets and three's OutputPass tone maps it at the end.
+
+**Reflections.** With `ssr`, a pass after the scene's effects keeps the frame for the next one (its
+colour with mips, its depth, its camera). Every standard or physical surface smoother than `roughness`
+walks its reflected ray `distance` metres in `steps` steps, finds where it passes behind the last
+frame's depth (by less than `thickness`), and takes the last frame's colour there, blurred by its
+roughness, in place of the reflection it had; a ray that finds nothing keeps that reflection (lights3d's
+probes, an envMap). It is render3d's own splice, after every other plugin's. Anything on screen
+reflects live; what is off screen falls back. A **mirror** is a flat mesh, its face its local +z (a
+PlaneGeometry), with `userData.mirror = { resolution }`: each frame the scene is drawn from the camera
+reflected in its plane into a picture of `resolution` of the frame, and the mesh's material reads it as
+its whole reflection, blurred by its roughness, its colour and metalness working on it as on any light.
+Exact and live, at one more draw of the scene a mirror a frame. Each mirror has a material of its own.
 
 **Materials.** `splice(key, splice)` registers a shader splice for every dressed material, once per
 key; `dress(material, { surface })` hands a material every splice and its own surface through one
@@ -50,6 +64,14 @@ following the main one with its own `near` and `far`: a cockpit, a held weapon, 
 between where the last two steps left it, and put back once drawn. An object with
 `userData.teleport` true is drawn where it is set for that step (a respawn, a door to elsewhere, a car
 put back on the road).
+
+**Shaders before the first draw.** An object put straight into the scene or the overlay, or handed
+to `prepare(object)` with a new material, is compiled for that scene in one `renderer.compile` a
+frame, last of the scene's own `onBeforeRender` so with the lights exactly as the draw has them
+(lights3d takes its own out there), and left out of every draw until its programs are ready on the
+GPU's own threads (`KHR_parallel_shader_compile`), so it shows a few frames late rather than stalling
+the frame that first draws it. Its `visible` is lowered only for each draw. `compiling()` counts what
+waits; `render3d.loader.ts` hands it to the loader's loading screen (`world.loader.mods.shaders`).
 
 **The camera.** `claim(owner)`, `release(owner)`, `claimed()`: whoever places the camera claims it.
 
@@ -73,15 +95,17 @@ client; `close` disposes the composer, the renderer and its context and takes th
 
 Every 3D plugin draws through it: **anim**, **box3d**, **box3dvehicle**, **cel3d** (splice and pass),
 **chasecamera3d** and **cutscene** (the camera), **cull3d**, **dismember3d**, **dither3d** (finish
-and ratio), **environment3d**, **flight3d**, **ik3d**, **lights3d** (splice), **ocean3d**,
-**particle3d**, **ragdoll3d**, **scatter3d**, **skydome3d**, **solids**, **sprite3d**, **terrain3d**,
-**volley3d**. The **loader** decodes textures and models through it, and **audio** listens from its
+and ratio), **environment3d**, **flight3d**, **ik3d**, **instances3d** (what lod3d places),
+**lights3d** (splice), **ocean3d**, **particle3d**, **ragdoll3d**, **skydome3d**, **solids**, **sprite3d**, **terrain3d**,
+**ui3d** (the overlay), **volley3d**. The **loader** decodes textures and models through it, and **audio** listens from its
 camera.
 
 ## Keywords
 
 3D rendering, renderer, three.js, WebGL, scene, camera, perspective, tone mapping, neutral, exposure,
+`userData.mirror`, `ssr`,
 shadows, shadow map, PCF, ambient occlusion, AO, GTAO, SSAO, bloom, glow, HDR, post-processing,
+screen-space reflections, SSR, mirrors, planar reflections, reflector, glossy floor, wet floor,
 EffectComposer, pass, shader splice, onBeforeCompile, material patching, pixel ratio, low resolution,
 overlay, first-person weapon, viewmodel, cockpit, interpolation, smooth motion, between steps,
 teleport, camera claim, project, world to screen, judder, drift, `dress`, `splice`, `pass`, `finish`,

@@ -1,11 +1,11 @@
 // terrain3d's mods for box3dvehicle (`addons/scenemanager`'s mods). A scene with
-// `world.box3dvehicle.mods: { land: 'terrain3d' }` throws a car's dust from terrain3d's land, each
-// wheel what the surface painted under it sprays; one with `{ grip: 'terrain3d' }` has its wheels
-// grip by the surface painted under them, and one with `{ drag: 'terrain3d' }` has them roll as hard
-// as it drags.
+// `world.box3dvehicle.mods: { land: 'terrain3d' }` lays a car's tracks on terrain3d's land and throws
+// its wheels' effects at it, each wheel driven by the surface painted under it; one with
+// `{ grip: 'terrain3d' }` has its wheels grip by the surface painted under them, and one with
+// `{ drag: 'terrain3d' }` has them roll as hard as it drags.
 //
 // `land(plugins)` is the land as this page has it, terrain3d's browser half's `ground`: undefined
-// until its field has loaded. Its `spray(x, z)` and `mark(x, z)` are the `spray` and `mark` of the
+// until its field has loaded. Its `drivers(x, z)` and `mark(x, z)` are the `drivers` and `mark` of the
 // surface painted at [x, z].
 // `grip(w, x, z)` is the `grip` of the surface painted at [x, z] (`paintAt`), 1 on unpainted ground.
 // `drag(w, x, z)` is its `drag`, 0 on unpainted ground.

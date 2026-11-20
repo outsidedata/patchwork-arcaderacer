@@ -5,8 +5,13 @@
 // starts one that had stopped by itself, its server thrown or its scene file broken, once the file is
 // put right. `yarn serve <game>` runs one (`serve.ts`).
 import { spawn, type ChildProcess } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { mounts, where } from './mounts.ts'
+
+// node's resolving for a mounted game's server, handed to every server's node while a game is mounted
+const HOOKS = fileURLToPath(new URL('./mounted.hooks.ts', import.meta.url))
 
 export type Event = { type: 'log'; game: string; line: string } | { type: 'servers'; running: Running[] }
 export type Running = { game: string; port: number }
@@ -19,13 +24,28 @@ export const GATHER = 300
 export const gameOf = (rel: string) => /^games\/([^/]+)\//.exec(rel)?.[1]
 
 // Whether a game on node may run the file, by its path from the repo: code of the four folders a
-// server imports, so not a test, an extension's or an actor's look, which only a page draws; and a
+// server imports, so not a test or an actor's look, which only a page draws; and a
 // data file of a game's folder. Never a hidden file or a text editor's backup, a page, a note, or what
 // a run of the simulator records.
+// Whether `file`, a path as the watcher names it, really is in the repo or in a mounted game's folder (`mounts.ts`),
+// its links followed: a file reached through a link out of them (a game's builds in the system's temp folder, linked
+// into its `assets/`) is not, so its writes start no server again. A file just removed is placed by the nearest folder
+// over it still there, since a build clears its whole folder.
+export const inRepo = (root: string, file: string) => {
+  const homes = [realpathSync(root), ...mounts().map(([, folder]) => folder)].map(h => h + path.sep)
+  for (let at = file, rest = ''; ; rest = path.join(path.basename(at), rest), at = path.dirname(at)) {
+    try {
+      const real = path.join(realpathSync(at), rest)
+      return homes.some(h => real.startsWith(h))
+    } catch {}
+    if (path.dirname(at) === at) return true
+  }
+}
+
 export const runs = (rel: string) => {
   const name = rel.slice(rel.lastIndexOf('/') + 1)
   if (name.startsWith('.') || name.endsWith('~') || /\.(html|md)$/.test(name)) return false
-  if (/\.(test\.tsx?|extension\.tsx|components\.tsx|route\.ts|client\.tsx?)$/.test(name)) return false
+  if (/\.(test\.tsx?|client\.tsx?)$/.test(name)) return false
   if (/\.tsx?$/.test(name)) return /^(games|plugins|addons|engine)\//.test(rel)
   return /^games\//.test(rel)
 }
@@ -100,13 +120,19 @@ export class Servers {
   }
 
   // The game's server in a child process, said in the log to be starting on its port: whether it
-  // gets the port, its own lines say.
+  // gets the port, its own lines say. A mounted game's (`mounts.ts`) is its folder's, run from the
+  // repo's root as every game's is, node handed `mounted.hooks.ts` and the mounted folders.
   private spawn(game: string) {
-    const file = path.join(this.root, 'games', game, `${game}.server.ts`)
+    const folder = where(this.root, `games/${game}`)
+    const file = path.join(folder, `${game}.server.ts`)
     if (!existsSync(file)) throw new Error(`games/${game} has no ${game}.server.ts`)
-    const scene = JSON.parse(readFileSync(path.join(this.root, 'games', game, `${game}.scene.json`), 'utf8'))
+    const scene = JSON.parse(readFileSync(path.join(folder, `${game}.scene.json`), 'utf8'))
     const port: number = scene.prefabs?.scenemanager?.port
-    const proc = spawn(process.execPath, ['--experimental-strip-types', file], { cwd: this.root })
+    const mounted = mounts()
+    const proc = spawn(process.execPath, ['--experimental-strip-types', ...(mounted.length ? ['--import', HOOKS] : []), file], {
+      cwd: this.root,
+      env: mounted.length ? { ...process.env, PATCHWORK_MOUNTS: JSON.stringify(Object.fromEntries(mounted)) } : process.env,
+    })
     const lines = (from: NodeJS.ReadableStream) => {
       let rest = ''
       from.setEncoding('utf8')

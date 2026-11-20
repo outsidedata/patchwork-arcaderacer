@@ -8,42 +8,82 @@
 //   scene      the scene this row stands in, as the manager's table names it.
 //   match      `lobby`, `racing` or `results`: the match's mode.
 //   course     the course the match is racing on, '' in the lobby.
+//   chosen     in the lobby, the course the leader has chosen for the match, '' until it has; every seat is
+//              shown it, so each knows what it is picking a car for.
+//   solo       whether this is one player in one tab (`index.html`, the addon's `solo`): no roster,
+//              START, staging list or countdown is shown, and a pick starts the race.
 //   leader     the id the addon gave the leader's connection, −1 with nobody there.
 //   message    what the lobby is told, a key of the `match` definition's `messages`, or ''.
-//   roster     every connection in join order, each { id, mode, scene, seat }: the id the addon gave
-//              it, its mode (`lobby`, `waiting`, `racer` or `spectator`), the scene its seat is on
-//              and its seat number there.
+//   roster     every connection in join order, each { id, mode, scene, seat, car }: the id the addon
+//              gave it, its mode (`lobby`, `waiting`, `racer` or `spectator`), the scene its seat is on,
+//              its seat number there, and the car it picked on the title's car select, a car of the
+//              `match` definition's `cars`, or '' while it has picked none.
+//   grids      on a course, the grid place each racer's slot drives from, dealt at `reset`: the grid place of
+//              its `start`, or solo the last places on the grid, so the one player starts last.
+//   spare      on a course, the cars dealt at `reset` to the racers that picked none, each taken by the
+//              next such racer's `role`.
 //   asks       what seats asked of the match since the last `hear`, each [seat, what, arg], which the
-//              addon answers after the step: `start` with a course, `spectate`, `exit`.
+//              addon answers after the step: `choose` with a course, `pick` with a car, `start`, `spectate`,
+//              `exit`.
 //   you<n>     on a scene nobody runs ahead (the title), `n` for each seat `n` on it, which the addon
 //              sends to seat `n` alone, so a page with no row of its own finds its seat (`seatOf`).
 //
-// The acts. The addon's, closed: `hear(scene, match, course, leader, message, ...roster)`, the roster
-// flat as id, mode, scene, seat for each connection; `reset(racers)`, the course started over for a race
-// of `racers` seats; `role(id, seat, role)`, the `player` row `id` of seat `seat`, which the addon sent
-// to this course, once: the row's `conn` is `seat`, the seat the roster names its connection by; as
-// `racer` a `car` is made on the grid place of the `start` of the row's slot (its `seat`) and the row
-// takes hold of it (`take` in `plugins/player`), and as `spectator` the row's `watch` is −1, the free
-// camera. A page's, open, each written into `asks` for the addon: `start(course)`, `spectate()`
-// and `exit()`.
+// The acts. The addon's, closed: `hear(scene, match, course, leader, message, chosen, solo, ...roster)`, the
+// roster flat as id, mode, scene, seat, car for each connection; `reset(racers, ...picks)`, the course
+// started over for a race of `racers` seats, `picks` the car each of them picked ('' for none), its race
+// row staged (`staging`); `role(id, seat, role, car)`, the `player` row `id` of seat `seat`, which the addon
+// sent to this course, once: the row's `conn` is `seat`, the seat the roster names its connection by; as
+// `racer` a `car` of the car `car` is made on the grid place `grids` deals the row's slot (its `seat`),
+// or of the first `spare` car when `car` is '', and the row takes hold of it (`take` in `plugins/player`),
+// and as `spectator` the row's `watch` is −1, the free camera. A page's, open, each written into `asks` for
+// the addon: `choose(course)` the leader's course, `pick(car)` with a car of the `match` definition's
+// `cars`, `start()` the leader's, once every seat that would race has picked a car, `spectate()` and
+// `exit()` any seat's on the course at the results.
+//
+// Staging. A race the match starts is on its `staging` phase until every racer the roster names has
+// reached the course and its page has said its art is in (`ready` on its `player` row, `pending`), or the
+// race definition's `wait` seconds have passed; only then does the grid hold and the countdown begin, so
+// every seat is looking at the course when the lights go.
+//
+// The cars dealt at `reset` (`deal`): the `match` definition's `cars` that no racer picked, in the list's
+// order, then the whole list again from its start, as many times round as it takes. The racers that
+// picked none are dealt theirs first, into `spare`, then each rival its own, in the order the scene lists
+// them. So with as many cars as grid places no car is on the grid twice.
 //
 // A racer's seat that leaves ends its `player` row, and with it the hold: its car stands on with no
 // control (`car.sim.ts`).
 //
 // The functions the kinds call: `watch(me, w, target)`, a spectator's own row choosing the free camera
-// (−1) or a car a racer holds to follow; `leaderCar(w)`, the leader's car on this course, whose finish
-// ends the race. And for a page, from the rows it was sent: `seatOf(rows)`, its seat on the scene;
-// `entryOf(rows)`, its connection's roster entry; `leads(rows)`, whether it is the leader;
-// `driven(rows)`, the cars a racer holds.
+// (−1) or a car a racer holds to follow; `humans(w)`, the cars the seats on this course hold, whose
+// finishes end the race (`race.sim.ts`); `staged(w)`, whether staging has nothing left to wait on. And for
+// a page, from the rows it was sent: `seatOf(rows)`, its seat on the scene; `entryOf(rows)`, its
+// connection's roster entry; `leads(rows)`, whether it is the leader; `driven(rows)`, the cars a racer
+// holds; `pending(rows)`, the racers staging still waits on; `numberOf(roster, entry)`, a connection's
+// place in join order from 1, which names it "PLAYER n" on the lobby and the staging screens.
 //
 // Its numbers are the `match` definition's (the page side, `match.plugin.ts`).
 import type { Arg, Kind, Row, W } from '#engine/engine.ts'
 import { possessed } from '#addons/player/player.addon.ts'
 import { holderOf, holding, take, type Holds } from '#plugins/player/player.sim.ts'
+import { def } from '#plugins/loader/loader.sim.ts'
 
 export type Match = 'lobby' | 'racing' | 'results'
 export type Mode = 'lobby' | 'waiting' | 'racer' | 'spectator'
-export type Entry = { id: number; mode: Mode; scene: string; seat: number }
+export type Entry = { id: number; mode: Mode; scene: string; seat: number; car: string }
+// the fields of one connection in `hear`'s flat roster
+const ENTRY = 5
+
+// The cars dealt after the racers' `picks` (the header): those of `cars` none picked, then `cars` round
+// again, one each call.
+export function deal(cars: string[], picks: string[]): () => string {
+  const first = cars.filter(c => !picks.includes(c))
+  let k = 0
+  return () => {
+    const car = k < first.length ? first[k] : cars[(k - first.length) % cars.length]
+    k++
+    return car
+  }
+}
 
 // The scene's `actors` entries of a kind, each as the fields it writes over its prefab.
 const entries = (w: W, kind: string) => (w.world.scenemanager.actors as { is: string }[])
@@ -54,29 +94,45 @@ const ask = (me: Row, seat: number, what: string, arg: Arg = null) => { me.data.
 
 export const match: Kind = {
   acts: {
-    hear(me, w, _seat, scene: string, mode: Match, course: string, leader: number, message: string, ...flat: Arg[]) {
+    hear(me, w, _seat, scene: string, mode: Match, course: string, leader: number, message: string, chosen: string, solo: boolean, ...flat: Arg[]) {
       const roster: Entry[] = []
-      for (let k = 0; k < flat.length; k += 4) roster.push({ id: flat[k] as number, mode: flat[k + 1] as Mode, scene: flat[k + 2] as string, seat: flat[k + 3] as number })
-      Object.assign(me.data, { scene, match: mode, course, leader, message, roster, asks: [] })
+      for (let k = 0; k < flat.length; k += ENTRY) roster.push({ id: flat[k] as number, mode: flat[k + 1] as Mode, scene: flat[k + 2] as string, seat: flat[k + 3] as number, car: flat[k + 4] as string })
+      Object.assign(me.data, { scene, match: mode, course, leader, message, chosen, solo, roster, asks: [] })
       for (const key of Object.keys(me.data)) if (/^you\d+$/.test(key)) delete me.data[key]
       if (w.world.predict === undefined) for (const e of roster) if (e.scene === scene) me.data[`you${e.seat}`] = e.seat
     },
-    reset(_me, w, _seat, racers: number) {
+    reset(me, w, _seat, racers: number, ...picks: string[]) {
       for (const r of [...w.all('player'), ...w.all('car'), ...w.all('rival'), ...w.all('race')]) w.end(r)
-      // the racers take the grid places of the starts of the first `racers` slots; rivals take the rest
-      const taken = new Set(w.all('start').filter(s => s.data.slot < racers).map(s => s.data.grid))
-      for (const fields of entries(w, 'race')) w.spawn('race', fields)
-      for (const fields of entries(w, 'rival')) if (!taken.has((fields as { grid: number }).grid)) w.spawn('rival', fields)
+      // the racers take the grid places of the starts of the first `racers` slots, solo the last `racers`
+      // grid places, slot 0 the first of them; rivals take the rest
+      const starts = w.all('start').filter(s => s.data.slot < racers).sort((a, b) => a.data.slot - b.data.slot)
+      const back = w.all('start').map(s => s.data.grid as number).sort((a, b) => a - b).slice(-racers)
+      me.data.grids = starts.map((s, k) => (me.data.solo ? back[k] : s.data.grid))
+      const taken = new Set(me.data.grids as number[])
+      const next = deal(def(w, me.kind).cars, picks)
+      me.data.spare = picks.filter(p => p === '').map(() => next())
+      for (const fields of entries(w, 'race')) w.spawn('race', { ...fields, phase: 'staging' })
+      for (const fields of entries(w, 'rival')) if (!taken.has((fields as { grid: number }).grid)) w.spawn('rival', { ...fields, car: next() })
     },
-    role(_me, w, _seat, id: number, seat: number, role: string) {
+    role(me, w, _seat, id: number, seat: number, role: string, car: string) {
       const it = w.all('player').find(r => r.id === id)
       if (!it || it.data.conn >= 0) return
       it.data.conn = seat
-      if (role === 'racer') take(it, w, w.spawn('car', { grid: w.find('start', s => s.data.slot === it.data.seat).data.grid }))
+      if (role === 'racer') {
+        const drives = car === '' ? me.data.spare[0] : car
+        if (car === '') me.data.spare = me.data.spare.slice(1)
+        take(it, w, w.spawn('car', { car: drives, grid: me.data.grids[it.data.seat] }))
+      }
       if (role === 'spectator') it.data.watch = -1
     },
-    start(me, _w, seat, course: unknown) {
-      if (typeof course === 'string') ask(me, seat, 'start', course)
+    choose(me, _w, seat, course: unknown) {
+      if (typeof course === 'string') ask(me, seat, 'choose', course)
+    },
+    start(me, _w, seat) {
+      ask(me, seat, 'start')
+    },
+    pick(me, w, seat, car: unknown) {
+      if (typeof car === 'string' && def(w, me.kind).cars.includes(car)) ask(me, seat, 'pick', car)
     },
     spectate(me, _w, seat) {
       ask(me, seat, 'spectate')
@@ -85,7 +141,7 @@ export const match: Kind = {
       ask(me, seat, 'exit')
     },
   },
-  open: ['start', 'spectate', 'exit'],
+  open: ['choose', 'start', 'pick', 'spectate', 'exit'],
 }
 
 // A spectator's own row choosing what it watches: −1 the free camera, or a car a racer holds to follow.
@@ -98,13 +154,29 @@ export function watch(me: Row, w: W, target: unknown) {
   }
 }
 
-// The leader's car on this course, while its seat holds it.
-export function leaderCar(w: W): Row | undefined {
-  const m = w.find('match').data
-  const e = (m.roster as Entry[]).find(e => e.id === m.leader)
-  if (!e || e.scene !== m.scene) return
-  const driver = w.all('player').find(r => r.data.conn === e.seat)
-  return driver && holding(w, driver)
+// The cars the seats on this course hold: one for each racer still here.
+export function humans(w: W): Row[] {
+  return w.all('player').flatMap(p => holding(w, p) ?? [])
+}
+
+// The racers the roster names that staging still waits on: each that has not reached this course, or has
+// reached it and whose page has not said its art is in (`ready` on its `player` row). Nobody before the
+// match has told this course it is racing, since the roster is not yet known.
+export function pending(rows: Row[]): Entry[] | undefined {
+  const m = rows.find(r => r.kind === 'match')
+  if (m?.data.match !== 'racing') return
+  const players = rows.filter(r => r.kind === 'player')
+  return (m.data.roster as Entry[]).filter(e => e.mode === 'racer' && !(e.scene === m.data.scene && players.some(p => p.data.conn === e.seat && p.data.ready)))
+}
+
+// Whether staging has nothing left to wait on, as the race row reads it.
+export function staged(w: W): boolean {
+  return pending(w.all('player').concat(w.all('match')))?.length === 0
+}
+
+// A connection's place in join order from 1: the roster is in join order.
+export function numberOf(roster: Entry[], entry: Entry): number {
+  return roster.findIndex(e => e.id === entry.id) + 1
 }
 
 // The cars a racer holds, among the rows a page was sent.

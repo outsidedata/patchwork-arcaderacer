@@ -16,7 +16,11 @@
 // moves, whatever height the row says. A scene that ships field after solids, or names terrain3d's
 // land and does not list terrain3d, throws on its first frame. In `checked`, the pad's slab lays the
 // catalogue's checker 2 m to a span: it is drawn with the loader's picture, a span of it every 2 m of
-// every face, upright and unmirrored, and its lamp, laying none, carries no places on a picture.
+// every face, upright and unmirrored, and its lamp, laying none, carries no places on a picture. In
+// `refilled`, the pad's model file is written again while the page draws it, the loader refilling it in
+// place: the same text makes nothing again, a number changed deep in a part makes the pad again. In
+// `given`, field's `models` mod hands a fresh copy of `world.field.crate` each frame for the crate: it
+// is drawn once while the numbers stay, and made again when one deep inside them is changed in place.
 import { afterAll, expect, test, vi } from 'vitest'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -125,6 +129,10 @@ const CHECKED = { ...PAD, paints: { slab: { colour: '#4a4f55', map: 'checker', s
 const CHECKED_URL = '/solids-plugin-test/checked.model.json'
 written(CHECKED_URL, JSON.stringify(CHECKED))
 
+// The pad again, at a file of its own that the test writes again while a page draws it.
+const REFILLED_URL = '/solids-plugin-test/refilled.model.json'
+written(REFILLED_URL, JSON.stringify(PAD))
+
 // The field's land: `at` metres high at the origin, rising `slope` [x, z] a metre.
 const FIELD = { at: 0.4, slope: [0.2, -0.1] }
 const fieldHeight = (x: number, z: number) => FIELD.at + FIELD.slope[0] * x + FIELD.slope[1] * z
@@ -162,6 +170,10 @@ const scenes: Record<string, Scene> = {
   checked: yardOf(['loader', 'scenemanager', 'solids', 'render3d'], [], {
     loader: { assets: { pad: { type: 'json', url: CHECKED_URL, preload: true }, checker: { type: 'texture', url: '/solids-plugin-test/checker.png', wrap: 'repeat' } } },
   }),
+  // The pad drawn from a file the test writes again, the loader refilling it in place.
+  refilled: yardOf(['scenemanager', 'solids', 'render3d'], [], { loader: { assets: { pad: { type: 'json', url: REFILLED_URL, preload: true } } } }),
+  // The crate drawn from the model field's models mod hands, a fresh copy of world.field.crate each frame.
+  given: yardOf(['scenemanager', 'shipped', 'solids', 'render3d'], ['field'], { field: { ...FIELD, crate: PAD }, solids: { kinds: { pad: 'pad' }, mods: { models: 'field' } } }),
 }
 const dir = mkdtempSync(join(tmpdir(), 'solids-plugin-'))
 afterAll(() => rmSync(dir, { recursive: true }))
@@ -185,6 +197,10 @@ export const land = (plugins: any) => {
   const { at, slope } = plugins.wire.scene.world.field
   return { height: (x: number, z: number) => at + slope[0] * x + slope[1] * z }
 }
+export const models = (plugins: any) => ({
+  models: { crate: structuredClone(plugins.wire.scene.world.field.crate) },
+  rows: plugins.wire.rows.filter((r: any) => r.kind === 'crate'),
+})
 `)
 const home = pathToFileURL(dir + '/').href
 
@@ -333,6 +349,46 @@ test('a paint that lays a picture is drawn with the loader\'s picture, a span of
       expect(Math.hypot(q[b][0] - q[a][0], q[b][1] - q[a][1]) * 2).toBeCloseTo(Math.hypot(p[b][0] - p[a][0], p[b][1] - p[a][1], p[b][2] - p[a][2]), 5)
     expect((q[1][0] - q[0][0]) * (q[2][1] - q[0][1]) - (q[1][1] - q[0][1]) * (q[2][0] - q[0][0])).toBeGreaterThan(0)
   }
+})
+
+test('a kind\'s rows are made again when its model file is written again with a change deep inside it, refilled in place, and not when it is written again the same', async () => {
+  const { frames, solids, pad } = await yard('refilled')
+  const drawn = () => solids.group(pad.id).uuid
+  const first = drawn()
+  await frames(2)
+  expect(drawn()).toBe(first)
+  // The same text again: the loader refills the same object with new fields of the same numbers.
+  written(REFILLED_URL, JSON.stringify(PAD))
+  await frames(2)
+  expect(drawn()).toBe(first)
+  // One number deep in a part changed: refilled in place, the pad is made again, and once only.
+  const wider = structuredClone(PAD)
+  wider.parts[0].loft!.a[2] = 3
+  written(REFILLED_URL, JSON.stringify(wider))
+  await frames(1)
+  const second = drawn()
+  expect(second).not.toBe(first)
+  await frames(2)
+  expect(drawn()).toBe(second)
+})
+
+test('a kind whose model a mod hands afresh each frame is drawn once while its numbers stay, and made again when they change in place deep inside them', async () => {
+  const { field, page, frames } = await open('given')
+  await frames(3)
+  const { solids } = page.client!.plugins
+  const crate = field.rows.find(r => r.kind === 'crate')!, pad = field.rows.find(r => r.kind === 'pad')!
+  const drawn = (id: number) => solids.group(id).uuid
+  const first = drawn(crate.id), padded = drawn(pad.id)
+  await frames(2)
+  expect(drawn(crate.id)).toBe(first)
+  page.client!.plugins.wire.scene.world.field.crate.nodes.top.at[1] = 2
+  await frames(1)
+  const second = drawn(crate.id)
+  expect(second).not.toBe(first)
+  await frames(2)
+  expect(drawn(crate.id)).toBe(second)
+  // The pad, of another kind, is left as it was.
+  expect(drawn(pad.id)).toBe(padded)
 })
 
 test('a scene whose land solids reads is a plugin listed after it, or one it does not list, throws on the first frame', async () => {

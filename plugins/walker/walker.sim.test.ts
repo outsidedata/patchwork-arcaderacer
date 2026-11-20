@@ -5,7 +5,7 @@
 // ledges, walls, ridges, stairs, a canyon, noise, a pond and solid circles, and combinations where
 // more than one limit binds; the bodies solid to a kind are rows of a second kind, `post`. A feature at an angle ψ is written along the normal N = (cos ψ, sin ψ),
 // and a walk φ off its normal heads at ψ + φ. `groundOf` is read on scenes a manager loads, as a
-// game's are, whose `world.walker.mods` name terrain3d and scatter3d.
+// game's are, whose `world.walker.mods` name terrain3d and lod3d.
 import { afterAll, describe, expect, test } from 'vitest'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -17,7 +17,8 @@ import { scenemanager } from '#plugins/scenemanager/scenemanager.sim.ts'
 import { written } from '#plugins/loader/loader.sim.ts'
 import * as math from '#plugins/math/math.sim.ts'
 import { depthAt, rawAt, type Field } from '#plugins/terrain3d/terrain3d.sim.ts'
-import { placed, solids as scattered, type Scatter } from '#plugins/scatter3d/scatter3d.sim.ts'
+import type { Lod3d } from '#plugins/lod3d/lod3d.sim.ts'
+import { solids as scattered } from '#plugins/lod3d/lod3d.walker.ts'
 import { carry, check, groundOf, relative, seek, stand, walk, walker, type Ground, type Numbers, type Solid } from './walker.sim.ts'
 
 const DT = 1 / 60
@@ -1139,7 +1140,7 @@ describe('a ground with a cell', () => {
 })
 
 describe('groundOf', () => {
-  // Two children of one manager: `full` names terrain3d's height and depth and scatter3d's solids,
+  // Two children of one manager: `full` names terrain3d's height and depth and lod3d's solids,
   // `bare` terrain3d's height alone. The land is flooded hills; the trees stand on it.
   const field: Field = {
     program: { world: 600, hscale: 4, sea: 0.625, flood: true, out: 'hills', nodes: [{ id: 'hills', op: 'noise', kind: 'simplex', freq: 6, seed: 5 }] },
@@ -1150,12 +1151,14 @@ describe('groundOf', () => {
   }
   const url = '/walker-test/shore.json'
   written(url, JSON.stringify(field))
-  const scatter: Scatter & { mods: Record<string, string> } = {
-    cutout: 0.45, coverage: 0.25, budget: 1e9, remember: 100000, mods: { ground: 'terrain3d' },
-    packs: {
+  const lod3d: Lod3d & { widest: number; remember: number } = {
+    mods: { surfaces: ['terrain3d'], seen: ['terrain3d'], behaviors: ['terrain3d', 'instances3d'] },
+    rings: [20, 40], budget: 2, remember: 100000, widest: 0.56,
+    layers: {
       trees: {
-        asset: 'firs', rows: { fir: { weight: 1, solid: 0.4 } },
-        cell: 8, reach: 60, seed: 33, lods: [20, 40], shadow: 30, leaf: 0.5, density: 0.5, rules: [], clearing: 0, size: [0.8, 0.6], vary: 0.2,
+        on: ['land'], rows: { fir: { weight: 1, solid: 0.4 } },
+        cell: 8, spacing: 8, seed: 33, density: 0.5, size: [0.8, 0.6], vary: 0.2,
+        mesh: { asset: 'firs', lods: [0, 1], shadow: 30, leaf: 0.5 },
       },
     },
   }
@@ -1163,7 +1166,7 @@ describe('groundOf', () => {
     world: {
       loader: { assets: { land: { type: 'json', url, preload: true } } },
       terrain3d: { field: 'land' },
-      scatter3d: scatter,
+      lod3d,
       walker: { kinds: { body: K }, mods },
     },
     prefabs: { engine: { dt: DT }, scenemanager: { out: {} }, loader: {}, probe: {} },
@@ -1182,7 +1185,7 @@ describe('groundOf', () => {
   const dir = mkdtempSync(join(tmpdir(), 'walker-'))
   afterAll(() => rmSync(dir, { recursive: true }))
   const path = (p: string) => JSON.stringify(new URL(p, import.meta.url).pathname)
-  for (const [name, mods] of [['full', { height: 'terrain3d', depth: 'terrain3d', solids: 'scatter3d' }], ['bare', { height: 'terrain3d' }]] as const) {
+  for (const [name, mods] of [['full', { height: 'terrain3d', depth: 'terrain3d', solids: 'lod3d' }], ['bare', { height: 'terrain3d' }]] as const) {
     writeFileSync(join(dir, `${name}.scene.json`), JSON.stringify(childOf(mods)))
     writeFileSync(join(dir, `${name}.sim.ts`), `
 import { scenemanager } from ${path('../scenemanager/scenemanager.sim.ts')}
@@ -1199,7 +1202,7 @@ export const scene = file
   }
   const points = Array.from({ length: 61 * 61 }, (_, k) => [(k % 61) * 4 - 120, Math.floor(k / 61) * 4 - 120])
 
-  test('the mods a scene names make the ground: terrain3d\'s height and depth, and scatter3d\'s solids', async () => {
+  test('the mods a scene names make the ground: terrain3d\'s height and depth, and lod3d\'s solids', async () => {
     const { full } = await booted()
     const ground = groundOf(full)
     let wet = 0
@@ -1212,7 +1215,7 @@ export const scene = file
     let found = 0
     for (const [x, z, r] of [[30, 20, 12], [-70, 45, 30], [0, 0, 5]]) {
       const got = ground.solids(x, z, r)
-      expect(got).toEqual(scattered(full, x, z, r, placed(full)))
+      expect(got).toEqual(scattered(full, x, z, r))
       found += got.length
     }
     expect(found).toBeGreaterThan(10)
@@ -1225,12 +1228,33 @@ export const scene = file
     for (const [x, z] of points.slice(0, 200)) expect(ground.height(x, z)).toBe(rawAt(bare, x, z))
     for (const [x, z, r] of [[30, 20, 12], [-70, 45, 30], [0, 0, 5]]) expect(ground.solids(x, z, r)).toEqual([])
     // The trees are there, for a ground that asks for them.
-    expect(scattered(bare, -70, 45, 30, placed(bare)).length).toBeGreaterThan(0)
+    expect(scattered(bare, -70, 45, 30).length).toBeGreaterThan(0)
+  })
+
+  test('the ground is kept while the mods are what it was made from, a copy of them too, and made again when they are edited in place', async () => {
+    const { bare } = await booted()
+    const ground = groundOf(bare)
+    expect(groundOf(bare)).toBe(ground)
+    bare.world.walker.mods = { height: 'terrain3d' }
+    expect(groundOf(bare)).toBe(ground)
+    // A field added to the mods in place: terrain3d's depth.
+    bare.world.walker.mods.depth = 'terrain3d'
+    const deep = groundOf(bare)
+    expect(deep).not.toBe(ground)
+    expect('depth' in deep).toBe(true)
+    expect(groundOf(bare)).toBe(deep)
+    // Taken out again, and a field holding undefined is no field.
+    delete bare.world.walker.mods.depth
+    const shallow = groundOf(bare)
+    expect(shallow).not.toBe(deep)
+    expect('depth' in shallow).toBe(false)
+    bare.world.walker.mods.depth = undefined
+    expect(groundOf(bare)).toBe(shallow)
   })
 
   test('a scene that names no height throws', () => {
     let w!: W
-    boot({ world: { walker: { kinds: { body: K }, mods: { solids: 'scatter3d' } } }, prefabs: { probe: {} }, actors: [{ is: 'probe' }] }, { probe: { before(_me, _dt, got) { w = got } } }).step(DT)
+    boot({ world: { walker: { kinds: { body: K }, mods: { solids: 'lod3d' } } }, prefabs: { probe: {} }, actors: [{ is: 'probe' }] }, { probe: { before(_me, _dt, got) { w = got } } }).step(DT)
     expect(() => groundOf(w)).toThrow('walker is asked for the ground its mods make, and the scene names no world.walker.mods.height')
     w.world.walker.mods = undefined
     expect(() => groundOf(w)).toThrow('walker is asked for the ground its mods make, and the scene names no world.walker.mods.height')

@@ -32,7 +32,7 @@ test('the seat enters the title, and the rivals stand on the grid until the page
   expect(s.one('cutscene').data.running ?? false).toBe(false)
   expect(s.one('curtain').data.started).toBe(false)
   expect(s.one('race').data.phase).toBe('grid')
-  expect(s.rivals().length).toBe(8)
+  expect(s.rivals().length).toBe(6)
   for (const r of s.rivals()) {
     expect(r.data.seg).toBeGreaterThanOrEqual(0)
     expect(r.data.speed).toBe(0)

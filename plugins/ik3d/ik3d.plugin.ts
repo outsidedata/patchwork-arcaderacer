@@ -106,9 +106,30 @@ const base = (s: string) => s.replace(/_\d+$/, '')
 type Turned = { bone: THREE.Object3D; before: THREE.Quaternion; after: THREE.Quaternion }
 type Solved = { root: THREE.Object3D; turned: Turned[]; short: number[] }
 
+// Whether two values are the same: the same number (NaN the same as NaN), string, boolean or null, or
+// arrays and plain objects of the same, item by item and field by field, a field holding undefined the
+// same as one not there. Read every frame against the copy of world.ik3d last checked, so it walks the
+// two and makes nothing.
+function same(a: unknown, b: unknown): boolean {
+  if (a === b || (a !== a && b !== b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a)) {
+    const c = b as unknown[]
+    if (a.length !== c.length) return false
+    for (let i = 0; i < a.length; i++) if (!same(a[i], c[i])) return false
+    return true
+  }
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>
+  for (const k in x) if (!same(x[k], y[k])) return false
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false
+  return true
+}
+
 export function ik3d() {
   const solved = new Map<number, Solved>()
-  let text = ''
+  // A copy of world.ik3d as it was last checked, taken when it changes, in place or not.
+  let checked: Numbers | undefined
   let numbers: Numbers | undefined
 
   // The bone the solve turns for a suffix (the first whose name, `_N` aside, ends with it and has no
@@ -185,10 +206,9 @@ export function ik3d() {
     const scene = plugins.wire.scene
     const n = scene.world?.ik3d as Numbers | undefined
     if (!n) throw new Error('ik3d: the scene gives no world.ik3d')
-    const now = JSON.stringify(n)
-    if (now !== text) {
+    if (!same(n, checked)) {
       check(n)
-      text = now
+      checked = structuredClone(n)
     }
     numbers = n
     const body = mod<BodyMod>(scene.world!, 'ik3d', 'body')
@@ -229,7 +249,7 @@ export function ik3d() {
     short(id: number): number[] | undefined { return solved.get(id)?.short.slice() },
     close() {
       solved.clear()
-      text = ''
+      checked = undefined
       numbers = undefined
     },
   }

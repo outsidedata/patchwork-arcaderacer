@@ -1,5 +1,4 @@
-// Every bullet in the air drawn from the ledger row, and the page's own volleys, which no row holds.
-// The test writes its own scene, stepping 1/60 s a frame: a world whose y grows down the screen, a
+// Every bullet in the air drawn from the ledger row. The test writes its own scene, stepping 1/60 s a frame: a world whose y grows down the screen, a
 // layer for bullets and one for shots, a patterns file, and a loader standing in for the page's
 // that hands over a sheet of two bullet frames once the test says it has landed, cut the way the
 // loader cuts one.
@@ -110,54 +109,4 @@ test('a bullet the row says is gone, or an entry the row no longer holds, is no 
   const layer = plugins.render2d.layer('bullets')
   me.close()
   expect(layer.children).toEqual([])
-})
-
-test('a volley of the page\'s own is drawn as a row\'s entry is, aged a dt a frame, carried by the frame, and on no row', () => {
-  const { plugins, land, me } = page()
-  land()
-  plugins.wire.rows = [ledger([], [0, -40])]
-  const rows = JSON.stringify(plugins.wire.rows)
-  const e = me.fire('ring', [100, 60], 0)
-  expect(me.preview).toEqual([e])
-  me.afterTick(plugins)
-  // its first frame at age 0, its point taken into the frame: four bullets on the point
-  expect(e.age).toBe(0)
-  expect(e.at).toEqual([100, 100])
-  expect(shown(plugins.render2d.layer('bullets')).map((s: any) => [s.position.x, s.position.y])).toEqual([[100, 60], [100, 60], [100, 60], [100, 60]])
-  for (let i = 0; i < 30; i++) me.afterTick(plugins)
-  expect(e.age).toBeCloseTo(0.5, 12)
-  expect(shown(plugins.render2d.layer('bullets')).map((s: any) => [s.position.x, s.position.y])).toEqual([[130, 60], [100, 90], [70, 60], [100, 30]])
-  // drawn beside the row's own, which it never joins
-  plugins.wire.rows = [ledger([entry('ring', 0.5)], [0, -40])]
-  me.afterTick(plugins)
-  expect(shown(plugins.render2d.layer('bullets'))).toHaveLength(8)
-  expect(JSON.stringify(plugins.wire.rows[0].data.live)).toBe(JSON.stringify([entry('ring', 0.5)]))
-  plugins.wire.rows = JSON.parse(rows)
-  me.afterTick(plugins)
-  expect(shown(plugins.render2d.layer('bullets'))).toHaveLength(4)
-})
-
-test('a page\'s volley loses each bullet out of the bounds, leaves preview once every one is gone, and one whose pattern the file lacks leaves at once', () => {
-  const { plugins, land, me } = page()
-  land()
-  plugins.wire.rows = [ledger([])]
-  const e = me.fire('ring', [100, 100], 0)
-  me.afterTick(plugins)
-  // at 60 px/s the left and the up bullets leave the bounds after 100 / 60 s, the right after 188 / 60
-  for (let i = 0; i < 101; i++) me.afterTick(plugins)
-  expect(e.gone).toEqual([2, 3])
-  expect(shown(plugins.render2d.layer('bullets'))).toHaveLength(2)
-  for (let i = 0; i < 88; i++) me.afterTick(plugins)
-  expect(e.gone).toEqual([0, 2, 3])
-  for (let i = 0; i < 300 && me.preview.length; i++) me.afterTick(plugins)
-  expect(me.preview).toEqual([])
-  expect(e.gone).toEqual([0, 1, 2, 3])
-  expect(shown(plugins.render2d.layer('bullets'))).toEqual([])
-
-  me.fire('nothing', [100, 100], 0)
-  me.afterTick(plugins)
-  expect(me.preview).toEqual([])
-  me.fire('ring', [100, 100], 0)
-  me.close()
-  expect(me.preview).toEqual([])
 })

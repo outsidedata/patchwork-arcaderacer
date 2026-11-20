@@ -5,7 +5,7 @@
 // when its kind is one of them. A kind's file is imported once, as `<kind>.client.ts?instance`, the
 // file made to hand out a fresh copy of itself (`scripts/instance.ts`), and each row is set up on a
 // copy of its own, `instance()`: what an actor keeps at the top of its file, the mesh it drew, is
-// that row's, and two clients in one tab (two seats, the editor's views) never share one.
+// that row's, and two clients in one tab (two seats on one dev page) never share one.
 // `actor(id)` is the copy this client runs for row `id`.
 //
 // The bundle. Every module a page loads while it runs, a plugin, a scene's sim, a mod, a drawing
@@ -173,13 +173,13 @@ export async function client(scene: Scene, home: string) {
 // of the way from the one to the other. `restore()`, just after the draw, puts each back where it was
 // set, so what an actor or a plugin reads of a thing is what it set. A thing that moved on a frame
 // that took no step is moved by the page's own clock, not by the steps (an animation, a particle, a
-// camera the editor turns): it is drawn where it is set for the rest of that step and all of the
+// camera a panel's orbit turns): it is drawn where it is set for the rest of that step and all of the
 // next, and between the steps again once a whole step has gone by with nothing but the steps moving
 // it. A thing that came with the newest step, there on it and not on the step before, did not exist
 // at the moment drawn, which is before that step: with `shown`, which reads and sets whether a thing
 // is drawn at all, it is not drawn until the clock reaches its step, and is then drawn where it was
 // set, its first place, never a step ahead of everything around it. Without `shown` it is drawn where
-// it is set. Everything on a frame after the steps went back, as the editor's seek takes them, is
+// it is set. Everything on a frame after the steps went back, as a recorder's seek takes them, is
 // drawn where it is set.
 export function steps<T extends object>(read: (t: T) => number[], write: (t: T, p: number[]) => void, mix: (a: number[], b: number[], f: number) => number[], shown?: (t: T, on?: boolean) => boolean) {
   let now = new Map<T, number[]>(), before = new Map<T, number[]>()

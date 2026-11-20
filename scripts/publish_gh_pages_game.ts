@@ -7,9 +7,11 @@
 //
 // 1. The engine, GitHub's `outsidedata/patchwork` (`--engine` names another, or a git url or a path), is cloned
 //    and copied into the folder, replacing what was there but its `.git`, its `games/` and its
-//    `node_modules`, so a file the engine no longer has is gone from the game's repo too.
+//    `node_modules`, so a file the engine no longer has is gone from the game's repo too. The
+//    engine's `.gitignore` names `games/`, since core ships none; that line is taken out of the
+//    folder's copy, so the game is committed and the workflow builds it.
 // 2. `games/<game>/` of this repo is copied into the folder's `games/<game>/`, as it is on the disk,
-//    its baked art with it, but `__pycache__` and `.DS_Store`, replacing what was there.
+//    its baked art with it, but `__pycache__`, `.DS_Store` and the game's own `.git`, replacing what was there.
 // 3. `.github/workflows/deploy.yml` is written: on every push to `master` it runs `yarn` and `yarn
 //    produce_static_site <game>` and publishes `dist/` to Pages.
 // 4. `yarn` and `yarn produce_static_site <game>` run in the folder, so the game is seen to build
@@ -20,7 +22,7 @@
 //    `github-pages` environment letting `master` deploy, before the first push. `master` is pushed,
 //    which deploys.
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -93,8 +95,10 @@ export function stage(root: string, game: string, dir: string, engine: string): 
     mkdirSync(dir, { recursive: true })
     for (const name of readdirSync(dir)) if (!['.git', 'games', 'node_modules'].includes(name)) rmSync(path.join(dir, name), { recursive: true, force: true })
     run(root, 'rsync', ['-a', '--exclude', '/.git', '--exclude', '/games', `${from}/`, `${dir}/`])
+    const ignore = path.join(dir, '.gitignore')
+    if (existsSync(ignore)) writeFileSync(ignore, readFileSync(ignore, 'utf8').split('\n').filter(line => !/^\/?games\/?$/.test(line.trim())).join('\n'))
     mkdirSync(path.join(dir, 'games'), { recursive: true })
-    run(root, 'rsync', ['-a', '--delete', '--exclude', '__pycache__', '--exclude', '.DS_Store', `${path.join(root, 'games', game)}/`, `${path.join(dir, 'games', game)}/`])
+    run(root, 'rsync', ['-a', '--delete', '--exclude', '__pycache__', '--exclude', '.DS_Store', '--exclude', '.git', `${path.join(root, 'games', game)}/`, `${path.join(dir, 'games', game)}/`])
     mkdirSync(path.join(dir, '.github/workflows'), { recursive: true })
     writeFileSync(path.join(dir, '.github/workflows/deploy.yml'), workflow(game))
     return sha

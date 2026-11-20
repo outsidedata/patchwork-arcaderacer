@@ -753,7 +753,7 @@ export function land() {
       const box = (centre: V, w: number, h: number, d: number, yaw: number) => {
         const m = new T.Mesh(new T.BoxGeometry(w, h, d), white)
         m.position.set(...centre)
-        m.rotation.y = yaw
+        m.quaternion.setFromAxisAngle(new T.Vector3(0, 1, 0), yaw)
         return add(m, true, true, 'bridge.tower')
       }
       for (const s of towers) {
@@ -1040,7 +1040,7 @@ export function land() {
       group.position.set(mk.x, mk.y, mk.z)
       if (look.model) {
         // a model's landmark at its true size, drawn once it lands
-        group.rotation.y = (mk.turn ?? 0) * Math.PI * 2
+        group.quaternion.setFromAxisAngle(new T.Vector3(0, 1, 0), (mk.turn ?? 0) * Math.PI * 2)
         whenLanded(look.model, scene => {
           for (const part of parts(scene, look.model, look.node).parts) {
             const mesh = new T.Mesh(part.geometry, part.material)
@@ -1062,7 +1062,7 @@ export function land() {
           const h = mk.height[0] + (mk.height[1] - mk.height[0]) * peakRoll(), w = mk.width[0] + (mk.width[1] - mk.width[0]) * peakRoll()
           const peak = new T.Mesh(cone(w / 2, h, look.sides, look), painted({ flatShading: true }))
           peak.position.set(Math.sin(a) * r, -h * 0.05, Math.cos(a) * r)
-          peak.rotation.y = peakRoll() * Math.PI
+          peak.quaternion.setFromAxisAngle(new T.Vector3(0, 1, 0), peakRoll() * Math.PI)
           group.add(peak)
         }
       } else if (mk.name === 'lattice') {
@@ -1105,7 +1105,7 @@ export function land() {
           const face = new T.Mesh(new T.CircleGeometry(w * 0.45, 32), glowing(look.face, lit ? look.glow : 0.3))
           const a = (k / 4) * Math.PI * 2
           face.position.set(Math.sin(a) * (w * 0.63), H * 0.69, Math.cos(a) * (w * 0.63))
-          face.rotation.y = a
+          face.quaternion.setFromAxisAngle(new T.Vector3(0, 1, 0), a)
           group.add(face)
         }
         const spire = new T.Mesh(new T.ConeGeometry(w * 0.85, H * 0.3, 4).rotateY(Math.PI / 4), roof)
@@ -1120,7 +1120,7 @@ export function land() {
           const spoke = new T.Mesh(new T.CylinderGeometry(0.15, 0.15, R, 4), frame)
           const a = (k / mk.spokes) * Math.PI * 2
           spoke.position.set(Math.cos(a) * R / 2, Math.sin(a) * R / 2, 0)
-          spoke.rotation.z = a - Math.PI / 2
+          spoke.quaternion.setFromAxisAngle(new T.Vector3(0, 0, 1), a - Math.PI / 2)
           turning.add(spoke)
           const pod = new T.Mesh(new T.SphereGeometry(1.8, 8, 6).scale(1.6, 1, 1), glowing(look.pods, lit ? look.glow : 0.2))
           pod.position.set(Math.cos(a) * (R + 1.5), Math.sin(a) * (R + 1.5), 0)
@@ -1131,10 +1131,10 @@ export function land() {
         for (const lean of [-1, 1]) {
           const leg = new T.Mesh(new T.BoxGeometry(1.5, R + 10, 1.5), frame)
           leg.position.set(0, (R + 6) / 2, lean * 8)
-          leg.rotation.x = lean * 0.25
+          leg.quaternion.setFromAxisAngle(new T.Vector3(1, 0, 0), lean * 0.25)
           group.add(leg)
         }
-        group.rotation.y = peakRoll() * Math.PI
+        group.quaternion.setFromAxisAngle(new T.Vector3(0, 1, 0), peakRoll() * Math.PI)
         wheel = turning
       } else if (mk.name === 'dome') {
         const stone = plain(look.stone), lead = plain(look.lead, { metalness: 0.3 })
@@ -1195,7 +1195,12 @@ export function land() {
       const x = Math.round(camera.position.x), y = Math.round(camera.position.y), z = Math.round(camera.position.z)
       sun.target.position.set(x, y, z)
       sun.position.set(x + toward.x * reach * 3, y + toward.y * reach * 3, z + toward.z * reach * 3)
-      if (built.wheel) built.wheel.rotation.z = (performance.now() / 1000) * 0.03
+      // the big wheel turns by the steps' clock, the moment drawn this frame, as everything else moves
+      if (built.wheel) {
+        const between = p.wire.between
+        const drawnAt = (between === undefined ? p.wire.n : p.wire.n - 1 + between) * (p.wire.scene.prefabs.engine.dt as number)
+        built.wheel.quaternion.setFromAxisAngle(new (p.render3d.THREE as typeof THREE).Vector3(0, 0, 1), drawnAt * 0.03)
+      }
     },
     close(p: Plugins) {
       if (!built) return

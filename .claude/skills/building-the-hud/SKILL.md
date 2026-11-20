@@ -30,6 +30,9 @@ skills instead:
 - Getting a picture, a sheet or a font into the game: `bringing-in-art`. This skill says only what is
   different when the HUD draws it.
 - Drawing in the game's world, on render2d's or render3d's stage: `writing-the-look`.
+- A menu of 3D things over the game, models the pointer and keys select and press: the `ui3d` plugin
+  (`plugins/ui3d/README.md` and the header of `plugins/ui3d/ui3d.plugin.ts`); a game's title in 3D, its
+  name and its particles, is the `using-ui3d` skill.
 - A title screen or menu that is a scene of its own, and moving between scenes: `scene-flow`.
 - Chat and parties across a network, and keeping each seat's lines to it: `going-multiplayer`.
 - Writing a plugin of the game's own: `building-a-plugin`.
@@ -307,10 +310,10 @@ no game running. Click anything on the screen to change it, then save the change
 own files. It is served by the asset workshop's server:
 
 ```
-node --experimental-strip-types tools/workshop/workshop.server.ts
+yarn workshop ui <game>
 ```
 
-and opened at `http://localhost:5180/ui?game=<game>` (add `&screen=<screen>&state=<state>` to open on
+which starts the server and opens `http://127.0.0.1:5180/ui?game=<game>` (add `&screen=<screen>&state=<state>` to open on
 one). The full account is the header of `tools/workshop/ui.ts`.
 
 A game with no screens file is drawn from its config alone: a screen per scene that gives a

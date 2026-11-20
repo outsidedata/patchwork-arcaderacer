@@ -75,7 +75,9 @@ packet this page draws from, which the game's player actor sends with each shot.
 ## Plugins it works with
 
 - **terrain3d**: the mod `terrain3d.hitscan3d.ts` is the `ground`.
-- **scatter3d**: the mod `scatter3d.hitscan3d.ts` is the `solids` (trunks and boulders).
+- **lod3d**: the mod `lod3d.hitscan3d.ts` (`mods: { solids: 'lod3d' }`) is the `solids`: the
+  instances of every row that gives `solid` (trunks and boulders), each from its foot as tall as its
+  row's `tall`, or without end.
 - **shapes3d**: the mod `shapes3d.hitscan3d.ts` (`mods: { solids: 'shapes3d', behaviors: 'shapes3d' }`)
   is its shapes as `solids`, and delivers `box`.
 - **walker**: the mod `walker.hitscan3d.ts` is `bodies` as upright cylinders.

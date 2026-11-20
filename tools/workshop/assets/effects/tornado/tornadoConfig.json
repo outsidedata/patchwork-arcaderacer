@@ -1,0 +1,74 @@
+{
+  "cap": 600,
+  "ppm": 256,
+  "forceGenerators": {
+    "vortex": [{"swirl":3.4,"pull":2.6,"toAxis":true,"shell":0.7,"axis":[0,1,0],"at":[0,0,0],"anchor":"effect","range":14}],
+    "churn": [{"turbulence":1.6,"noiseFrequency":0.7,"noiseScroll":[0,0.8,0],"at":[0,0,0],"anchor":"effect","range":14}],
+    "crown": [{"swirl":0.35,"axis":[0,1,0],"at":[0,0,0],"anchor":"effect","turbulence":0.4,"noiseFrequency":0.3,"noiseScroll":[0.3,0,0],"range":20}]
+  },
+  "flipbooks": [
+    {
+      "name": "tornado",
+      "clip": "spin",
+      "frames": 48,
+      "loop": 12,
+      "across": 8,
+      "cell": [384,384],
+      "plane": 1,
+      "samples": 8,
+      "fps": 30,
+      "pivot": [0.5,1],
+      "nodes": [
+        {"id":"coord","type":"ShaderNodeTexCoord"},
+        {"id":"xyz","type":"ShaderNodeSeparateXYZ","inputs":{"Vector":{"link":"coord.Object"}}},
+        {"id":"h","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"xyz.Y"},"1":1,"2":0.5}},
+        {"id":"swayAt","type":"ShaderNodeCombineXYZ","inputs":{"X":0,"Y":{"link":"h.Value"},"Z":0}},
+        {"id":"sway","type":"ShaderNodeTexNoise","props":{"noise_dimensions":"4D","noise_type":"FBM"},"inputs":{"Vector":{"link":"swayAt.Vector"},"W":{"keys":[[0,0],[1,0.9]]},"Scale":1.4,"Detail":2,"Roughness":0.5,"Lacunarity":2,"Distortion":0}},
+        {"id":"swayC","type":"ShaderNodeMath","props":{"operation":"SUBTRACT"},"inputs":{"0":{"link":"sway.Fac"},"1":0.5}},
+        {"id":"swayH","type":"ShaderNodeMath","props":{"operation":"MULTIPLY"},"inputs":{"0":{"link":"swayC.Value"},"1":{"link":"h.Value"}}},
+        {"id":"xs","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"swayH.Value"},"1":-0.55,"2":{"link":"xyz.X"}}},
+        {"id":"hp","type":"ShaderNodeMath","props":{"operation":"POWER"},"inputs":{"0":{"link":"h.Value"},"1":2.6}},
+        {"id":"width","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"hp.Value"},"1":0.4,"2":0.035}},
+        {"id":"ratio","type":"ShaderNodeMath","props":{"operation":"DIVIDE"},"inputs":{"0":{"link":"xs.Value"},"1":{"link":"width.Value"}}},
+        {"id":"r2","type":"ShaderNodeMath","props":{"operation":"MULTIPLY"},"inputs":{"0":{"link":"ratio.Value"},"1":{"link":"ratio.Value"}}},
+        {"id":"ball","type":"ShaderNodeMath","props":{"operation":"SUBTRACT"},"inputs":{"0":1,"1":{"link":"r2.Value"}}},
+        {"id":"rlo","type":"ShaderNodeMath","props":{"operation":"MAXIMUM"},"inputs":{"0":{"link":"ratio.Value"},"1":-1}},
+        {"id":"rc","type":"ShaderNodeMath","props":{"operation":"MINIMUM"},"inputs":{"0":{"link":"rlo.Value"},"1":1}},
+        {"id":"theta","type":"ShaderNodeMath","props":{"operation":"ARCSINE"},"inputs":{"0":{"link":"rc.Value"}}},
+        {"id":"turn","type":"ShaderNodeMath","props":{"operation":"ADD"},"inputs":{"0":{"link":"theta.Value"},"1":{"keys":[[0,0],[1,-12.566]]}}},
+        {"id":"phi","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"h.Value"},"1":2.4,"2":{"link":"turn.Value"}}},
+        {"id":"sx","type":"ShaderNodeMath","props":{"operation":"SINE"},"inputs":{"0":{"link":"phi.Value"}}},
+        {"id":"cz","type":"ShaderNodeMath","props":{"operation":"COSINE"},"inputs":{"0":{"link":"phi.Value"}}},
+        {"id":"yy","type":"ShaderNodeMath","props":{"operation":"MULTIPLY"},"inputs":{"0":{"link":"xyz.Y"},"1":12}},
+        {"id":"cyl","type":"ShaderNodeCombineXYZ","inputs":{"X":{"link":"sx.Value"},"Y":{"link":"yy.Value"},"Z":{"link":"cz.Value"}}},
+        {"id":"bands","type":"ShaderNodeTexNoise","props":{"noise_dimensions":"4D","noise_type":"FBM"},"inputs":{"Vector":{"link":"cyl.Vector"},"W":{"keys":[[0,0],[1,0.6]]},"Scale":1.7,"Detail":8,"Roughness":0.6,"Lacunarity":2.1,"Distortion":0.5}},
+        {"id":"bandsC","type":"ShaderNodeMath","props":{"operation":"SUBTRACT"},"inputs":{"0":{"link":"bands.Fac"},"1":0.5}},
+        {"id":"edge","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"bandsC.Value"},"1":1.4,"2":{"link":"ball.Value"}}},
+        {"id":"topFade","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD","use_clamp":true},"inputs":{"0":{"link":"h.Value"},"1":-5,"2":5}},
+        {"id":"shape","type":"ShaderNodeMath","props":{"operation":"MULTIPLY"},"inputs":{"0":{"link":"edge.Value"},"1":{"link":"topFade.Value"}}},
+        {"id":"solid","type":"ShaderNodeMath","props":{"operation":"MULTIPLY","use_clamp":true},"inputs":{"0":{"link":"shape.Value"},"1":3}},
+        {"id":"striate","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD","use_clamp":true},"inputs":{"0":{"link":"bands.Fac"},"1":1.6,"2":-0.15}},
+        {"id":"density","type":"ShaderNodeMath","props":{"operation":"MULTIPLY","use_clamp":true},"inputs":{"0":{"link":"solid.Value"},"1":{"link":"striate.Value"}}}
+      ],
+      "images": [
+        {
+          "file": "tornado.png",
+          "channels": [
+            {"field":"density.Value","op":"volume","dir":"+x","depth":70,"slices":32,"through":"density.Value","absorb":6,"soften":2},
+            {"field":"density.Value","op":"volume","dir":"+y","depth":70,"slices":32,"through":"density.Value","absorb":6,"soften":2},
+            {"field":"density.Value","op":"volume","dir":"-x","depth":70,"slices":32,"through":"density.Value","absorb":6,"soften":2},
+            {"field":"density.Value","op":"volume","dir":"hidden","depth":70,"slices":32,"through":"density.Value","absorb":6,"soften":2}
+          ]
+        }
+      ]
+    }
+  ],
+  "effects": {
+    "tornado": [
+      {"n":[1,1],"every":0.25,"life":[4,5],"sheet":"smoke","clip":"billow","size":[3,4.5],"start":[0,1],"blend":true,"channels":{"value":[0.55,0.45,0,0],"alpha":[0,0,0,1],"hot":[0,0,0,0]},"erode":[[0,0],[0.6,0.1],[1,0.6]],"box":[-2.6,8.2,-2.6,2.6,9,2.6],"forces":{"crown":[0.8,1.2]},"grows":[[0,0.8],[1,1.4]],"tints":[[0,3027510],[1,3948869]],"alphas":[[0,0],[0.25,0.8],[0.75,0.8],[1,0]]},
+      {"n":[1,1],"every":0.18,"life":[1.8,2.2],"sheet":"tornado","clip":"spin","size":[6.2,6.6],"start":[0,1],"blend":true,"channels":{"value":[0.55,0.45,0,0],"alpha":[0,0,0,1],"hot":[0,0,0,0]},"box":[-0.05,0,-0.05,0.05,0,0.05],"tints":[[0,4080704],[1,5922650]],"alphas":[[0,0],[0.2,0.95],[0.8,0.95],[1,0]]},
+      {"n":[1,1],"every":0.07,"life":[2,3],"sheet":"smoke","clip":"billow","size":[1.1,1.7],"start":[0,0.3],"blend":true,"channels":{"value":[0.55,0.45,0,0],"alpha":[0,0,0,1],"hot":[0,0,0,0]},"erode":[[0,0],[0.5,0.15],[1,0.75]],"box":[-1.6,0,-1.6,1.6,0.3,1.6],"g":-0.5,"drag":0.3,"forces":{"vortex":[0.5,0.9],"churn":[0.8,1.2]},"grows":[[0,0.6],[1,2.2]],"tints":[[0,5917240],[1,8022613]],"alphas":[[0,0],[0.15,0.75],[0.6,0.5],[1,0]]},
+      {"n":[2,3],"every":0.03,"life":[2.5,3.5],"shape":"puff","size":[0.06,0.14],"box":[-1.4,0,-1.4,1.4,0.4,1.4],"g":-2.2,"drag":0.3,"spin":3,"forces":{"vortex":[0.9,1.3],"churn":[0.5,1]},"tints":[[0,2761760],[1,3814960]],"alphas":[[0,0],[0.1,1],[0.8,0.9],[1,0]]}
+    ]
+  }
+}

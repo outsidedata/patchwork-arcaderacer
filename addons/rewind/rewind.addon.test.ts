@@ -293,6 +293,27 @@ test('heard writes each message down once, at the step that answered it, through
   expect(list.map(h => [h.at, h.msg.seq])).toEqual([[10, 1], [12, 2]])
 })
 
+// An act that writes into the list its message hands it: heard knows the message again when the step
+// is run again, as it arrived, not as the act left it.
+test('heard knows a message again through steps run again when its act wrote into its args', () => {
+  const marking: Sim = { ...sim, player: { ...sim.player, acts: { ...sim.player.acts, mark(_me, _w, _seat, list) { if (Array.isArray(list)) list.push('seen') } } } }
+  const late = boot(scene(), marking)
+  const b = join(late)
+  const list = heard(late)
+  const r = rewind(late, 12)
+  for (let i = 0; i < 12; i++) r.step(DT)
+  const me = playerOf(late, 0).id
+  // Answered on step 12, which the late steer below sends the truth back to.
+  r.take(b, { seq: 1, n: 12, id: me, action: 'mark', args: [['a']] })
+  for (let i = 0; i < 5; i++) r.step(DT)
+  r.take(b, steer(2, 12, me, -1))
+  let during = false
+  late.onStep(() => { if (rewinding(late)) during = true })
+  for (let i = 0; i < 5; i++) r.step(DT)
+  expect(during).toBe(true)
+  expect(list.map(h => [h.at, h.msg.seq])).toEqual([[12, 1], [12, 2]])
+})
+
 // A stack of crates in Box3D, in the world box3d's own test makes.
 const surface = { friction: 0.6, restitution: 0, rollingResistance: 0 }
 const crates = (): Scene => ({

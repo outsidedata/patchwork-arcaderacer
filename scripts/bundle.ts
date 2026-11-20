@@ -27,7 +27,10 @@
 // bundle's files are served under, ending in `/`, whether it is minified, and `json`, what each of
 // the repo's `.json` files the bundle imports is written as. `build()` hands back the page with each
 // module script in it written as a script of the bundle's, and every file of the bundle by its path
-// under `out`. A page with no module script in it is handed back as it is, with no files. The build
+// under `out`, and, for a game page that enters its entry scene, the game's loading cover just inside its
+// `<body>`, so the page's first bytes draw the entry scene's loading screen and fetch its files while the
+// code comes down (`plugins/loader/loader.cover.ts`). A page with no module script in it is handed back
+// as it is, with no files. The build
 // is kept between calls, and each reads only the files that changed since.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
@@ -35,6 +38,8 @@ import { context, transform, type BuildContext, type Plugin } from 'esbuild'
 import { init, parse } from 'es-module-lexer'
 import { looks } from '../engine/browser.ts'
 import { instanced } from './instance.ts'
+import { covered } from '../plugins/loader/loader.cover.ts'
+import { named, REPO_NAMES, repoName, where } from './mounts.ts'
 
 export type Options = {
   root: string
@@ -48,6 +53,8 @@ export type Options = {
 export type Built = { html: string; files: Map<string, Uint8Array> }
 
 const SCRIPT = /(<script\b[^>]*\btype=["']module["'][^>]*>)([\s\S]*?)(<\/script>)/g
+const BODY = /<body\b[^>]*>/
+const COVERED = ['index.html', 'client.html']
 const WORKER = /new URL\(\s*(["'])(\.{1,2}\/[^"']+\.ts)\1\s*,\s*import\.meta\.url\s*\)/g
 
 const posix = (p: string) => p.split(path.sep).join('/')
@@ -62,8 +69,12 @@ type Entry = { in: string; out: string }
 export function bundler(o: Options) {
   const root = path.resolve(o.root)
   const home = path.posix.dirname(o.page)
-  const rel = (abs: string) => posix(path.relative(root, abs))
-  const has = (r: string) => existsSync(path.join(root, r))
+  // a file on disk as the repo names it, a mounted game's as `games/<name>/...` (`mounts.ts`); one in neither by its
+  // path from the root, which starts `..`
+  const rel = (abs: string) => named(root, abs) ?? posix(path.relative(root, abs))
+  // a path as the repo names it, on disk
+  const disk = (r: string) => where(root, r)
+  const has = (r: string) => existsSync(disk(r))
   const noTs = (r: string) => r.replace(/\.ts$/, '')
   const at = (out: string) => `${o.out}${out}.js`
 
@@ -75,7 +86,7 @@ export function bundler(o: Options) {
 
   // The scene files of the game's folder and every partial one of them extends.
   function scenes(): Record<string, any>[] {
-    const dir = path.join(root, home)
+    const dir = disk(home)
     const out: Record<string, any>[] = []
     for (const name of readdirSync(dir).filter(n => n.endsWith('.scene.json'))) {
       const scene = JSON.parse(readFileSync(path.join(dir, name), 'utf8'))
@@ -87,14 +98,14 @@ export function bundler(o: Options) {
 
   // What the game loads while it runs, by the url each is loaded by.
   function loaded(): Loaded[] {
-    const names = readdirSync(path.join(root, home))
+    const names = readdirSync(disk(home))
     const entries: Loaded[] = []
     const add = (r: string) => {
-      if (has(r) && !entries.some(e => e.key === o.url(r))) entries.push({ in: path.join(root, r), key: o.url(r) })
+      if (has(r) && !entries.some(e => e.key === o.url(r))) entries.push({ in: disk(r), key: o.url(r) })
     }
     for (const kind of looks(names)) {
       const r = `${home}/${kind}.client.ts`
-      entries.push({ in: `instance:${path.join(root, r)}`, key: `${o.url(r)}?instance` })
+      entries.push({ in: `instance:${disk(r)}`, key: `${o.url(r)}?instance` })
     }
     for (const n of names.filter(n => n.endsWith('.sim.ts') && names.includes(n.replace(/\.sim\.ts$/, '.scene.json')))) add(`${home}/${n}`)
     for (const scene of scenes()) {
@@ -143,6 +154,18 @@ export function bundler(o: Options) {
   const repo: Plugin = {
     name: 'core-bundle',
     setup(b) {
+      // The repo's own names (its package.json's `imports`), `#engine/x` and the rest, as the repo's folders, for every
+      // module: a mounted game's too, whose folder's own package.json is never read for them (`mounts.ts`).
+      b.onResolve({ filter: REPO_NAMES }, a => ({ path: repoName(root, a.path)! }))
+      // A package a mounted game's module imports (`three`) is the repo's, found from the repo's root, so the page has
+      // one copy of each package however many folders its modules come from.
+      b.onResolve({ filter: /^[^./#][^:]*$/ }, async a => {
+        // the folder the import is made from: the page's own scripts have no file, only the page's folder
+        const from = a.resolveDir
+        if (a.pluginData?.repo || !from || !path.relative(root, from).startsWith('..') || named(root, from) === undefined) return undefined
+        const found = await b.resolve(a.path, { kind: a.kind, resolveDir: root, importer: path.join(root, 'package.json'), pluginData: { repo: true } })
+        return found.errors.length ? { errors: found.errors } : { path: found.path, external: found.external, namespace: found.namespace, sideEffects: found.sideEffects }
+      })
       b.onResolve({ filter: /^instance:/ }, a => ({ path: a.path.slice('instance:'.length), namespace: 'instance' }))
       b.onResolve({ filter: /^page:/ }, a => ({ path: a.path, namespace: 'page' }))
       b.onResolve({ filter: /^list:$/ }, () => ({ path: 'list:', namespace: 'list' }))
@@ -166,7 +189,7 @@ export function bundler(o: Options) {
       }))
       b.onLoad({ filter: /.*/, namespace: 'page' }, async a => {
         const i = Number(a.path.slice('page:'.length))
-        return { contents: `import 'list:'\n${await code(o.page, scripts()[i], 'js', o.url(o.page))}`, loader: 'js', resolveDir: path.join(root, home) }
+        return { contents: `import 'list:'\n${await code(o.page, scripts()[i], 'js', o.url(o.page))}`, loader: 'js', resolveDir: disk(home) }
       })
       b.onLoad({ filter: /\.(ts|js|mjs|json)$/ }, async a => {
         const r = rel(a.path)
@@ -177,8 +200,17 @@ export function bundler(o: Options) {
     },
   }
 
-  const html = () => readFileSync(path.join(root, o.page), 'utf8')
+  const html = () => readFileSync(disk(o.page), 'utf8')
   const scripts = () => [...html().matchAll(SCRIPT)].map(s => s[2])
+
+  // The page with the loading cover of its game just inside its `<body>` (`plugins/loader/loader.cover.ts`):
+  // `index.html` and `client.html`, which enter the game's entry scene, and only when that scene shows
+  // a loading screen. `dev.html` may enter any scene, and has none.
+  async function withCover(html: string): Promise<string> {
+    if (!COVERED.includes(path.posix.basename(o.page))) return html
+    const cover = await covered(disk(home), text => (o.json ? o.json(`${home}/loader.cover.json`, text) : text))
+    return cover ? html.replace(BODY, body => `${body}\n${cover}`) : html
+  }
 
   async function build(): Promise<Built> {
     const page = html()
@@ -186,7 +218,7 @@ export function bundler(o: Options) {
     if (!count) return { html: page, files: new Map() }
     const pages: Entry[] = Array.from({ length: count }, (_, i) => ({ in: `page:${i}`, out: `${noTs(o.page.replace(/\.html$/, ''))}.${i}` }))
     for (;;) {
-      const entries = [...pages, ...[...workers].filter(has).map(w => ({ in: path.join(root, w), out: noTs(w) }))]
+      const entries = [...pages, ...[...workers].filter(has).map(w => ({ in: disk(w), out: noTs(w) }))]
       const key = JSON.stringify(entries)
       if (ctx?.key !== key) {
         await ctx?.it.dispose()
@@ -217,7 +249,8 @@ export function bundler(o: Options) {
       const files = new Map<string, Uint8Array>()
       for (const f of result.outputFiles ?? []) files.set(posix(path.relative(path.join(root, '.bundle'), f.path)), f.contents)
       let i = 0
-      return { html: page.replace(SCRIPT, (_s, open: string) => `${open.replace(/>$/, ` src="${at(pages[i++].out)}">`)}</script>`), files }
+      const scripted = page.replace(SCRIPT, (_s, open: string) => `${open.replace(/>$/, ` src="${at(pages[i++].out)}">`)}</script>`)
+      return { html: await withCover(scripted), files }
     }
   }
 

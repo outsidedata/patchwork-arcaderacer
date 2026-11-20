@@ -1,0 +1,27 @@
+{
+  "cap": 12000,
+  "effects": {
+    "plasma": [
+      { "n": [1, 1], "life": [0.18, 0.18], "shape": "glow", "size": [3.5, 3.5], "grow": 1.6, "tint": 13697023, "tint1": 4482815, "gain": 7, "a1": 0, "add": true },
+      { "n": [1, 1], "life": [0.15, 0.15], "shape": "star", "size": [4.5, 4.5], "grow": 1.5, "tint": 15265535, "gain": 6, "a1": 0, "add": true },
+      { "n": [1, 1], "life": [1.4, 1.4], "size": [0, 0], "carry": "plasma-light" },
+      { "n": [1, 1], "life": [0.9, 1.1], "shape": "glow", "size": [1.2, 1.2], "grow": 0.2, "tint": 11197951, "tint1": 3355647, "gain": 4, "a1": 0, "add": true },
+      { "n": [1, 1], "life": [0.35, 0.35], "shape": "halo", "size": [0.8, 0.8], "grow": 12, "tint": 9030655, "gain": 3, "a1": 0, "add": true },
+      { "n": [1, 1], "after": 0.08, "life": [0.5, 0.5], "shape": "ring", "size": [0.6, 0.6], "grow": 16, "tint": 13404415, "gain": 2.5, "a0": 0.8, "a1": 0, "add": true },
+      { "n": [1, 1], "after": 0.18, "life": [0.7, 0.7], "shape": "ring", "size": [0.5, 0.5], "grow": 18, "tint": 5627391, "gain": 1.8, "a0": 0.6, "a1": 0, "add": true },
+      { "n": [50, 64], "life": [0.4, 0.9], "shape": "streak", "stretch": true, "size": [0.3, 0.7], "speed": [9, 16], "drag": 2.2, "swirl": 3, "tint": 14544639, "tint1": 4469759, "gain": 5, "a1": 0, "add": true },
+      { "n": [8, 10], "life": [0.35, 0.55], "size": [0, 0], "speed": [5, 8], "drag": 3, "carry": "plasma-arc" },
+      { "n": [24, 32], "life": [0.6, 1.2], "shape": "glow", "size": [0.4, 0.8], "grow": 0.3, "speed": [3, 6], "drag": 3, "swirl": -2, "tint": 9093375, "tint1": 3346943, "gain": 3, "a1": 0, "add": true },
+      { "n": [40, 60], "after": 0.1, "life": [1.5, 2.6], "shape": "spark", "size": [0.04, 0.08], "speed": [1, 4], "drag": 1.2, "g": -0.4, "swirl": 1, "tint": 13697023, "tint1": 5592575, "gain": 4, "a1": 0, "fade": 0.6, "add": true },
+      { "n": [10, 14], "after": 0.06, "life": [1.6, 2.4], "shape": "puff2", "size": [0.7, 1.1], "grow": 2.6, "speed": [1, 2.5], "drag": 2, "g": -0.5, "tint": 3812472, "tint1": 1712425, "a0": 0.5, "a1": 0, "spin": 0.6 }
+    ],
+    "plasma-light": [
+      { "lamp": { "intensity": 380, "distance": 14, "decay": 2, "tint": 7116799, "flicker": 0.5 } }
+    ],
+    "plasma-arc": [
+      { "n": [1, 1], "every": 0.05, "life": [0.03, 0.06], "shape": "bolt", "beam": true, "size": [0.15, 0.3], "tint": 13959167, "gain": 3, "a1": 0.3, "add": true },
+      { "n": [1, 1], "after": 0.025, "every": 0.05, "life": [0.03, 0.06], "shape": "bolt2", "beam": true, "size": [0.15, 0.3], "tint": 13959167, "gain": 3, "a1": 0.3, "add": true },
+      { "n": [1, 1], "life": [0.15, 0.25], "shape": "glow", "size": [0.4, 0.6], "tint": 7116799, "gain": 2.5, "a0": 0.6, "a1": 0, "add": true }
+    ]
+  }
+}

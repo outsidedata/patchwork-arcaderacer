@@ -14,7 +14,7 @@
 import type { Kind, Row, W } from '#engine/engine.ts'
 import { def } from '#plugins/loader/loader.sim.ts'
 import { courseOf, gridAt, trackOf } from './plugins/track/track.sim.ts'
-import { CONTROLS, control, pilot, place, run, type Control } from './plugins/drive/drive.sim.ts'
+import { CONTROLS, control, pilot, place, racing, run, type Control } from './plugins/drive/drive.sim.ts'
 
 // What a cast member is directed to do that a car driven by its pilot cannot.
 const UNDRIVEN = ['walk', 'face', 'play', 'gesture']
@@ -31,7 +31,7 @@ function tick(me: Row, dt: number, w: W) {
     if (asked) throw new Error(`the rival ${me.data.name} was handed a ${asked} cue, and a rival is driven by its pilot`)
   }
   const race = w.find('race')
-  if (me.data.seg >= 0 && race.data.phase !== 'grid' && race.data.phase !== 'count') {
+  if (me.data.seg >= 0 && racing(race)) {
     const wants = pilot(w, me, def(w, me.kind).ai, me.data.grid)
     for (const name of Object.keys(CONTROLS) as Control[]) control(me, name, wants[name])
   }

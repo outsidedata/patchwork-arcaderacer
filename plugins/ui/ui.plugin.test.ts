@@ -173,7 +173,7 @@ test('a name `world.ui` does not give, or gives wrong, throws', () => {
   expect(() => me.panel('open')).toThrow('ui panel open clips but has no size')
   expect(() => me.style('nope')).toThrow('ui has no style nope')
   const bare = ui()
-  bare.tick({ wire: { scene: { prefabs, world: {} }, rows: [] } } as any)
+  expect(() => bare.tick({ wire: { scene: { prefabs, world: {} }, rows: [] } } as any)).toThrow('scene lists ui but has no world.ui')
   expect(() => bare.panel('tl')).toThrow('scene lists ui but has no world.ui')
 })
 
@@ -910,6 +910,21 @@ test('on a page the surfaces asked in a frame are drawn side by side along the t
   } finally {
     vi.unstubAllGlobals()
   }
+})
+
+test('a panel giving a word no plugin delivers throws on the first tick, naming the panel, the word and world.ui.mods.behaviors', () => {
+  const me = ui()
+  started.push(me)
+  const panels = { ...world.ui.panels, spinner: { anchor: 'center', size: [10, 10], whirl: { speed: 1 } } }
+  expect(() => me.tick({ wire: { scene: { prefabs, world: { ui: { ...world.ui, panels } } }, rows: [] } } as any))
+    .toThrow('ui has no behavior for panel spinner, of the word whirl: no plugin world.ui.mods.behaviors names delivers it')
+})
+
+test('a plugin world.ui.mods.behaviors names is listed before ui, or the first tick throws', () => {
+  const me = ui()
+  started.push(me)
+  const scene = { prefabs, plugins: ['ui', 'loader'], world: { ui: { ...world.ui, mods: { behaviors: ['loader'] } } } }
+  expect(() => me.tick({ wire: { scene, rows: [] } } as any)).toThrow('ui is listed before loader, whose behaviors it reads that frame')
 })
 
 test('a modal, or a panel with no size, is never drawn on a surface', () => {

@@ -17,9 +17,14 @@
 //   count      { at, style, go, goFor }  the countdown's whole seconds left, then `go` for `goFor`
 //                                   seconds once the race has gone.
 //   split      { at, text, style, for }  `text` with {n}, the checkpoint passed, for `for` seconds.
-//   finish     { at, text, style }  shown once the car has finished. The race's results, which every
-//                                   seat on the course sees once the leader has finished, are the
-//                                   match plugin's.
+//   standings  { at, anchor, step, style, mine, line, done }  every placed racer in the race's order, a
+//                                   line `step` pixels under the last from `at`: `line` with {place} and
+//                                   {name} (the kind's `name` with {grid}), `done` with {time} once it has
+//                                   finished; the seat's own in the style `mine`.
+//   finish     { at, text, style, waiting }  shown once the car has finished, and `waiting` { at, anchor,
+//                                   text, style } under it until the results. The race's results, which every
+//                                   seat on the course sees once every racer has finished or the grace after
+//                                   the first has gone (`race.sim.ts`), are the match plugin's.
 //   map       { at, size, line, width, dot, you, them }  the circuit drawn to fit a box `size`
 //                                   pixels square at `at`, `width` pixels thick in `line`; each racer
 //                                   a dot `dot` pixels across, the seat's car in `you` and the rest in
@@ -86,7 +91,18 @@ export function dash() {
       if (d.splitAt >= 0 && d.done < 0 && race.data.clock - d.splitAt < H.split.for && d.split % cuts !== 0) {
         text('split', H.split, fill(H.split.text, { n: d.split % cuts }))
       }
-      if (d.done >= 0) text('finish', H.finish, H.finish.text)
+      if (d.done >= 0) {
+        text('finish', H.finish, H.finish.text)
+        if (race.data.phase !== 'results') text('finishWaiting', H.finish.waiting, H.finish.waiting.text)
+      }
+      // the standings: every placed racer in the race's order, its time once it has finished
+      const S = H.standings
+      order.forEach((id, i) => {
+        const r = wire.rows.find(o => o.id === id)
+        if (!r) return
+        const name = fill(def(wire, r.kind).name, { grid: r.data.grid + 1 })
+        text(`standing.${id}`, { at: [S.at[0], S.at[1] + i * S.step], anchor: S.anchor, style: id === car.id ? S.mine : S.style }, fill(r.data.done >= 0 ? S.done : S.line, { place: i + 1, name, time: r.data.done >= 0 ? clock(r.data.done) : '' }))
+      })
       // the map
       const M = H.map
       if (!outline) {

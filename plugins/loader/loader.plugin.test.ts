@@ -20,6 +20,7 @@ import { join, relative } from 'node:path'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js'
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import * as PIXI from 'pixi.js'
 import { loader } from './loader.plugin.ts'
 import { jsonAt, rewritten, tiledAt, writes, written } from './loader.sim.ts'
@@ -50,23 +51,52 @@ afterEach(async () => {
 
 // Each url a page fetched.
 const fetchedUrls: string[] = []
-// While `f` runs, and until what it waits for has landed, the process is a page.
+// While `f` runs, and until what it waits for has landed, the process is a page: it has a `location`,
+// a `Worker` that does nothing, which the meshopt decoder's workers are made of, and a `fetch` that
+// reads the working directory. The decoder is one per process, so its workers are taken away again
+// when the page ends, and node unpacks a model's buffers itself after.
 async function asPage(f: () => Promise<void>) {
   fetchedUrls.length = 0
   vi.stubGlobal('location', { href: 'http://page/' })
+  vi.stubGlobal('Worker', class { postMessage() {} terminate() {} })
   vi.stubGlobal('fetch', async (url: string) => {
     fetchedUrls.push(url)
     try { return new Response(readFileSync(join(process.cwd(), decodeURIComponent(url)))) } catch { return new Response('', { status: 404 }) }
   })
-  try { await f() } finally { vi.unstubAllGlobals() }
+  try { await f() } finally {
+    MeshoptDecoder.useWorkers(0)
+    vi.unstubAllGlobals()
+  }
 }
 
 const frame = () => new Promise(r => setTimeout(r, 2))
 
+// A page's frames: `me` ticked with `w` now and every 2 ms after until the test ends, since what
+// decodes lands on a tick. A tick that throws after the first is the test's to see through what it
+// checks, not the timer's.
+const runs: ReturnType<typeof setInterval>[] = []
+afterEach(() => { for (const r of runs.splice(0)) clearInterval(r) })
+function run(me: ReturnType<typeof loader>, w: unknown) {
+  me.tick(w as any)
+  runs.push(setInterval(() => { try { me.tick(w as any) } catch {} }, 2))
+}
+
+// A page's frames: `me` ticked with `w` every frame until `it` settles, since in a page what has
+// decoded lands on a tick. What it settles to.
+async function ticked<T>(me: ReturnType<typeof loader>, w: unknown, it: Promise<T>): Promise<T> {
+  let settled = false
+  it.then(() => { settled = true }, () => { settled = true })
+  while (!settled) {
+    me.tick(w as any)
+    await frame()
+  }
+  return it
+}
+
 const assets = {
   coin: { type: 'texture', url: '/coin.png', preload: true },
   'coin-icon': { type: 'texture', url: '/coin.png', preload: true, for: 'ui' },
-  odd: { type: 'texture', url: '/odd.png', for: 'hud' },
+  odd: { type: 'texture', url: '/odd.png', for: 'hud', preload: false },
 }
 const wire = wireOf(assets)
 
@@ -88,15 +118,37 @@ const ui = { PIXI: { Assets: { load: async (url: string) => ({ pixi: url }) } } 
 
 test('in a 3D scene in a page, an entry for the ui is a PixiJS texture and an entry for the scene is three\'s', () => asPage(async () => {
   const me = loader()
-  me.tick({ wire, render3d: pageThree, ui } as any)
-  await vi.waitFor(() => expect(me.ready('coin-icon')).toBe(true))
+  const w = { wire, render3d: pageThree, ui } as any
+  await vi.waitFor(() => { me.tick(w); expect(me.ready('coin') && me.ready('coin-icon')).toBe(true) })
   expect(me.get('coin')).toEqual({ three: '/coin.png', colorSpace: 'srgb' })
   expect(me.get('coin-icon')).toEqual({ pixi: '/coin.png' })
 }))
 
+test('a .ktx2 texture is render3d\'s alone: in node it is the 1×1 white data texture every picture is, and one for the ui or in a scene with no render3d fails', async () => {
+  const entries = {
+    stack: { type: 'texture', url: '/looks.pictures.ktx2', space: 'linear' },
+    shown: { type: 'texture', url: '/looks.pictures.KTX2', for: 'ui' },
+  }
+  const me = loader()
+  run(me, { wire: wireOf(entries), render3d: { THREE }, ui } as any)
+  const tex = await me.load('stack')
+  expect(tex).toBeInstanceOf(THREE.DataTexture)
+  expect([tex.image.width, tex.image.height, tex.colorSpace]).toEqual([1, 1, THREE.NoColorSpace])
+  await expect(me.load('shown')).rejects.toThrow('loader shown: a .ktx2 texture is GPU-compressed for render3d, and this one is for ui or a scene with no render3d')
+  const flat = loader()
+  run(flat, { wire: wireOf({ stack: entries.stack }), render2d: { PIXI } } as any)
+  await expect(flat.load('stack')).rejects.toThrow('loader stack: a .ktx2 texture is GPU-compressed for render3d, and this one is for ui or a scene with no render3d')
+})
+
+test('the KTX2 transcoder beside the loader is three\'s own, byte for byte, so a three upgrade that changes it fails here', () => {
+  for (const f of ['basis_transcoder.js', 'basis_transcoder.wasm']) {
+    expect(readFileSync(join(process.cwd(), 'plugins/loader/basis', f)).equals(readFileSync(join(process.cwd(), 'node_modules/three/examples/jsm/libs/basis', f)))).toBe(true)
+  }
+})
+
 test('in node an image is a 1×1 white data texture', async () => {
   const me = loader()
-  me.tick({ wire: wireOf({ coin: assets.coin }), render3d: { THREE } } as any)
+  run(me, { wire: wireOf({ coin: assets.coin }), render3d: { THREE } } as any)
   await vi.waitFor(() => expect(me.ready('coin')).toBe(true))
   const tex = me.get('coin')
   expect(tex).toBeInstanceOf(THREE.DataTexture)
@@ -115,7 +167,7 @@ test('a texture entry\'s space, wrap and anisotropy are set as it is decoded, an
     bent: { type: 'texture', url: '/bent.png', wrap: 'mirror' },
     blur: { type: 'texture', url: '/blur.png', anisotropy: 0.5 },
   }
-  me.tick({ wire: wireOf(entries), render3d: { THREE }, ui } as any)
+  run(me, { wire: wireOf(entries), render3d: { THREE }, ui } as any)
   const plain = await me.load('plain'), normal = await me.load('normal')
   expect([plain.colorSpace, plain.wrapS, plain.wrapT, plain.anisotropy]).toEqual([THREE.SRGBColorSpace, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, 1])
   expect([normal.colorSpace, normal.wrapS, normal.wrapT, normal.anisotropy]).toEqual([THREE.NoColorSpace, THREE.RepeatWrapping, THREE.RepeatWrapping, 8])
@@ -131,7 +183,7 @@ test('an entry that cannot start here rejects and never throws: one for the ui i
   expect(() => bare.tick({ wire, render3d: { THREE } } as any)).not.toThrow()
   await expect(bare.load('coin-icon')).rejects.toThrow('loader coin-icon: it is for ui, which this scene does not name')
   const me = loader()
-  me.tick({ wire, render3d: { THREE }, ui } as any)
+  run(me, { wire, render3d: { THREE }, ui } as any)
   await expect(me.load('odd')).rejects.toThrow('loader odd: it is for hud; an entry is for the scene\'s renderer, or for ui')
   await expect(me.load('nothing')).rejects.toThrow('loader nothing: the catalogue has no such entry')
   expect(errors.map(e => (e as Error).message)).toEqual([
@@ -148,7 +200,7 @@ test('the catalogue is the scene\'s world.loader, and a scene whose world has no
 test('catalogued is the catalogue\'s entry of a name, or undefined for a name it has not, and throws before the first tick', () => {
   const me = loader()
   expect(() => me.catalogued('odd')).toThrow('the loader has not ticked yet')
-  me.tick({ wire, render3d: { THREE }, ui } as any)
+  run(me, { wire, render3d: { THREE }, ui } as any)
   expect(me.catalogued('odd')).toEqual(assets.odd)
   expect(me.catalogued('nothing')).toBeUndefined()
 })
@@ -159,22 +211,30 @@ test('a name asked for before the first tick waits for it, and is not failed', a
   const me = loader()
   const got = me.load('t')
   const wire = wireOf({ t: { type: 'json', url } })
-  me.tick({ wire } as any)
+  run(me, { wire } as any)
   expect(await got).toEqual({ ok: 1 })
-  me.tick({ wire } as any)
+  run(me, { wire } as any)
   expect(me.get('t')).toEqual({ ok: 1 })
   expect(me.progress()).toEqual({ done: 1, started: 1 })
   expect(errors).toEqual([])
 })
 
+test('every entry starts on the first tick unasked unless it says preload: false', async () => {
+  const me = loader()
+  run(me, { wire: wireOf({ unsaid: { type: 'json', url: file('unsaid.json', '{"a":1}') }, held: { type: 'json', url: file('held.json', '{"b":2}'), preload: false } }) } as any)
+  await vi.waitFor(() => expect(me.ready('unsaid')).toBe(true))
+  for (let f = 0; f < 5; f++) await frame()
+  expect([me.preloads(), me.ready('held'), me.progress().started]).toEqual([{ done: 1, of: 1 }, false, 1])
+})
+
 test('every failure\'s message starts with loader, its name and a colon', async () => {
   const me = loader()
   me.tick({ wire: wireOf({
-    a: { type: 'blob', url: '/a' },
-    b: { type: 'model', url: '/b.gltf' },
-    c: { type: 'json', url: '/plugins/loader/no-such-file.json' },
-    d: { type: 'sound', url: '/d.wav' },
-    e: { type: 'sheet', url: '/e.json' },
+    a: { type: 'blob', url: '/a', preload: false },
+    b: { type: 'model', url: '/b.gltf', preload: false },
+    c: { type: 'json', url: '/plugins/loader/no-such-file.json', preload: false },
+    d: { type: 'sound', url: '/d.wav', preload: false },
+    e: { type: 'sheet', url: '/e.json', preload: false },
   }) } as any)
   for (const name of ['a', 'b', 'c', 'd', 'e', 'f']) await me.load(name).catch(() => {})
   const said = errors.map(e => (e as Error).message)
@@ -185,12 +245,11 @@ test('every failure\'s message starts with loader, its name and a colon', async 
 test('a json entry needs no renderer, and an actor gets its own client\'s parse of the file', async () => {
   const url = file('table.json', '{"prefabs":{"scenemanager":{"port":8123}}}')
   const me = loader()
-  me.tick({ wire: wireOf({ table: { type: 'json', url, preload: true } }) } as any)
+  run(me, { wire: wireOf({ table: { type: 'json', url, preload: true } }) } as any)
   await vi.waitFor(() => expect(me.ready('table')).toBe(true))
   expect(me.get('table')).toEqual(await jsonAt('table', url))
   expect(me.get('table')).not.toBe(await jsonAt('table', url))
   expect(me.get('table')).toEqual(JSON.parse(readFileSync(url.slice(1), 'utf8')))
-  expect(await me.file('table')).toBe(me.get('table'))
 })
 
 // The page's PixiJS decoder, stood in for by one that hands back a blank texture of 768 square and
@@ -206,8 +265,8 @@ test('two clients in a page with no renderer each fetch and decode their own ima
   vi.stubGlobal('Image', class { src = ''; decode() { return Promise.resolve() } })
   const url = file('dom.png', new Uint8Array([1]))
   const both = [loader(), loader()]
-  for (const me of both) me.tick({ wire: wireOf({ pic: { type: 'texture', url, preload: true } }) } as any)
-  await vi.waitFor(() => expect(both.every(me => me.ready('pic'))).toBe(true))
+  const w = { wire: wireOf({ pic: { type: 'texture', url, preload: true } }) } as any
+  await vi.waitFor(() => { for (const me of both) me.tick(w); expect(both.every(me => me.ready('pic'))).toBe(true) })
   expect(both[0].get('pic')).not.toBe(both[1].get('pic'))
   expect(fetchedUrls).toEqual([url, url])
 }))
@@ -215,15 +274,16 @@ test('two clients in a page with no renderer each fetch and decode their own ima
 test('a file whose name holds a space and a % is read at the path as it is written', async () => {
   const url = file('a 100% b.json', '{"said":"hello"}')
   const me = loader()
-  me.tick({ wire: wireOf({ odd: { type: 'json', url } }) } as any)
+  run(me, { wire: wireOf({ odd: { type: 'json', url } }) } as any)
   expect(await me.load('odd')).toEqual({ said: 'hello' })
 })
 
 test('in a page a url is encoded once, with encodeURI, and a texture that cannot be fetched fails once and is kept failed until retry', () => asPage(async () => {
   asked.length = 0
   const me = loader()
-  me.tick({ wire: wireOf({ spaced: { type: 'texture', url: '/a 100% b.png' }, gone: { type: 'texture', url: '/missing.png' } }), render3d: pageThree } as any)
-  expect(await me.load('spaced')).toEqual({ three: '/a%20100%25%20b.png', colorSpace: 'srgb' })
+  const w = { wire: wireOf({ spaced: { type: 'texture', url: '/a 100% b.png' }, gone: { type: 'texture', url: '/missing.png' } }), render3d: pageThree } as any
+  run(me, w)
+  expect(await ticked(me, w, me.load('spaced'))).toEqual({ three: '/a%20100%25%20b.png', colorSpace: 'srgb' })
   await expect(me.load('gone')).rejects.toThrow('loader gone: loader could not fetch /missing.png')
   expect(me.progress()).toEqual({ done: 1, started: 1 })
   await expect(me.load('gone')).rejects.toThrow('loader gone')
@@ -240,7 +300,7 @@ test('a missing sheet asked for every frame for ten frames is fetched once and r
   const me = loader()
   const w = { wire: wireOf({ gone: { type: 'sheet', url } }), render2d: pixi() } as any
   for (let f = 0; f < 10; f++) {
-    me.tick(w)
+    run(me, w)
     if (!me.get('gone')) me.load('gone')
     await frame()
   }
@@ -251,23 +311,23 @@ test('a missing sheet asked for every frame for ten frames is fetched once and r
 test('a json file that is not there rejects, and a preload that failed is not started again by the ticks after', async () => {
   const me = loader()
   const w = { wire: wireOf({ gone: { type: 'json', url: '/plugins/loader/no-such-file.json', preload: true } }) } as any
-  me.tick(w)
+  run(me, w)
   await expect(me.load('gone')).rejects.toThrow('loader gone: loader could not read /plugins/loader/no-such-file.json: ENOENT')
-  me.tick(w)
-  me.tick(w)
+  run(me, w)
+  run(me, w)
   await frame()
   expect(me.progress()).toEqual({ done: 0, started: 0 })
   expect(errors).toHaveLength(1)
 })
 
-test('a failed file at a url the editor writes is started again, and lands', async () => {
+test('a failed file at a url written while the game runs is started again, and lands', async () => {
   const url = '/' + relative(process.cwd(), join(folder, 'later.json'))
   const me = loader()
-  me.tick({ wire: wireOf({ later: { type: 'json', url, preload: true } }) } as any)
+  run(me, { wire: wireOf({ later: { type: 'json', url, preload: true } }) } as any)
   await expect(me.load('later')).rejects.toThrow('loader later')
   written(url, '{"here":true}')
   await me.written(url)
-  me.tick({ wire: wireOf({ later: { type: 'json', url, preload: true } }) } as any)
+  run(me, { wire: wireOf({ later: { type: 'json', url, preload: true } }) } as any)
   await vi.waitFor(() => expect(me.get('later')).toEqual({ here: true }))
 })
 
@@ -339,7 +399,7 @@ const render3d = { THREE, GLTFLoader, SkeletonUtils }
 test('a glb loads in node with its texture, each model() is a scene with a skeleton of its own, and node has no document after', async () => {
   const url = file('one bone.glb', glb())
   const me = loader()
-  me.tick({ wire: wireOf({ bone: { type: 'model', url } }), render3d } as any)
+  run(me, { wire: wireOf({ bone: { type: 'model', url } }), render3d } as any)
   expect((globalThis as any).document).toBeUndefined()
   await me.load('bone')
   expect((globalThis as any).document).toBeUndefined()
@@ -363,7 +423,7 @@ test('a glb packed by gltfpack with meshopt compression decodes: its triangle, i
   const bytes = readFileSync(packed)
   expect(JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString()).extensionsRequired).toContain('EXT_meshopt_compression')
   const me = loader()
-  me.tick({ wire: wireOf({ packed: { type: 'model', url: '/' + relative(process.cwd(), packed) } }), render3d } as any)
+  run(me, { wire: wireOf({ packed: { type: 'model', url: '/' + relative(process.cwd(), packed) } }), render3d } as any)
   await me.load('packed')
   const { scene, animations } = me.model('packed')
   let skinned: any
@@ -397,7 +457,7 @@ test('a document put in place while a model decodes is not taken away when the d
     }
   }
   const me = loader()
-  me.tick({ wire: wireOf({ bone: { type: 'model', url } }), render3d: { ...render3d, GLTFLoader: Swapped } } as any)
+  run(me, { wire: wireOf({ bone: { type: 'model', url } }), render3d: { ...render3d, GLTFLoader: Swapped } } as any)
   await me.load('bone')
   expect(page).toBeDefined()
   expect(g.document).toBe(page)
@@ -431,7 +491,7 @@ test('a model that starts while another decodes, after a document was put in pla
     }
   }
   const me = loader()
-  me.tick({ wire: wireOf({ one: { type: 'model', url: one }, two: { type: 'model', url: two } }), render3d: { ...render3d, GLTFLoader: Held } } as any)
+  run(me, { wire: wireOf({ one: { type: 'model', url: one }, two: { type: 'model', url: two } }), render3d: { ...render3d, GLTFLoader: Held } } as any)
   const a = me.load('one').then(firstLanded)
   await started
   const b = me.load('two')
@@ -458,7 +518,7 @@ test('a model decoding in a process that has a document of its own and no self i
   }
   g.document = own
   const me = loader()
-  me.tick({ wire: wireOf({ bone: { type: 'model', url } }), render3d } as any)
+  run(me, { wire: wireOf({ bone: { type: 'model', url } }), render3d } as any)
   await me.load('bone')
   expect(me.model('bone').animations).toHaveLength(1)
   expect(errors).toEqual([])
@@ -470,14 +530,14 @@ test('a model decoding in a process that has a document of its own and no self i
 test('a model\'s .glb is matched in any case', async () => {
   const url = file('SHOUT.GLB', glb())
   const me = loader()
-  me.tick({ wire: wireOf({ bone: { type: 'model', url } }), render3d } as any)
+  run(me, { wire: wireOf({ bone: { type: 'model', url } }), render3d } as any)
   await me.load('bone')
   expect(me.model('bone').animations).toHaveLength(1)
 })
 
 test('a model that is not one .glb fails once, even preloaded and ticked every frame, and model() of a name not landed throws', async () => {
   const me = loader()
-  const w = { wire: wireOf({ split: { type: 'model', url: '/a/b.gltf', preload: true }, bone: { type: 'model', url: '/a/b.glb' } }), render3d } as any
+  const w = { wire: wireOf({ split: { type: 'model', url: '/a/b.gltf', preload: true }, bone: { type: 'model', url: '/a/b.glb', preload: false } }), render3d } as any
   for (let f = 0; f < 5; f++) { expect(() => me.tick(w)).not.toThrow(); await frame() }
   await expect(me.load('split')).rejects.toThrow('loader split: a model is one .glb')
   expect(errors.map(e => (e as Error).message)).toEqual(['loader split: a model is one .glb'])
@@ -486,7 +546,7 @@ test('a model that is not one .glb fails once, even preloaded and ticked every f
 
 test('a model at a bad url rejects', async () => {
   const me = loader()
-  me.tick({ wire: wireOf({ bone: { type: 'model', url: '/plugins/loader/no-such-model.glb' } }), render3d } as any)
+  run(me, { wire: wireOf({ bone: { type: 'model', url: '/plugins/loader/no-such-model.glb' } }), render3d } as any)
   await expect(me.load('bone')).rejects.toThrow('loader bone: ')
   expect(me.progress().started).toBe(0)
 })
@@ -495,11 +555,144 @@ test('in a page a model and a sound are fetched with their urls encoded once', (
   const model = file('a 100% b.glb', glb(false)), sound = file('a 100% b.wav', new Uint8Array([7]))
   const audio = { context: { decodeAudioData: async () => ({ duration: 1 }) } }
   const me = loader()
-  me.tick({ wire: wireOf({ bone: { type: 'model', url: model }, chime: { type: 'sound', url: sound } }), render3d, audio } as any)
-  await me.load('bone')
-  await me.load('chime')
-  expect(fetchedUrls).toEqual([encodeURI(model), encodeURI(sound)])
-  expect(fetchedUrls[0]).toMatch(/\/a%20100%25%20b\.glb$/)
+  const w = { wire: wireOf({ bone: { type: 'model', url: model }, chime: { type: 'sound', url: sound } }), render3d, audio } as any
+  run(me, w)
+  await ticked(me, w, Promise.all([me.load('bone'), me.load('chime')]))
+  // A model waits for its turn to decode, so the sound's fetch may go first.
+  expect(fetchedUrls.toSorted()).toEqual([encodeURI(model), encodeURI(sound)].toSorted())
+  expect(fetchedUrls.find(u => u.endsWith('.glb'))).toMatch(/\/a%20100%25%20b\.glb$/)
+}))
+
+test('no more than four models fetch and decode at once, and the rest start in the order they were asked for', async () => {
+  // Each file's length is its place in the order, so a parse knows which model it is.
+  const urls = [0, 1, 2, 3, 4, 5, 6].map(i => file(`queued ${i}.glb`, new Uint8Array(i + 1)))
+  let now = 0, most = 0
+  const order: number[] = []
+  const held: (() => void)[] = []
+  class Held {
+    setMeshoptDecoder() { return this }
+    parse(bytes: ArrayBuffer, _path: string, ok: (gltf: any) => void) {
+      most = Math.max(most, ++now)
+      order.push(bytes.byteLength - 1)
+      held.push(() => { now--; ok({ scene: new THREE.Group(), animations: [] }) })
+    }
+  }
+  const entries = Object.fromEntries(urls.map((url, i) => [`q${i}`, { type: 'model', url }]))
+  const me = loader()
+  run(me, { wire: wireOf(entries), render3d: { ...render3d, GLTFLoader: Held } } as any)
+  const all = Promise.all(urls.map((_, i) => me.load(`q${i}`)))
+  await vi.waitFor(() => expect(held).toHaveLength(4))
+  await frame()
+  expect(held).toHaveLength(4)
+  for (let n = 5; n <= 7; n++) {
+    held[n - 5]()
+    await vi.waitFor(() => expect(held).toHaveLength(n))
+  }
+  for (const go of held.slice(3)) go()
+  await all
+  expect(most).toBe(4)
+  // The first four fetch together and parse as their bytes land; each one after waited its turn.
+  expect([order.slice(0, 4).toSorted(), order.slice(4)]).toEqual([[0, 1, 2, 3], [4, 5, 6]])
+  expect(urls.every((_, i) => me.ready(`q${i}`))).toBe(true)
+})
+
+test('nothing starts, a model, a binary, a json or a texture, until every font and every preloaded entry for the ui has landed, so the ui and its loading screen draw first', async () => {
+  const font = file('first.ttf', new Uint8Array([1, 2, 3]))
+  const rest = ['kit', 'data', 'ground']
+  const urls = [0, 1, 2].map(i => file(`after ${i}.glb`, new Uint8Array(4)))
+  // What had landed when each model began to decode.
+  const seen: [boolean, boolean][] = []
+  let me!: ReturnType<typeof loader>
+  class Watched {
+    setMeshoptDecoder() { return this }
+    parse(_bytes: ArrayBuffer, _path: string, ok: (gltf: any) => void) {
+      seen.push([me.ready('Face'), me.ready('splash')])
+      ok({ scene: new THREE.Group(), animations: [] })
+    }
+  }
+  let release!: () => void
+  const held = new Promise<void>(ok => { release = ok })
+  const ui = { PIXI: { Assets: { load: async (url: string) => { await held; return { pixi: url } } } } }
+  const entries = {
+    ...Object.fromEntries(urls.map((url, i) => [`m${i}`, { type: 'model', url, preload: true }])),
+    Face: { type: 'font', url: font },
+    splash: { type: 'texture', url: '/splash.png', for: 'ui', preload: true },
+    kit: { type: 'binary', url: file('after.kit.glb', new Uint8Array(8)), preload: true },
+    data: { type: 'json', url: file('after.json', '{"a":1}'), preload: true },
+    ground: { type: 'texture', url: file('after.png', new Uint8Array(4)), preload: true },
+  }
+  me = loader()
+  run(me, { wire: wireOf(entries), render3d: { ...render3d, GLTFLoader: Watched }, ui } as any)
+  for (let f = 0; f < 5; f++) await frame()
+  // The picture for the ui is still coming: no model has started, and nothing else has landed.
+  expect(seen).toEqual([])
+  expect(rest.map(name => me.ready(name))).toEqual([false, false, false])
+  release()
+  await vi.waitFor(() => expect([...urls.map((_, i) => me.ready(`m${i}`)), ...rest.map(name => me.ready(name))].every(Boolean)).toBe(true))
+  expect(seen).toEqual([[true, true], [true, true], [true, true]])
+})
+
+test('what the ui draws first lands before everything else, which starts only once it has', async () => {
+  const json = file('ahead.json', '{"a":1}')
+  let release!: () => void
+  const held = new Promise<void>(ok => { release = ok })
+  const ui = { PIXI: { Assets: { load: async (url: string) => { await held; return { pixi: url } } } } }
+  const me = loader()
+  const w = { wire: wireOf({ data: { type: 'json', url: json, preload: true }, splash: { type: 'texture', url: '/splash.png', for: 'ui', preload: true } }), ui } as any
+  me.tick(w)
+  const landed: string[] = []
+  for (const name of ['data', 'splash']) me.on(name, () => landed.push(name))
+  // The picture for the ui is held: the data does not start, so nothing lands however many ticks go.
+  for (let f = 0; f < 5; f++) { await frame(); me.tick(w) }
+  expect(landed).toEqual([])
+  release()
+  await vi.waitFor(() => { me.tick(w); expect(landed).toEqual(['splash', 'data']) })
+})
+
+test('in a page, what decodes lands on a tick, its pictures sent to the GPU first, no more each tick than four milliseconds allow past the first picture', () => asPage(async () => {
+  // Each model is one mesh with two pictures of its own and one every model shares.
+  const shared = new THREE.Texture()
+  class Quick {
+    setMeshoptDecoder() { return this }
+    parse(_bytes: ArrayBuffer, _path: string, ok: (gltf: any) => void) {
+      const scene = new THREE.Group()
+      scene.add(new THREE.Mesh(new THREE.BufferGeometry(), [new THREE.MeshStandardMaterial({ map: new THREE.Texture(), normalMap: shared }), new THREE.MeshStandardMaterial({ map: new THREE.Texture() })]))
+      ok({ scene, animations: [] })
+    }
+  }
+  let clock = 0
+  vi.spyOn(performance, 'now').mockImplementation(() => clock)
+  const sent: any[] = []
+  const renderer = { initTexture(t: any) { sent.push(t); clock += 3 } }
+  const urls = [0, 1].map(i => file(`paced ${i}.glb`, new Uint8Array(4)))
+  const entries = Object.fromEntries(urls.map((url, i) => [`m${i}`, { type: 'model', url }]))
+  const w = { wire: wireOf(entries), render3d: { ...render3d, GLTFLoader: Quick, renderer } } as any
+  const me = loader()
+  me.tick(w)
+  const landed: string[] = []
+  for (const name of ['m0', 'm1']) me.on(name, () => landed.push(name))
+  let resolved = 0
+  const both = Promise.all(['m0', 'm1'].map(name => me.load(name).then(() => { resolved++ })))
+  await vi.waitFor(() => expect(fetchedUrls).toHaveLength(2))
+  for (let f = 0; f < 5; f++) await frame()
+  // Both have decoded, and nothing lands without a tick.
+  expect([landed, resolved, me.ready('m0'), sent]).toEqual([[], 0, false, []])
+  // 3 ms a picture against four: each tick sends two, the second crossing it.
+  me.tick(w)
+  expect(sent).toHaveLength(2)
+  expect(landed).toEqual([])
+  me.tick(w)
+  expect(sent).toHaveLength(4)
+  expect(landed).toEqual(['m0'])
+  me.tick(w)
+  expect(sent).toHaveLength(6)
+  expect(landed).toEqual(['m0', 'm1'])
+  await both
+  expect(resolved).toBe(2)
+  // m0's three pictures, then m1's three, the shared one sent with each.
+  expect(sent.filter(t => t === shared)).toHaveLength(2)
+  expect(new Set(sent).size).toBe(5)
+  me.model('m0').scene.traverse((o: any) => { if (o.isMesh) expect(o.material.map(m => sent.includes(m.map))).toEqual([true, true]) })
 }))
 
 // ---------------------------------------------------------------- sounds
@@ -509,7 +702,7 @@ test('a sound is decoded through audio\'s context and is its AudioBuffer', async
   const handed: number[][] = []
   const audio = { context: { decodeAudioData: async (b: ArrayBuffer) => { handed.push([...new Uint8Array(b)]); return { duration: 0.5 } } } }
   const me = loader()
-  me.tick({ wire: wireOf({ chime: { type: 'sound', url } }), audio } as any)
+  run(me, { wire: wireOf({ chime: { type: 'sound', url } }), audio } as any)
   await me.load('chime')
   expect(me.sound('chime')).toEqual({ duration: 0.5 })
   expect(handed).toEqual([[1, 2, 3, 4, 5]])
@@ -520,10 +713,10 @@ test('a sound that cannot be decoded rejects, and a scene with no audio cannot s
   const url = file('noise.wav', new Uint8Array([9]))
   const audio = { context: { decodeAudioData: async () => { throw new Error('unable to decode audio data') } } }
   const me = loader()
-  me.tick({ wire: wireOf({ noise: { type: 'sound', url } }), audio } as any)
+  run(me, { wire: wireOf({ noise: { type: 'sound', url } }), audio } as any)
   await expect(me.load('noise')).rejects.toThrow('loader noise: unable to decode audio data')
   const bare = loader()
-  bare.tick({ wire: wireOf({ noise: { type: 'sound', url } }) } as any)
+  run(bare, { wire: wireOf({ noise: { type: 'sound', url } }) } as any)
   await expect(bare.load('noise')).rejects.toThrow('loader noise: a sound, and this scene names no audio to decode it')
 })
 
@@ -533,7 +726,7 @@ test('in node a font starts on the first tick unasked, is its name once its file
   const url = file('face.ttf', new Uint8Array([1, 2, 3]))
   const me = loader()
   expect(me.fonts()).toBe(false)
-  me.tick({ wire: wireOf({ face: { type: 'font', url }, gone: { type: 'font', url: '/no/gone.ttf' }, data: { type: 'json', url: '/no/data.json' } }) } as any)
+  run(me, { wire: wireOf({ face: { type: 'font', url }, gone: { type: 'font', url: '/no/gone.ttf' }, data: { type: 'json', url: '/no/data.json', preload: false } }) } as any)
   expect(me.fonts()).toBe(false)
   await vi.waitFor(() => expect(me.ready('face')).toBe(true))
   expect(me.get('face')).toEqual({ family: 'face' })
@@ -541,7 +734,7 @@ test('in node a font starts on the first tick unasked, is its name once its file
   expect(me.ready('gone')).toBe(false)
   expect(errors.map(e => (e as Error).message)).toEqual([expect.stringMatching(/^loader gone: loader could not read \/no\/gone\.ttf/)])
   const bare = loader()
-  bare.tick({ wire: wireOf({ data: { type: 'json', url: '/no/data.json' } }) } as any)
+  run(bare, { wire: wireOf({ data: { type: 'json', url: '/no/data.json', preload: false } }) } as any)
   expect(bare.fonts()).toBe(true)
 })
 
@@ -562,10 +755,10 @@ test('in a page a font is installed in the page\'s fonts as its name from its fi
   const url = file('a 100% face.ttf', new Uint8Array([4, 5, 6]))
   const { made, added } = pageFonts()
   const one = loader(), two = loader()
-  one.tick({ wire: wireOf({ Ithaca: { type: 'font', url, for: 'ui' } }), ui } as any)
-  await vi.waitFor(() => expect(one.fonts()).toBe(true))
-  two.tick({ wire: wireOf({ Ithaca: { type: 'font', url } }) } as any)
-  await vi.waitFor(() => expect(two.fonts()).toBe(true))
+  const w1 = { wire: wireOf({ Ithaca: { type: 'font', url, for: 'ui' } }), ui } as any
+  await vi.waitFor(() => { one.tick(w1); expect(one.fonts()).toBe(true) })
+  const w2 = { wire: wireOf({ Ithaca: { type: 'font', url } }) } as any
+  await vi.waitFor(() => { two.tick(w2); expect(two.fonts()).toBe(true) })
   expect(errors).toEqual([])
   expect(made).toEqual([{ family: 'Ithaca', bytes: [4, 5, 6] }])
   expect(added).toEqual([one.get('Ithaca')])
@@ -579,7 +772,7 @@ test('in a page a file that does not load as a font fails once, is never added t
   const url = file('broken.ttf', new Uint8Array([0]))
   const { added } = pageFonts(true)
   const me = loader()
-  me.tick({ wire: wireOf({ broken: { type: 'font', url } }) } as any)
+  run(me, { wire: wireOf({ broken: { type: 'font', url } }) } as any)
   await expect(me.load('broken')).rejects.toThrow('loader broken: A network error occurred.')
   expect(me.fonts()).toBe(true)
   expect(added).toEqual([])
@@ -592,14 +785,14 @@ test('in a page a file that does not load as a font fails once, is never added t
 test('a file written while the game runs refills the process\'s copy and a client\'s copy in place', async () => {
   const url = file('table.json', '{"speed":3}')
   const me = loader()
-  me.tick({ wire: wireOf({ table: { type: 'json', url, preload: true } }) } as any)
+  run(me, { wire: wireOf({ table: { type: 'json', url, preload: true } }) } as any)
   const mine = await me.load('table'), process = await jsonAt('table', url)
   written(url, '{"speed":7}')
   await me.written(url)
   expect(mine).toEqual({ speed: 7 })
   expect(process).toEqual({ speed: 7 })
   const later = loader()
-  later.tick({ wire: wireOf({ table: { type: 'json', url, preload: true } }) } as any)
+  run(later, { wire: wireOf({ table: { type: 'json', url, preload: true } }) } as any)
   expect(await later.load('table')).toEqual({ speed: 7 })
 })
 
@@ -613,7 +806,7 @@ test('a sheet written while the game runs has its data, its pages and its cut fr
   const url = file('strip.json', strip('one.png', 0))
   const render2d = pixi()
   const me = loader()
-  me.tick({ wire: wireOf({ strip: { type: 'sheet', url, preload: true } }), render2d } as any)
+  run(me, { wire: wireOf({ strip: { type: 'sheet', url, preload: true } }), render2d } as any)
   const sheet = await me.load('strip')
   const before = sheet.texture('a'), page = sheet.pages[0]
   written(url, strip('two.png', 2).replace('"y":0', '"y":3'))
@@ -633,7 +826,7 @@ test('a sheet\'s page written on the machine is fetched anew by how many times i
   const page = url.replace('paged.json', 'paged.png')
   const render2d = pixi()
   const me = loader()
-  me.tick({ wire: wireOf({ paged: { type: 'sheet', url, preload: true } }), render2d } as any)
+  run(me, { wire: wireOf({ paged: { type: 'sheet', url, preload: true } }), render2d } as any)
   const sheet = await me.load('paged')
   const [before] = sheet.pages, frame = sheet.texture('a')
   const heard = vi.fn()
@@ -653,7 +846,7 @@ test('a sheet\'s page written on the machine is fetched anew by how many times i
   // A client made after fetches the page as it now is.
   const after = pixi()
   const next = loader()
-  next.tick({ wire: wireOf({ paged: { type: 'sheet', url, preload: true } }), render2d: after } as any)
+  run(next, { wire: wireOf({ paged: { type: 'sheet', url, preload: true } }), render2d: after } as any)
   await next.load('paged')
   expect(after.asked).toEqual([encodeURI(`${page}?written=1`)])
 })
@@ -674,7 +867,7 @@ test('a rewritten sheet keeps the old data and pages until every new page has la
   const url = file('swap.json', strip('one.png', 0))
   const render2d = slow()
   const me = loader()
-  me.tick({ wire: wireOf({ swap: { type: 'sheet', url, preload: true } }), render2d } as any)
+  run(me, { wire: wireOf({ swap: { type: 'sheet', url, preload: true } }), render2d } as any)
   await vi.waitFor(() => expect(render2d.asked).toHaveLength(1))
   render2d.land()
   const sheet = await me.load('swap')
@@ -693,7 +886,7 @@ test('of two rewrites of a sheet whose pages land out of order, the later one is
   const url = file('twice.json', strip('one.png', 0))
   const render2d = slow()
   const me = loader()
-  me.tick({ wire: wireOf({ twice: { type: 'sheet', url, preload: true } }), render2d } as any)
+  run(me, { wire: wireOf({ twice: { type: 'sheet', url, preload: true } }), render2d } as any)
   await vi.waitFor(() => expect(render2d.asked).toHaveLength(1))
   render2d.land()
   const sheet = await me.load('twice')
@@ -718,7 +911,7 @@ test('a rewritten sheet whose new page fails stays the old sheet, whole, and the
   const url = file('keep.json', strip('one.png', 0))
   const render2d = slow()
   const me = loader()
-  me.tick({ wire: wireOf({ keep: { type: 'sheet', url, preload: true } }), render2d } as any)
+  run(me, { wire: wireOf({ keep: { type: 'sheet', url, preload: true } }), render2d } as any)
   await vi.waitFor(() => expect(render2d.asked).toHaveLength(1))
   render2d.land()
   const sheet = await me.load('keep')
@@ -735,7 +928,7 @@ test('a rewritten sheet whose new page fails stays the old sheet, whole, and the
 test('what waits on a file being written runs once this client\'s copy holds the new text, for a name at that url it never parsed too, and for no other file', async () => {
   const url = file('heard.json', '{"speed":3}'), other = file('unheard.json', '{}')
   const me = loader()
-  me.tick({ wire: wireOf({ heard: { type: 'json', url, preload: true }, same: { type: 'json', url }, unheard: { type: 'json', url: other } }) } as any)
+  run(me, { wire: wireOf({ heard: { type: 'json', url, preload: true }, same: { type: 'json', url }, unheard: { type: 'json', url: other } }) } as any)
   const mine = await me.load('heard')
   const seen: unknown[] = []
   me.onWritten('heard', () => seen.push(['heard', mine.speed]))
@@ -751,7 +944,7 @@ test('what waits on a sheet being written runs once its new pages have swapped i
   const url = file('told.json', strip('one.png', 0))
   const render2d = slow()
   const me = loader()
-  me.tick({ wire: wireOf({ told: { type: 'sheet', url, preload: true } }), render2d } as any)
+  run(me, { wire: wireOf({ told: { type: 'sheet', url, preload: true } }), render2d } as any)
   await vi.waitFor(() => expect(render2d.asked).toHaveLength(1))
   render2d.land()
   const sheet = await me.load('told')
@@ -792,7 +985,7 @@ test('a packer\'s sheet is drawn as its entry says, and a frame stored turned is
   const url = file('packed.json', packedSheet)
   const render2d = pixi()
   const me = loader()
-  me.tick({ wire: wireOf({ packed: { type: 'sheet', url, preload: true, nearest: true } }), render2d } as any)
+  run(me, { wire: wireOf({ packed: { type: 'sheet', url, preload: true, nearest: true } }), render2d } as any)
   const got = await me.load('packed')
   expect(got.data.nearest).toBe(true)
   expect(got.pages[0].source.scaleMode).toBe('nearest')
@@ -824,7 +1017,7 @@ const coinPack = {
 test('a trimmed frame is cut with its whole frame as orig and its kept pixels as trim, and a turned one turned back upright', async () => {
   const url = file('coins.json', JSON.stringify(coinPack))
   const me = loader()
-  me.tick({ wire: wireOf({ coins: { type: 'sheet', url } }), render2d: small() } as any)
+  run(me, { wire: wireOf({ coins: { type: 'sheet', url } }), render2d: small() } as any)
   const coins = await me.load('coins')
   const one = coins.texture('coin 1.png'), two = coins.texture('coin 2.png'), three = coins.texture('coin 3.png')
   const rect = (r: any) => r && [r.x, r.y, r.width, r.height]
@@ -841,8 +1034,9 @@ test('a trimmed frame is cut with its whole frame as orig and its kept pixels as
 test('uv is where a frame\'s upright corners lie on its page, a turned frame\'s as PixiJS turns it', () => asPage(async () => {
   const url = file('coins3d.json', JSON.stringify(coinPack))
   const me = loader()
-  me.tick({ wire: wireOf({ coins: { type: 'sheet', url } }), render3d: pageThree } as any)
-  const coins = await me.load('coins')
+  const w = { wire: wireOf({ coins: { type: 'sheet', url } }), render3d: pageThree } as any
+  run(me, w)
+  const coins = await ticked(me, w, me.load('coins'))
   coins.pages[0].image = { width: 64, height: 64 }
   expect(coins.uv('coin 1.png')).toEqual([2 / 64, 1 - 4 / 64, 12 / 64, 1 - 4 / 64, 2 / 64, 1 - 16 / 64, 12 / 64, 1 - 16 / 64])
   expect(coins.uv('coin 2.png')).toEqual([32 / 64, 1 - 4 / 64, 32 / 64, 1 - 14 / 64, 20 / 64, 1 - 4 / 64, 20 / 64, 1 - 14 / 64])
@@ -857,10 +1051,9 @@ test('uv is where a frame\'s upright corners lie on its page, a turned frame\'s 
 test('a palette entry needs no renderer and is this client\'s own list of colours', async () => {
   const url = file('base.gpl', 'GIMP Palette\nName: base\n  0   0   0\tblack\n248 248 248\twhite\n')
   const me = loader()
-  me.tick({ wire: wireOf({ base: { type: 'palette', url, preload: true } }) } as any)
+  run(me, { wire: wireOf({ base: { type: 'palette', url, preload: true } }) } as any)
   await vi.waitFor(() => expect(me.ready('base')).toBe(true))
   expect(me.get('base')).toEqual([0x000000, 0xf8f8f8])
-  expect(await me.file('base')).toBe(me.get('base'))
 })
 
 const land = {
@@ -881,7 +1074,7 @@ test('a tilemap entry lands once its tilesets\' and image layers\' images have, 
   const url = file('world.tmj', JSON.stringify(world))
   const render2d = pixi()
   const me = loader()
-  me.tick({ wire: wireOf({ world: { type: 'tilemap', url, nearest: true } }), render2d } as any)
+  run(me, { wire: wireOf({ world: { type: 'tilemap', url, nearest: true } }), render2d } as any)
   const got = await me.load('world')
   expect(render2d.asked).toEqual([tsj.replace('land.tsj', 'land.png'), tsj.replace('land.tsj', 'sky.png')].map(encodeURI))
   expect(got.map.tiles[2].type).toBe('coin')
@@ -892,7 +1085,6 @@ test('a tilemap entry lands once its tilesets\' and image layers\' images have, 
   expect(got.image(tsj.replace('land.tsj', 'sky.png')).source.scaleMode).toBe('nearest')
   expect(() => got.image('/nowhere.png')).toThrow('the map draws no image /nowhere.png')
   expect(got.version).toBe(0)
-  expect(await me.file('world')).toBe(got.map)
   me.close()
   expect(tile.destroyed).toBe(true)
 })
@@ -901,7 +1093,7 @@ test('a rewritten tileset of a map refills the map in place, cuts its tiles agai
   const tsj = file('land2.tsj', JSON.stringify(land))
   const url = file('world2.tmj', JSON.stringify({ ...world, tilesets: [{ firstgid: 1, source: 'land2.tsj' }] }))
   const me = loader()
-  me.tick({ wire: wireOf({ world: { type: 'tilemap', url } }), render2d: pixi() } as any)
+  run(me, { wire: wireOf({ world: { type: 'tilemap', url } }), render2d: pixi() } as any)
   const got = await me.load('world')
   const map = got.map, tile = got.texture(2)
   const text = JSON.stringify({ ...land, tiles: [{ id: 1, type: 'gem' }] })
@@ -920,7 +1112,7 @@ test('an image of a map written on the machine is fetched anew, and the map\'s t
   const image = tsj.replace('land4.tsj', 'land4.png')
   const render2d = pixi()
   const me = loader()
-  me.tick({ wire: wireOf({ world: { type: 'tilemap', url } }), render2d } as any)
+  run(me, { wire: wireOf({ world: { type: 'tilemap', url } }), render2d } as any)
   const got = await me.load('world')
   const tile = got.texture(2)
   rewritten(image)
@@ -934,7 +1126,7 @@ test('a tilemap in a scene with no render2d fails', async () => {
   const url = file('world3.tmj', JSON.stringify(world))
   file('land.tsj', JSON.stringify(land))
   const me = loader()
-  me.tick({ wire: wireOf({ world: { type: 'tilemap', url } }), render3d: { THREE } } as any)
+  run(me, { wire: wireOf({ world: { type: 'tilemap', url } }), render3d: { THREE } } as any)
   await expect(me.load('world')).rejects.toThrow('loader world: a tilemap, and this scene names no render2d to draw it')
 })
 
@@ -952,7 +1144,7 @@ const bytesOf = (b: ArrayBuffer | undefined) => [...new Uint8Array(b!)]
 
 test('beside is the bytes of a file named from the folder of an entry\'s file, nested, beside it and a folder up', async () => {
   const me = loader()
-  me.tick({ wire: wireOf({ song: { type: 'json', url: project() } }) } as any)
+  run(me, { wire: wireOf({ song: { type: 'json', url: project() } }) } as any)
   expect(bytesOf(await me.beside('song', 'kit/kick.wav'))).toEqual([1, 2, 3])
   expect(bytesOf(await me.beside('song', './snare.wav'))).toEqual([4, 5])
   expect(bytesOf(await me.beside('song', '../hat.wav'))).toEqual([6])
@@ -961,7 +1153,7 @@ test('beside is the bytes of a file named from the folder of an entry\'s file, n
 test('in a page beside fetches the file once, at its path from the root, encoded once, and a second ask is the same bytes', () => asPage(async () => {
   const url = project()
   const me = loader()
-  me.tick({ wire: wireOf({ song: { type: 'json', url } }) } as any)
+  run(me, { wire: wireOf({ song: { type: 'json', url } }) } as any)
   const kick = url.replace('song.json', 'kit/kick.wav')
   const first = await me.beside('song', 'kit/kick.wav')
   expect(bytesOf(first)).toEqual([1, 2, 3])
@@ -977,7 +1169,7 @@ test('a missing file beside an entry is undefined, writes nothing to the console
   vi.spyOn(console, 'warn').mockImplementation((e: unknown) => { warned.push(e) })
   const url = project()
   const me = loader()
-  me.tick({ wire: wireOf({ song: { type: 'json', url } }) } as any)
+  run(me, { wire: wireOf({ song: { type: 'json', url } }) } as any)
   const gone = url.replace('song.json', 'kit/gone.wav')
   expect(await me.beside('song', 'kit/gone.wav')).toBeUndefined()
   expect(await me.beside('song', 'kit/gone.wav')).toBeUndefined()
@@ -992,7 +1184,7 @@ test('a missing file beside an entry in node is undefined too, with nothing writ
   const warned: unknown[] = []
   vi.spyOn(console, 'warn').mockImplementation((e: unknown) => { warned.push(e) })
   const me = loader()
-  me.tick({ wire: wireOf({ song: { type: 'json', url: project() } }) } as any)
+  run(me, { wire: wireOf({ song: { type: 'json', url: project() } }) } as any)
   expect(await me.beside('song', 'nowhere/none.wav')).toBeUndefined()
   expect(errors).toEqual([])
   expect(warned).toEqual([])
@@ -1001,7 +1193,7 @@ test('a missing file beside an entry in node is undefined too, with nothing writ
 test('beside throws for a name the catalogue has no entry for, and before the first tick', () => {
   const me = loader()
   expect(() => me.beside('song', 'kick.wav')).toThrow('the loader has not ticked yet')
-  me.tick({ wire: wireOf({ song: { type: 'json', url: '/song.json' } }) } as any)
+  run(me, { wire: wireOf({ song: { type: 'json', url: '/song.json' } }) } as any)
   expect(() => me.beside('tune', 'kick.wav')).toThrow('loader has no tune')
 })
 
@@ -1029,7 +1221,7 @@ test('in node a sheet sealed in a wad is drawn by PixiJS from its own pixels, fo
   const { at, wad, data } = await wadded('node-sheet')
   const render2d = pixi(), hud = pixi()
   const me = loader()
-  me.tick({ wire: wadWire([wad], { gem: { type: 'sheet', url: `${at}/gem.json`, preload: true, nearest: true }, 'gem-ui': { type: 'sheet', url: `${at}/gem.json`, preload: true, for: 'ui' } }), render2d, ui: hud } as any)
+  run(me, { wire: wadWire([wad], { gem: { type: 'sheet', url: `${at}/gem.json`, preload: true, nearest: true }, 'gem-ui': { type: 'sheet', url: `${at}/gem.json`, preload: true, for: 'ui' } }), render2d, ui: hud } as any)
   for (const name of ['gem', 'gem-ui']) {
     const got = await me.load(name)
     const source = got.pages[0].source
@@ -1044,12 +1236,12 @@ test('in node a sheet sealed in a wad is drawn by PixiJS from its own pixels, fo
 test('in node a picture sealed in a wad is the 1×1 white data texture under render3d, and one that is no PNG is refused for PixiJS, saying so', async () => {
   const { at, wad } = await wadded('node-three')
   const three = loader()
-  three.tick({ wire: wadWire([wad], { gem: { type: 'texture', url: `${at}/gem.png`, preload: true } }), render3d: { THREE } } as any)
+  run(three, { wire: wadWire([wad], { gem: { type: 'texture', url: `${at}/gem.png`, preload: true } }), render3d: { THREE } } as any)
   const tex = await three.load('gem')
   expect(tex).toBeInstanceOf(THREE.DataTexture)
   expect([tex.image.width, tex.image.height]).toEqual([1, 1])
   const flat = loader()
-  flat.tick({ wire: wadWire([wad], { photo: { type: 'texture', url: `${at}/photo.jpg` } }), render2d: pixi() } as any)
+  run(flat, { wire: wadWire([wad], { photo: { type: 'texture', url: `${at}/photo.jpg` } }), render2d: pixi() } as any)
   await expect(flat.load('photo')).rejects.toThrow(`loader photo: node decodes no picture but a PNG out of a wad, and ${at}/photo.jpg is not one`)
   expect(errors.length).toBe(1)
 })
@@ -1069,16 +1261,18 @@ test('in a page only the wad is fetched, and a picture sealed in it is decoded b
   const made = bitmaps()
   const render2d = pixi()
   const flat = loader()
-  flat.tick({ wire: wadWire([wad], { gem: { type: 'sheet', url: `${at}/gem.json`, preload: true } }), render2d } as any)
-  const sheet = await flat.load('gem')
+  const wFlat = { wire: wadWire([wad], { gem: { type: 'sheet', url: `${at}/gem.json`, preload: true } }), render2d } as any
+  run(flat, wFlat)
+  const sheet = await ticked(flat, wFlat, flat.load('gem'))
   expect(sheet.pages[0].source).toBeInstanceOf(PIXI.ImageSource)
   expect([sheet.pages[0].source.width, sheet.pages[0].source.height]).toEqual([3, 2])
   expect(made).toEqual([{ bytes: [...page], options: undefined }])
   expect(render2d.asked).toEqual([])
 
   const deep = loader()
-  deep.tick({ wire: wadWire([wad], { gem: { type: 'texture', url: `${at}/gem.png`, preload: true, wrap: 'repeat' } }), render3d: { THREE } } as any)
-  const tex = await deep.load('gem')
+  const wDeep = { wire: wadWire([wad], { gem: { type: 'texture', url: `${at}/gem.png`, preload: true, wrap: 'repeat' } }), render3d: { THREE } } as any
+  run(deep, wDeep)
+  const tex = await ticked(deep, wDeep, deep.load('gem'))
   expect(tex).toBeInstanceOf(THREE.Texture)
   expect([tex.image.width, tex.flipY, tex.colorSpace, tex.wrapS]).toEqual([3, false, THREE.SRGBColorSpace, THREE.RepeatWrapping])
   expect(made[1]).toEqual({ bytes: [...page], options: { imageOrientation: 'flipY', premultiplyAlpha: 'none', colorSpaceConversion: 'none' } })
@@ -1086,8 +1280,9 @@ test('in a page only the wad is fetched, and a picture sealed in it is decoded b
   const srcs: string[] = []
   vi.stubGlobal('Image', class { set src(s: string) { srcs.push(s) } decode() { return Promise.resolve() } })
   const dom = loader()
-  dom.tick({ wire: wadWire([wad], { gem: { type: 'texture', url: `${at}/gem.png`, preload: true } }) } as any)
-  await dom.load('gem')
+  const wDom = { wire: wadWire([wad], { gem: { type: 'texture', url: `${at}/gem.png`, preload: true } }) } as any
+  run(dom, wDom)
+  await ticked(dom, wDom, dom.load('gem'))
   expect(srcs.length).toBe(1)
   expect(srcs[0].startsWith('blob:')).toBe(true)
   expect(fetchedUrls).toEqual([encodeURI(wad)])
@@ -1096,7 +1291,8 @@ test('in a page only the wad is fetched, and a picture sealed in it is decoded b
 test('a wad that cannot be fetched is written to the console once by the first tick, and the pictures go on as if it held nothing', () => asPage(async () => {
   const url = file('loose.json', '{"loose":true}')
   const me = loader()
-  me.tick({ wire: wadWire([url.replace('loose.json', 'nowhere.wad')], { loose: { type: 'json', url, preload: true } }) } as any)
-  expect(await me.load('loose')).toEqual({ loose: true })
+  const w = { wire: wadWire([url.replace('loose.json', 'nowhere.wad')], { loose: { type: 'json', url, preload: true } }) } as any
+  run(me, w)
+  expect(await ticked(me, w, me.load('loose'))).toEqual({ loose: true })
   expect(errors.map(e => (e as Error).message)).toEqual([`loader wad ${url.replace('loose.json', 'nowhere.wad')}: loader could not fetch ${url.replace('loose.json', 'nowhere.wad')}: 404`])
 }))

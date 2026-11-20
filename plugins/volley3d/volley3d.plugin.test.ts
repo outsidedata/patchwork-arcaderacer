@@ -7,8 +7,8 @@
 // dummy, a metre round and four tall, stands in front of one tube. Five `tube` rows each hold a
 // pattern, a muzzle and an aim, and each one's `pull(n)` act fires that round on the server with
 // `from` its id and `n` the count it is handed, as a launcher's rule does on its press; a tube with a
-// `target` fires at that body. `volleys()` is read against `flight` and particle3d's effects for a
-// round of the page's alone, and the order of the plugins is checked.
+// `target` fires at that body. `volleys()` is read against `flight`, the ledger row's entries and
+// particle3d's effects, and the order of the plugins is checked.
 import { afterAll, expect, test, vi } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -32,9 +32,7 @@ const LAG = 4
 const field: Field = {
   program: { world: 600, hscale: 10, sea: 0.5, flood: false, out: 'level', nodes: [{ id: 'level', op: 'const', value: 0 }] },
   analysis: { slopeStep: 1.5, curveStep: 4, positionRadius: 18, occlusionRadius: 30, occlusionSteps: 5, cliffProbe: 12, cliffSlope: 0.5, cliffDrop: 7, flatAngle: 0.03, records: 50000 },
-  bands: [{ colour: '#3e5722', amount: 1, rules: [] }],
-  grain: { base: 1, range: 0 },
-  detail: [],
+  ground: { layers: [{ name: 'grass', map: 'grass', scale: 30 }] },
   surfaces: {},
   layers: [],
 }
@@ -171,34 +169,55 @@ async function opened() {
 
 const close = (got: number[], want: number[], digits = 9) => got.forEach((g, i) => expect(g).toBeCloseTo(want[i], digits))
 const effectsOf = (client: { plugins: Record<string, any> }, name: string) => (client.plugins.particle3d.effects as readonly Effect[]).filter(fx => fx.name === name)
+const liveOf = (client: { rows: Row[] }) => (client.rows.find(r => r.kind === 'volley3d')?.data.live ?? []) as { from: number; n: number; age: number; hit?: Hit }[]
 
-// ---------------------------------------------------------------- the page's alone
+// ---------------------------------------------------------------- the server's rounds
 
-test('a round of the page\'s alone is in volleys() the frame it is fired, flies as flight says a step a frame to the end of its life, and is kept hold seconds after', async () => {
+test('a round the server fires is drawn under its [from, n] key where flight puts it at its entry\'s age, its body and trail on, until its entry leaves the row', async () => {
   const { client, frame, tube, volleys } = await opened()
-  const high = tube('high')
-  let key: number[] = [], first: Volley[] = []
-  await frame(() => {
-    key = client.plugins.volley3d.fire('rocket', high.data.muzzle, high.data.aim)
-    first = volleys()
-  })
-  expect(key).toEqual([0, 1])
-  expect(first).toEqual([{ key: [0, 1], pos: high.data.muzzle }])
-  // It leaves the tube on the frame it is fired, and is a step further on every frame after.
-  close(volleys()[0].pos, high.data.muzzle)
-  const [flame] = effectsOf(client, 'flame')
-  const life = Math.round(rocket.life / DT), hold = Math.round(0.25 / DT)
-  for (let i = 1; i <= life + hold - 2; i++) {
-    await frame()
+  const other = tube('other')
+  await frame(() => { client.plugins.wire.send(other.id, 'pull', 7) })
+  for (let i = 0; i < 20 && !liveOf(client).length; i++) await frame()
+  const life = Math.round(rocket.life / DT)
+  let flew = 0
+  while (liveOf(client).length) {
+    const [e] = liveOf(client)
     const got = volleys()
     expect(got).toHaveLength(1)
-    expect(got[0].key).toEqual([0, 1])
+    expect(got[0].key).toEqual([other.id, 7])
     expect(got[0].hit).toBeUndefined()
-    close(got[0].pos, flight(rocket, high.data.muzzle, high.data.aim, Math.min(i * DT, rocket.life)))
+    close(got[0].pos, flight(rocket, other.data.muzzle, other.data.aim, Math.min(e.age, rocket.life)))
+    if (e.age < rocket.life - 1e-9) {
+      flew++
+      expect(effectsOf(client, 'flame').filter(fx => fx.life === Infinity)).toHaveLength(1)
+      expect(effectsOf(client, 'smoke').filter(fx => fx.life === Infinity)).toHaveLength(1)
+    } else expect(effectsOf(client, 'flame').filter(fx => fx.life === Infinity)).toEqual([])
+    await frame()
+    expect(flew).toBeLessThanOrEqual(life + 1)
   }
-  expect(flame.life).toBeLessThan(Infinity)
-  for (let i = 0; i < 4; i++) await frame()
+  expect(flew).toBeGreaterThan(life - LAG - 2)
+  // Gone from the page the frame its entry is gone from the row, and it burst nowhere.
   expect(volleys()).toEqual([])
+  expect(effectsOf(client, 'boom')).toEqual([])
+})
+
+test('a round that meets something takes the entry\'s hit the frame a packet brings it, stops there and bursts there', async () => {
+  const { client, frame, tube, volleys } = await opened()
+  const level = tube('level')
+  await frame(() => { client.plugins.wire.send(level.id, 'pull', 1) })
+  for (let i = 0; i < 200 && !volleys()[0]?.hit; i++) await frame()
+  const [e] = liveOf(client)
+  expect(e.hit).toBeDefined()
+  const [got] = volleys()
+  expect(got).toEqual({ key: [level.id, 1], pos: e.hit!.point, hit: e.hit })
+  const booms = effectsOf(client, 'boom')
+  expect(booms).toHaveLength(1)
+  close(booms[0].at as number[], e.hit!.point)
+  expect(effectsOf(client, 'flame').filter(fx => fx.life === Infinity)).toEqual([])
+  // It stays where it met while its entry is held, and bursts once.
+  await frame()
+  if (liveOf(client).length) close(volleys()[0].pos, e.hit!.point)
+  expect(effectsOf(client, 'boom')).toHaveLength(1)
 })
 
 // ---------------------------------------------------------------- the order

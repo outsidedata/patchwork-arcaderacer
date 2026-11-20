@@ -27,8 +27,9 @@
 //                      spins down over a second and a half. Wheel n (or the steer node holding it) is
 //                      drawn up its leg by how far it is pressed in.
 // The page's clock counts a frame as a tenth of a second at most. Every mesh casts and takes shadows,
-// its material dressed by render3d. A plane goes with its row, and when `world.flight3d` changes, as the
-// editor does while a value of it is dragged, every plane is made again.
+// its material dressed by render3d. A plane goes with its row, and when `world.flight3d` changes, as a
+// dev page's panel does in place while a value of it is dragged, every plane is made again: a copy of it is taken
+// when it changes and walked against it each frame.
 // One of these per client: the planes drawn are this scene's.
 import type { Row } from '#engine/engine.ts'
 import type { Plugins } from '#engine/browser.ts'
@@ -50,10 +51,31 @@ const SURFACES: { name: string; axis: number[]; angle: (p: Plane, look: Look) =>
 const named = (n: string, start: string) => n === start || n.startsWith(start + '_')
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
+// Whether two values are the same: the same number (NaN the same as NaN), string, boolean or null, or
+// arrays and plain objects of the same, item by item and field by field, a field holding undefined the
+// same as one not there. Read every frame against the copy of world.flight3d, so it walks the two and
+// makes nothing.
+function same(a: unknown, b: unknown): boolean {
+  if (a === b || (a !== a && b !== b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a)) {
+    const c = b as unknown[]
+    if (a.length !== c.length) return false
+    for (let i = 0; i < a.length; i++) if (!same(a[i], c[i])) return false
+    return true
+  }
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>
+  for (const k in x) if (!same(x[k], y[k])) return false
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false
+  return true
+}
+
 export function flight3d() {
   const planes = new Map<number, Drawn>()
   const asked = new Set<string>()
-  let design = ''
+  // A copy of world.flight3d as the planes were made from it, taken when it changes.
+  let design: Flight | undefined
   let last = 0 // the page's clock at the last frame, ms; 0 is none
 
   function make(plugins: Plugins, f: Flight, type: string): Drawn {
@@ -97,8 +119,7 @@ export function flight3d() {
       const { THREE, scene } = plugins.render3d
       const f: Flight | undefined = plugins.wire.scene.world?.flight3d
       if (!f) return
-      const now = JSON.stringify(f)
-      if (now !== design) { for (const id of [...planes.keys()]) drop(scene, id); design = now }
+      if (!same(f, design)) { for (const id of [...planes.keys()]) drop(scene, id); design = structuredClone(f) }
       const clock = performance.now()
       const dt = last ? Math.min(0.1, (clock - last) / 1000) : 0
       last = clock
@@ -142,7 +163,7 @@ export function flight3d() {
     },
     close(plugins: Plugins) {
       for (const id of [...planes.keys()]) drop(plugins.render3d.scene, id)
-      design = ''
+      design = undefined
       last = 0
     },
   }

@@ -54,6 +54,13 @@ put up stays until a row takes it down.
 **Surfaces.** `surface(name)` draws that panel this frame onto a shared canvas instead of over the
 game, handing back `{ canvas, box }` for a 3D renderer to use as a texture: a screen in a cockpit.
 
+**Behaviors.** A panel can be drawn by another plugin instead of an actor: any field of its entry
+that is not one of its placing fields is a word, `"loading": { ... }`, and the plugin that owns the
+word delivers its function in `<a>.ui.ts`, named in `world.ui.mods.behaviors: ['<a>']`, listed before
+`ui`. The ui runs it every tick with the word's numbers, and it draws with `show` as an actor does. A
+word nothing delivers throws on the first tick. The loader delivers `loading`, a loading screen
+(`plugins/loader/loader.ui.ts`). `area()` is the canvas's size.
+
 `hit(x, y)`, `took(e)`, `keyDown(key)` and `keyUp(key)` are how the player plugin asks the UI first.
 Everything on the stage is drawn between steps, so a dial turned from a row turns smoothly. A frame
 draws a moment before the newest step, so a thing first shown on the newest step is not drawn until
@@ -91,7 +98,7 @@ node; no layout measures text, so columns are numbers in the scene file.
 - **player**: asks the UI first for every click and key; lets go of the game's keys under a modal.
 - **render2d** / **render3d**: the canvas it lies over, its `size` and `scale`, and `project`.
 - **loader**: images and bitmap fonts with `for: "ui"`, and `font` entries, which it waits on
-  before it draws.
+  before it draws; and the `loading` word, a loading screen of the game's art, logo, bar and tips.
 - **chat**, **party**, **cutscene**: draw on its panels with its styles.
 - **store**: the settings menus write.
 - **renderdom** is the HTML layer.
@@ -102,4 +109,5 @@ UI, HUD, GUI, interface, menu, pause menu, game over screen, title screen, setti
 dialog, modal, popup, button, health bar, progress bar, score, ammo, lives, timer, nameplate, world
 space UI, minimap, focus, keyboard navigation, gamepad navigation, back button, toggle menu, screen
 transition, iris wipe, cockpit screen, render to texture, PixiJS, anchors, panels, `show`, `panel`,
-`button`, `bar`, `iris`, `pin`, `project`, `open`, `dismiss`, `opened`, `modal`, `surface`, `world.ui`
+`button`, `bar`, `iris`, `pin`, `project`, `open`, `dismiss`, `opened`, `modal`, `surface`, `world.ui`,
+behaviors, `world.ui.mods`, loading screen, splash screen

@@ -215,12 +215,11 @@ test('a page is told its server has gone, or was never there, and not when it cl
 
 // This addon is the one WebSocket: no other file of the repo's, test or not, opens one or imports
 // `ws`. A second copy grown beside it works and passes its own tests, as scenemanager's did, so
-// nothing but this finds it. The editor's own channel to its pages is this addon's too
-// (`editor/server/pages.ts`). Comments are read past: a header may name the socket.
+// nothing but this finds it. Comments are read past: a header may name the socket.
 test('no file but this addon and its test opens a WebSocket', () => {
   const root = new URL('../../', import.meta.url).pathname
   const mine = ['addons/socket/socket.addon.ts', 'addons/socket/socket.addon.test.ts']
-  const files = ['engine', 'addons', 'plugins', 'games', 'editor', 'extensions'].filter(dir => existsSync(join(root, dir))).flatMap(dir =>
+  const files = ['engine', 'addons', 'plugins', 'games'].filter(dir => existsSync(join(root, dir))).flatMap(dir =>
     (readdirSync(join(root, dir), { recursive: true }) as string[]).filter(f => /\.(ts|tsx|html)$/.test(f)).map(f => join(dir, f)))
   expect(files.length).toBeGreaterThan(100)
   const code = (f: string) => readFileSync(join(root, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')

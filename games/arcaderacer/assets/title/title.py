@@ -6,7 +6,9 @@
 # exported glb, for looking at before the game draws them.
 #
 # The words are the title card's (`assets/arcaderacer.json`, `titlecard`): the game's name, `name.text`,
-# and each course's `word`. One node each, named `name` and the course's scene, in Orbitron Black
+# each course's `word`, and the car select's name of each car of the `match` definition's `cars`, its car
+# file's `name` (`assets/cars/<car>.json`). One node each, named `name`, the course's scene and the car,
+# in Orbitron Black
 # (Orbitron-Black.ttf beside this file, the wght 900 instance of the Google Fonts variable font, SIL
 # Open Font License, Orbitron-OFL.txt), extruded and bevelled, one metre tall at the capitals' outline
 # (the bevel grows it by its depth all round), leaning forward SLANT degrees like a racer's badge (each
@@ -25,8 +27,16 @@ out = argv[-1]
 here = os.path.dirname(os.path.abspath(__file__))
 
 with open(os.path.join(here, '..', 'arcaderacer.json')) as f:
-    card = json.load(f)['titlecard']
-WORDS = [('name', card['name']['text'])] + [(c['scene'], c['word']) for c in card['courses']]
+    defs = json.load(f)
+card = defs['titlecard']
+
+
+def car_name(car):
+    with open(os.path.join(here, '..', 'cars', f'{car}.json')) as f:
+        return json.load(f)['name']
+
+
+WORDS = [('name', card['name']['text'])] + [(c['scene'], c['word']) for c in card['courses']] + [(car, car_name(car)) for car in defs['match']['cars']]
 
 CAPS = 1.0          # metres, the capitals' height
 EXTRUDE = 0.09      # metres each side of the middle

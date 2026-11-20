@@ -1,22 +1,18 @@
-// A game's manager truth under a clock someone else holds: the editor's. It boots the manager,
-// loads its scenes and opens one seat, as a page does, and journals everything that reaches the
-// truths from outside: every envelope the seat sends, and every edit made to a live row. Any step
-// is rebuilt by booting again from the scene files and replaying the journal up to it, which is how
-// time goes back: the die's counter and the next row id are inside the truth, where nothing
-// outside can read or set them, and replaying the same inputs reproduces them exactly.
+// A game's manager truth under a clock someone else holds: a dev page's panel, or a test. It boots
+// the manager, loads its scenes and opens one seat, as a page does, and journals everything that
+// reaches the truths from outside: every envelope the seat sends. Any step is rebuilt by booting
+// again from the scene files and replaying the journal up to it, which is how time goes back: the
+// die's counter and the next row id are inside the truth, where nothing outside can read or set
+// them, and replaying the same inputs reproduces them exactly.
 //
-// Each journal entry happens `at` a step: the manager's step counter when it was made, after the
+// Each journal entry happens `at` a step: the manager's step counter when it was sent, after the
 // step before it and before that step. An envelope sent at step k is in the truth's inbox when
-// step k runs, as a page's is; an edit made at step k is on the row when step k runs. Arriving at
-// step k, by stepping or by seeking, applies every entry at k in the order they were made, so a
-// paused truth shows the edits made at it.
+// step k runs, as a page's is. Arriving at step k, by stepping or by seeking, applies every entry at
+// k in the order they were sent.
 //
 // The recording ends at `end`. Stepping below it plays the recording back. The seat sending an
 // envelope below it takes over: every entry after the current step is dropped, and the recording
-// goes on live from there. `splice` swaps the recording after a step for another and hands back the
-// one it took out, so an end set by hand is taken back by splicing that back in. An edit below it is
-// kept with the rest of the recording, so the steps
-// after it replay with it.
+// goes on live from there.
 //
 // `link` is the seat the page's `view` holds, the same one for the recorder's whole life. Every
 // truth the recorder boots gets a new connection behind it, and a view keeps its client across
@@ -27,38 +23,19 @@
 // one, and the view is handed nothing, as a page is.
 //
 // A step that throws leaves its truth half stepped. The recorder keeps the error as `failure`,
-// rebuilds the step before it, and stays there. An entry a rebuild cannot apply, because an
-// authored edit left out the row it names, or an envelope names a visit the seat is not on, is
-// skipped and kept in `skipped`.
+// rebuilds the step before it, and stays there. An envelope a rebuild cannot apply, because it names
+// a visit the seat is not on, is skipped and kept in `skipped`.
 //
 // Closing the link lets the recorder go. Its seat leaves every truth, and no truth is stepped again:
 // not by the seat's leaving, which steps a `suspend: true` scene it was the last one in, so a truth
 // whose next step throws is closed as cleanly as any other.
-import { boot, type Row, type Scene, type Sim, type Truth } from '#engine/engine.ts'
+import { boot, type Scene, type Sim, type Truth } from '#engine/engine.ts'
 import { accept, link, load, manager, scene, scenes, type Down, type Link, type Up } from '#addons/scenemanager/scenemanager.addon.ts'
 import { loopback } from '#addons/loopback/loopback.addon.ts'
 
-export type Path = (string | number)[]
-export type Edit =
-  | { set: { scene: string; id: number; path: Path; value: unknown } }
-  | { spawn: { scene: string; kind: string; data: Record<string, unknown> } }
-  | { end: { scene: string; id: number } }
-export type Entry = { at: number } & ({ up: Up } | Edit)
-// The recording after a step: the entries after it, and the step it ends at.
-export type Tail = { end: number; entries: Entry[] }
+export type Entry = { at: number; up: Up }
 export type Failure = { at: number; message: string; stack?: string }
 export type Recorder = Awaited<ReturnType<typeof recorder>>
-
-// Writes `value` at `path` inside `into`.
-export function put(into: any, path: Path, value: unknown) {
-  if (!path.length) throw new Error('an edit names no field')
-  let at = into
-  for (const key of path.slice(0, -1)) {
-    if (at[key] === null || typeof at[key] !== 'object') throw new Error(`no field ${path.join('.')}`)
-    at = at[key]
-  }
-  at[path[path.length - 1]] = value
-}
 
 // `file` and `sim` are the manager scene and its sim, `base` the url its scene files are relative
 // to. `journal` and `end` are a recording to start from; the recorder starts at its step 0.
@@ -84,8 +61,6 @@ export async function recorder(file: Scene, sim: Sim, base: string, from: Entry[
   let replaying = false
   let failure: Failure | undefined
   const skipped: Entry[] = []
-  const listeners = new Set<() => void>()
-  const changed = () => { for (const f of listeners) f() }
 
   // The seat the view holds.
   let hearer: ((down: Down) => void) | undefined
@@ -108,30 +83,16 @@ export async function recorder(file: Scene, sim: Sim, base: string, from: Entry[
   }
 
   const child = (name: string) => scene(manager(truth), name)
-  const row = (name: string, id: number): Row | undefined => child(name).rows.find(r => r.id === id)
 
+  // The seat is on the visit its last packet was of, and the manager drops an envelope of any other:
+  // one sent before the page heard the seat had moved. Such an entry is skipped.
   const apply = (e: Entry) => {
-    try {
-      if ('up' in e) {
-        // The seat is on the visit its last packet was of, and the manager drops an envelope of any
-        // other: one sent before the page heard the seat had moved, or one an edit has since moved
-        // the seat away from.
-        if (!latest || latest.scene !== e.up.scene || latest.seat !== e.up.seat) throw new Error('the seat is not on that visit')
-        inner.send(e.up)
-      } else if ('spawn' in e) child(e.spawn.scene).spawn(e.spawn.kind, structuredClone(e.spawn.data))
-      else {
-        const target = 'set' in e ? row(e.set.scene, e.set.id) : row(e.end.scene, e.end.id)
-        if (!target) throw new Error('no such row')
-        if ('set' in e) put(target.data, e.set.path, structuredClone(e.set.value))
-        else child(e.end.scene).end(target)
-      }
-    } catch {
-      skipped.push(e)
-    }
+    if (latest && latest.scene === e.up.scene && latest.seat === e.up.seat) inner.send(e.up)
+    else skipped.push(e)
   }
   const arrive = () => { for (const e of byAt.get(n) ?? []) apply(e) }
 
-  // A packet of the seat's scene as it is now, for an edit made between steps.
+  // A packet of the seat's scene as it is now, for a change made between steps.
   const refresh = () => { if (visit) hand({ ...visit, packet: child(visit.scene).packet(visit.seat) }) }
 
   const fail = (e: unknown, at: number) => {
@@ -168,6 +129,13 @@ export async function recorder(file: Scene, sim: Sim, base: string, from: Entry[
     if (latest) hand(latest)
   }
 
+  // The recording ends here: every entry after this step is dropped.
+  const cut = () => {
+    for (let i = journal.length - 1; i >= 0; i--) if (journal[i].at > n) journal.splice(i, 1)
+    index()
+    end = n
+  }
+
   await rebuild(0)
 
   const me = {
@@ -179,7 +147,7 @@ export async function recorder(file: Scene, sim: Sim, base: string, from: Entry[
         if (latest) hand(latest)
       },
       send(up: Up) {
-        if (n < end) me.cut()
+        if (n < end) cut()
         inner.send(up)
         record({ at: n, up })
       },
@@ -200,12 +168,8 @@ export async function recorder(file: Scene, sim: Sim, base: string, from: Entry[
     get journal(): readonly Entry[] { return journal },
     // The last step that threw, until the next step or seek.
     get failure() { return failure },
+    // The entries the last rebuild could not apply.
     get skipped(): readonly Entry[] { return skipped },
-    // Called after every step, seek and edit. Returns the call that stops it.
-    on(f: () => void) {
-      listeners.add(f)
-      return () => { listeners.delete(f) }
-    },
     // One step. A step that throws is rebuilt from the step before it, which the promise it
     // returns then is.
     step(): Promise<void> | undefined {
@@ -218,69 +182,16 @@ export async function recorder(file: Scene, sim: Sim, base: string, from: Entry[
       } catch (e) {
         fail(e, at)
         const why = failure
-        return rebuild(at).then(() => { failure = why; changed() })
+        return rebuild(at).then(() => { failure = why })
       }
       if (n > end) end = n
-      changed()
     },
     async seek(k: number) {
       failure = undefined
       await rebuild(Math.max(0, Math.min(k, end)))
-      changed()
     },
     // The same step, rebuilt from the scene files as they are now.
     rerun() { return me.seek(n) },
-    // Step 0 of an empty recording.
-    restart() {
-      journal.length = 0
-      index()
-      end = 0
-      return me.seek(0)
-    },
-    // The recording ends here: every entry after this step is dropped.
-    cut() {
-      for (let i = journal.length - 1; i >= 0; i--) if (journal[i].at > n) journal.splice(i, 1)
-      index()
-      end = n
-    },
-    // The recording after step `at` made `tail`: every entry after it dropped, `tail`'s put in their
-    // place, and the recording ending where `tail` says. Returns the tail it replaced, which the same
-    // call puts back, the entries themselves, so an edit among them is still the one `unedit` takes.
-    // A truth past `at` is rebuilt from the recording as it now is.
-    async splice(at: number, tail: Tail): Promise<Tail> {
-      const was: Tail = { end, entries: journal.filter(e => e.at > at) }
-      for (let i = journal.length - 1; i >= 0; i--) if (journal[i].at > at) journal.splice(i, 1)
-      journal.push(...tail.entries)
-      index()
-      end = tail.end
-      if (n > at) await rebuild(Math.min(n, end))
-      changed()
-      return was
-    },
-    // An edit to a live row, from this step on. Returns the entry, which `unedit` takes back.
-    edit(e: Edit): Entry {
-      const entry = { ...e, at: n } as Entry
-      skipped.length = 0
-      apply(entry)
-      if (skipped.includes(entry)) throw new Error(`the edit could not be made: ${JSON.stringify(e)}`)
-      record(entry)
-      refresh()
-      changed()
-      return entry
-    },
-    // Takes an edit back out of the journal and rebuilds this step without it.
-    unedit(e: Entry) {
-      const i = journal.indexOf(e)
-      if (i < 0) throw new Error('that edit is not in the journal')
-      journal.splice(i, 1)
-      index()
-      return me.rerun()
-    },
-    // Puts an edit `unedit` took out back where it was, and rebuilds this step with it.
-    redo(e: Entry) {
-      record(e)
-      return me.rerun()
-    },
     // The rows of the seat's scene sent to the view again, as they are now.
     refresh,
   }

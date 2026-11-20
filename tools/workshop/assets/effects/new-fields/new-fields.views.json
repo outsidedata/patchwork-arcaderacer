@@ -1,0 +1,22 @@
+[
+  { "name": "tints", "file": "new-fields.json", "effect": "tints", "camera": [0, 2.5, 11], "target": [0, 1.6, 0], "preroll": 3 },
+  { "name": "alphas", "file": "new-fields.json", "effect": "alphas", "camera": [0, 2.5, 11], "target": [0, 1.6, 0], "preroll": 3 },
+  { "name": "grows", "file": "new-fields.json", "effect": "grows", "camera": [0, 2.5, 11], "target": [0, 1.6, 0], "preroll": 3 },
+  { "name": "outward", "file": "new-fields.json", "effect": "outward", "camera": [0, 5, 9], "target": [0, 0.3, 0], "preroll": 0.5 },
+  { "name": "inherit", "file": "new-fields.json", "effect": "inherit", "camera": [0, 2.5, 11], "target": [0, 2, 0], "preroll": 0.9 },
+  { "name": "strength-range", "file": "new-fields.json", "effect": "strength-range", "camera": [0, 2.5, 11], "target": [0, 1.5, 0], "preroll": 0.6 },
+  { "name": "direction", "file": "new-fields.json", "effect": "direction", "camera": [0, 2.5, 12], "target": [0, 2, 0], "preroll": 3 },
+  { "name": "range", "file": "new-fields.json", "effect": "range", "camera": [0, 2.5, 11], "target": [0, 1.3, 0], "preroll": 3 },
+  { "name": "falloff", "file": "new-fields.json", "effect": "falloff", "camera": [0, 2.5, 11], "target": [0, 1.3, 0], "preroll": 3 },
+  { "name": "overLife", "file": "new-fields.json", "effect": "overLife", "camera": [0, 2.5, 11], "target": [0, 1.3, 0], "preroll": 3 },
+  { "name": "overAge-0.4", "file": "new-fields.json", "effect": "overAge", "camera": [0, 2.5, 12], "target": [0, 1, 0], "preroll": 0.4 },
+  { "name": "overAge-1.0", "file": "new-fields.json", "effect": "overAge", "camera": [0, 2.5, 12], "target": [0, 1, 0], "preroll": 1.0 },
+  { "name": "noiseAmplitude", "file": "new-fields.json", "effect": "noiseAmplitude", "camera": [0, 3, 14], "target": [0, 2.5, 0], "preroll": 3 },
+  { "name": "turbulence", "file": "new-fields.json", "effect": "turbulence", "camera": [0, 2.5, 12], "target": [0, 2.2, 0], "preroll": 3.5 },
+  { "name": "noiseScroll", "file": "new-fields.json", "effect": "noiseScroll", "camera": [0, 2.5, 11], "target": [0, 1.3, 0], "preroll": 3 },
+  { "name": "wind", "file": "new-fields.json", "effect": "wind", "camera": [0, 2.5, 12], "target": [0, 2, 0], "preroll": 3.5 },
+  { "name": "dragBySpeed", "file": "new-fields.json", "effect": "dragBySpeed", "camera": [0, 2.5, 13], "target": [0, 1.5, 0], "preroll": 0.5 },
+  { "name": "shell", "file": "new-fields.json", "effect": "shell", "camera": [0, 2.5, 11], "target": [0, 1.6, 0], "preroll": 3 },
+  { "name": "toAxis", "file": "new-fields.json", "effect": "toAxis", "camera": [0, 2.5, 11], "target": [0, 1.6, 0], "preroll": 3 },
+  { "name": "tube", "file": "new-fields.json", "effect": "tube", "camera": [0, 10, 5], "target": [0, 1.6, 0], "preroll": 3 }
+]

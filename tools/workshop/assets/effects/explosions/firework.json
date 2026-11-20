@@ -1,0 +1,33 @@
+{
+  "cap": 16000,
+  "effects": {
+    "firework": [
+      { "n": [1, 1], "life": [0.12, 0.12], "shape": "glow", "size": [1, 1], "grow": 1.5, "tint": 16769162, "gain": 4, "a1": 0, "add": true },
+      { "n": [8, 12], "life": [0.6, 1.2], "shape": "puff", "size": [0.3, 0.5], "grow": 3, "speed": [0.5, 1.5], "drag": 2, "g": -0.4, "tint": 10066329, "tint1": 6710886, "a0": 0.5, "a1": 0, "spin": 1 },
+      { "n": [1, 1], "life": [1.5, 1.5], "size": [0, 0], "dir": [0, 1, 0], "spread": 0.04, "speed": [20, 20], "drag": 1.6, "carry": "firework-rise" },
+      { "n": [1, 1], "after": 1.5, "life": [0.2, 0.2], "shape": "glow", "size": [6, 6], "grow": 1.6, "box": [0, 11.4, 0, 0, 11.4, 0], "tint": 16775388, "tint1": 16729232, "gain": 5, "a1": 0, "add": true },
+      { "n": [1, 1], "after": 1.5, "life": [0.15, 0.15], "shape": "star", "size": [5, 5], "grow": 1.6, "box": [0, 11.4, 0, 0, 11.4, 0], "tint": 16777215, "gain": 5, "a1": 0, "add": true },
+      { "effect": "firework-light", "at": [0, 11.4, 0] },
+      { "n": [70, 80], "after": 1.5, "life": [1.6, 2.2], "shape": "spark", "size": [0.18, 0.26], "box": [0, 11.4, 0, 0, 11.4, 0], "speed": [15, 16], "drag": 1.2, "g": 2.2, "tint": 16775388, "tint1": 16742400, "gain": 6, "a1": 0, "fade": 0.4, "add": true, "carry": "firework-glitter" },
+      { "n": [40, 50], "after": 1.5, "life": [1.4, 1.9], "shape": "spark", "size": [0.14, 0.2], "box": [0, 11.4, 0, 0, 11.4, 0], "speed": [9, 10], "drag": 1.2, "g": 2.2, "tint": 7864319, "tint1": 3355647, "gain": 6, "a1": 0, "fade": 0.4, "add": true, "carry": "firework-tail" },
+      { "n": [60, 80], "after": 2.6, "life": [0.08, 0.2], "shape": "star", "size": [0.3, 0.6], "box": [-5, 6.5, -5, 5, 11, 5], "tint": 16777215, "gain": 6, "a1": 0, "add": true },
+      { "n": [20, 30], "after": 1.55, "life": [3, 4.5], "shape": "puff2", "size": [1, 1.6], "grow": 2.5, "box": [0, 11.4, 0, 0, 11.4, 0], "speed": [2, 4], "drag": 1.5, "g": 0.15, "tint": 8550532, "tint1": 4672829, "a0": 0.25, "a1": 0, "spin": 0.3 }
+    ],
+    "firework-light": [
+      { "n": [1, 1], "after": 1.5, "life": [1.6, 1.6], "size": [0, 0], "carry": "firework-lamp" }
+    ],
+    "firework-lamp": [
+      { "lamp": { "intensity": 900, "distance": 30, "decay": 2, "tint": 16753359, "flicker": 0.4 } }
+    ],
+    "firework-rise": [
+      { "n": [1, 1], "every": 0.012, "life": [0.3, 0.5], "shape": "spark", "size": [0.08, 0.14], "speed": [0.3, 1.5], "g": 4, "tint": 16769162, "tint1": 16729088, "gain": 5, "a1": 0, "add": true },
+      { "n": [1, 1], "every": 0.03, "life": [0.8, 1.4], "shape": "puff", "size": [0.15, 0.25], "grow": 4, "speed": [0, 0.3], "g": -0.2, "drag": 1, "tint": 10066329, "tint1": 5592405, "a0": 0.4, "a1": 0, "spin": 1 }
+    ],
+    "firework-glitter": [
+      { "n": [1, 1], "every": 0.03, "life": [0.3, 0.6], "shape": "spark", "size": [0.06, 0.1], "g": 2, "drag": 1, "tint": 16775388, "tint1": 16711808, "gain": 4, "a1": 0, "add": true }
+    ],
+    "firework-tail": [
+      { "n": [1, 1], "every": 0.016, "life": [0.25, 0.4], "shape": "streak", "stretch": true, "size": [0.12, 0.2], "speed": [0.2, 0.2], "tint": 9093375, "tint1": 2236927, "gain": 3, "a1": 0, "add": true }
+    ]
+  }
+}

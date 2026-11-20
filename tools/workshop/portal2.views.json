@@ -1,0 +1,8 @@
+[
+  { "name": "front", "file": "assets/effects/portal2.json", "effect": "portal2", "camera": [0, 1.4, 6], "target": [0, 1.2, 0], "preroll": 8 },
+  { "name": "three-quarter", "file": "assets/effects/portal2.json", "effect": "portal2", "camera": [4, 2.2, 5], "target": [0, 1.2, 0], "preroll": 8 },
+  { "name": "side", "file": "assets/effects/portal2.json", "effect": "portal2", "camera": [6, 1.4, 0.5], "target": [0, 1.2, 0], "preroll": 8 },
+  { "name": "opening", "file": "assets/effects/portal2.json", "effect": "portal2", "camera": [0, 1.4, 6], "target": [0, 1.2, 0], "preroll": 1.2 },
+  { "name": "close", "file": "assets/effects/portal2.json", "effect": "portal2", "camera": [1.6, 2.2, 2.4], "target": [0.6, 1.6, 0], "preroll": 8.3, "stage": false },
+  { "name": "later", "file": "assets/effects/portal2.json", "effect": "portal2", "camera": [0, 1.4, 6], "target": [0, 1.2, 0], "preroll": 9.1 }
+]

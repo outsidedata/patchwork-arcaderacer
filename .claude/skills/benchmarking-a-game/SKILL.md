@@ -126,8 +126,8 @@ printed with the seconds since it was opened and the client's step:
   taken a packet (and `window.__scenes` for the CPU profile, render3d's renderer for the GPU's);
 - **loaded**: every plugin that says it is still loading is done. Terrain3d: its rings are on the
   scene (with `preload`, the land prepared whole where the camera stands, its maps landed and
-  scatter3d's share placed), no rebuild in hand, and every bake with nothing `left`. Scatter3d: its
-  share of the prepared place placed. A land built in workers is waited on with no flag at all;
+  lod3d's share held), no rebuild in hand, and every bake with nothing `left`. lod3d: its share of
+  the prepared place done, `plugins.lod3d.ready()`. A land built in workers is waited on with no flag at all;
   `--loading` skips this stage, to measure the loading itself;
 - **ready**: `--ready "<page expression>"` true, when given, for what no plugin reports (a set piece
   shown, a race started);
@@ -182,10 +182,19 @@ The page, opened, loaded, pressed and settled by `testbed.mjs`, timed for `secon
 
 Chrome's CPU profiler samples the same seconds, and `owners.mjs` gives each millisecond to the file
 that ran it, read off its path as core names its files: each kind (its rules, its look), each plugin
-(its rules, its page half), each addon, the engine, the playtester; time in a library (three, pixi, a
-wasm) to whoever of ours called it, and kept beside it. The game pages are a bundle the dev server
-builds, and its source map gives each sample its own file. So the whole frame is laid out by who owns
-it, with each owner's costliest functions, and nothing left over as "the rest".
+(its rules, its page half), each mod (`<a>.<p>.ts`, its own owner, never the plugin whose folder it
+sits in, on the side of whoever called it), each addon, the engine, the playtester; time in a library
+(three, pixi, a wasm, core's `math`) to whoever of ours called it, and kept beside it. The game pages
+are a bundle the dev server builds, and its source map gives each sample its own file. So the whole
+frame is laid out by who owns it, with each owner's costliest functions, and nothing left over as "the
+rest". After the owners come the call chains the time went down, owner by owner from the outermost in,
+the twenty costliest by what their last hop spent itself: a flame graph in lines.
+
+On 2026-11-20 mech's outpost ran at 1.6 frames a second. The owners then read "math" and "mechs page":
+shapes3d's mod for mechs (`plugins/mechs/shapes3d.mechs.ts`) was filed under the folder it sat in, and
+its sin and cos under math. Now the first chain reads `kind lifter tick → plugin mechs tick → plugin
+walker walk → mod shapes3d.mechs height → plugin shapes3d top`: every building's top asked each time
+walker asked the ground's height. Taking the mod out of the scene made it 60.
 
 It prints the frames counted and their rate, the mean milliseconds of a frame's work, each system's mean
 milliseconds a frame and share (a look with its rows and its cost a row), each owner's milliseconds a
@@ -216,7 +225,7 @@ names one), each `--act` sent on the seat's `player` row (the acts its page woul
 `after` and each act is timed for its own time, each kind name apart, so the rows add up to the step
 and what is left is the engine's own. It prints the steps' mean, 95% and most milliseconds, and each
 kind's pass's milliseconds a step and share, most first, then node's own profile of the steps laid out
-by owner as the page's is. With `--out`, all of it goes to `<out>/<scene>.ticks.json` and the steps'
+by owner and by call chain as the page's is. With `--out`, all of it goes to `<out>/<scene>.ticks.json` and the steps'
 profile to `<out>/<scene>.ticks.cpuprofile`. With `--cpu-prof`, node writes the whole run's profile,
 the boot with it, into `<folder>` for `cpu-hot.mjs`. No page, no draw, no wire: what the scene's own
 rules cost a step.

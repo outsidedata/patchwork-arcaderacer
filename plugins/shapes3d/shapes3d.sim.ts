@@ -7,7 +7,8 @@
 //   kinds  `{ <kind>: { shape: { <word>: { … } }, look?, surface? } }`: every row of the kind is a thing
 //          of that word, of its numbers. `look` `{ colour, roughness?, sides?, thick?, map?, scale? }`,
 //          when given, is how solids draws it, a plain shape of that paint, a picture laid on it when
-//          it names a `map` (`shapes3d.solids.ts`), and box3d stands a cylinder and a plane as that
+//          it names a `map`, or, with `look` in place of a colour, a material of the scene's one
+//          shader (`shapes3d.solids.ts`), and box3d stands a cylinder and a plane as that
 //          same solid (`shapes3d.box3d.ts`). `surface` is what box3d's bodies meet on it, Box3D's
 //          b3SurfaceMaterial fields (`friction`, `restitution`, `rollingResistance`, …), Box3D's own
 //          where left out. A kind that gives
@@ -15,20 +16,28 @@
 //          with the constraints its `points` name (`shapes3d.motion3d.ts`), carrying its `data`, `{
 //          <plugin>: { … } }`, keyed by the plugin each block is for and passed on untouched (motion3d
 //          reads `data.motion3d.autoChange`), and stand in nothing's
-//          way: `shapes`, and so every mod here but motion3d's and solids', leaves them out. A space
+//          way: `shapes` leaves them out, and so does every mod here that reads it; a space is not
+//          drawn. Only motion3d's `spaces`, crowd3d's `paths` and lod3d's points read them. A space
 //          is only where an activity is offered; a thing in the way there is a kind of its own.
-//   mods   `{ height? }`: the ground the shapes stand over, `(w, x, z) → y`, for `ground` and walker's
-//          ground (`shapes3d.walker.ts`); terrain3d's land, `terrain3d.shapes3d.ts`. With none, the
-//          ground is flat at y = 0.
+//   shapes `[name, …]`: shapes files, each the catalogue name of a `json` entry (`preload` it) of `{ kinds,
+//          shapes }`: `kinds` as above, and `shapes` `[{ kind, pos, yaw }]`, each a shape of its kind standing
+//          where it says, with no row (a baked level's walls and floors).
+//   mods   `{ height?, shapes? }`: `height`, one, the ground the shapes stand over, `(w, x, z) → y`, for
+//          `ground` and walker's ground (`shapes3d.walker.ts`); terrain3d's land, `terrain3d.shapes3d.ts`.
+//          With none, the ground is flat at y = 0. `shapes`, many, `(world) → [name, …]`: more shapes files
+//          by their catalogue names, from the plugin that makes the scene's place (world3d's,
+//          `world3d.shapes3d.ts`), read after `shapes`.
 // A row of one of these kinds carries `pos` [x, y, z] metres and `yaw` radians, as every row solids
 // draws does, and stands where it was put: walker takes the shapes as fixed and asks for them once a
 // tile; a hyperplane's row carries `pos` and `rot` in place of `yaw`. A rule moves one with
 // `move(w, row, pos, turn)`, `turn` its new `yaw`, or for a hyperplane its new `rot`, and nothing else
 // writes its place: `move` keeps where it stood before on the row, `was` [x, y, z, …turn] (so a kind
 // whose rows move gives `was: null` in its prefab), and counts the truth's moves (`moves(w)`), so
-// walker's and kinematics3d's grounds read the shapes again, and walker's carries a body standing on a
-// moved one with it (`shapes3d.walker.ts`'s `footing`). A shape is moved every step it travels; `was` is
-// the step before's place, so one that stops is moved to where it is. `turnOf(row)` is a row's turn as
+// walker's and kinematics3d's grounds read the shapes again, and both carry a body standing on a moved
+// one with it (`carried`, below; `shapes3d.walker.ts`'s and `shapes3d.kinematics3d.ts`' `footing`). A
+// kind whose rows move gives `was` in its prefab, which is how the shapes that may move are known; a
+// body is carried by how far its floor has moved since the body was last carried, kept on the body's own
+// row, so a floor whose rule stops calling `move` carries nothing more. `turnOf(row)` is a row's turn as
 // a quaternion, its `rot`, or its `yaw` about up.
 //
 // Its words, `words`, each what a thing of the word is in the world and the sums shapes3d answers of it:
@@ -48,6 +57,8 @@
 //             along the world's x and `z` along its z, when `rot` is [0, 0, 0, 1]. `{ hyperplane: { pos,
 //             size, rot } }`. Stood on where its face is over a point and shot, and never in the way, as
 //             a plane is; a body on one tilted past its `maxSlope` slides off it by walker's own rule.
+//   triangles  `{ triangles }`: any triangles, each its three corners [x, y, z]: `{ triangles: {
+//             triangles } }`.
 // A kind of a word none of these is throws, naming the kind and the word.
 //
 // Each word answers for its own top, `top(shape, x, z)`: the height of the surface a body stands on over
@@ -77,17 +88,19 @@
 // `data.crowd3d` says) and `shapes3d.solids.ts` (`models`, the page's).
 import type { Row, W } from '#engine/engine.ts'
 import type { Material } from '#plugins/box3d/box3d.sim.ts'
-import { mod } from '#addons/scenemanager/scenemanager.addon.ts'
+import { mod, modsOf } from '#addons/scenemanager/scenemanager.addon.ts'
 import * as math from '#plugins/math/math.sim.ts'
+import { json } from '#plugins/loader/loader.sim.ts'
 
 export type Cylinder = { pos: number[]; radius: number; height: number }
 export type Box = { pos: number[]; size: number[]; yaw: number }
 export type Plane = { pos: number[]; size: number[]; yaw: number; slope: number }
 export type Hyperplane = { pos: number[]; size: number[]; rot: number[] }
+export type Triangles = { triangles: number[][][] }
 export type Placed = { id: number; kind: string; word: string; shape: Record<string, any> }
 export type Kind = {
   shape: Record<string, any>
-  look?: { colour: string; roughness?: number; sides?: number; thick?: number; map?: string; scale?: number }
+  look?: { colour?: string; look?: string; roughness?: number; sides?: number; thick?: number; map?: string; scale?: number }
   surface?: Partial<Material>
   activities?: string[]
   priority?: number
@@ -160,6 +173,18 @@ function gapTo(points: number[][], x: number, z: number): number {
   return inside && sign !== 0 ? 0 : best
 }
 
+// Where the upright line over (x, z) meets a triangle, its height there; undefined where it misses it or
+// the triangle stands on edge.
+const overTriangle = (t: number[][], x: number, z: number): number | undefined => {
+  const [a, b, c] = t
+  const d = (b[2] - c[2]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[2] - c[2])
+  if (Math.abs(d) < 1e-12) return undefined
+  const l1 = ((b[2] - c[2]) * (x - c[0]) + (c[0] - b[0]) * (z - c[2])) / d
+  const l2 = ((c[2] - a[2]) * (x - c[0]) + (a[0] - c[0]) * (z - c[2])) / d
+  const l3 = 1 - l1 - l2
+  return l1 >= 0 && l2 >= 0 && l3 >= 0 ? l1 * a[1] + l2 * b[1] + l3 * c[1] : undefined
+}
+
 export const words: Record<string, Word> = {
   cylinder: {
     place: (n, row): Cylinder => ({ pos: row.data.pos, radius: n.radius, height: n.height }),
@@ -208,6 +233,26 @@ export const words: Record<string, Word> = {
       return Math.abs(lx) <= h.size[0] / 2 && Math.abs(lz) <= h.size[1] / 2 ? h.pos[1] + dy : undefined
     },
   },
+  triangles: {
+    place: (n): Triangles => ({ triangles: n.triangles }),
+    gap: (t: Triangles, x, z) => Math.min(...t.triangles.map(tri => gapTo(tri.map(p => [p[0], p[2]]), x, z))),
+    // The middle of its corners' span on the ground, and the most a corner reaches from it.
+    middle(t: Triangles) {
+      const ps = t.triangles.flat()
+      const xs = ps.map(p => p[0]), zs = ps.map(p => p[2])
+      const x = (Math.min(...xs) + Math.max(...xs)) / 2, z = (Math.min(...zs) + Math.max(...zs)) / 2
+      return { x, z, reach: Math.max(...ps.map(p => math.hypot(p[0] - x, p[2] - z))) }
+    },
+    // The highest triangle over (x, z).
+    top(t: Triangles, x, z) {
+      let best: number | undefined
+      for (const tri of t.triangles) {
+        const y = overTriangle(tri, x, z)
+        if (y !== undefined && (best === undefined || y > best)) best = y
+      }
+      return best
+    },
+  },
 }
 
 // The word of a kind's shape, and what shapes3d knows of it; a word none of its own throws.
@@ -226,7 +271,27 @@ export function shapes(w: W): Placed[] {
     const { word, known } = wordOf(kind, k)
     for (const r of w.all(kind)) out.push({ id: r.id, kind, word, shape: { [word]: known.place(k.shape[word], r) } })
   }
-  return out
+  return out.concat(fromFiles(w))
+}
+
+// The shapes of the files `world.shapes3d.shapes` names, then those each `shapes` mod names, each a loader entry of
+// `{ kinds, shapes }`, read once per truth; their ids count down from -1, so none is a row's.
+export type Files = (world: Record<string, any>) => string[]
+const loaded = new WeakMap<object, Placed[]>()
+function fromFiles(w: W): Placed[] {
+  let l = loaded.get(w.world)
+  if (!l) {
+    let id = 0
+    const names = [...((w.world.shapes3d?.shapes ?? []) as string[]), ...modsOf<Files>(w.world, 'shapes3d', 'shapes').flatMap(f => f(w.world))]
+    loaded.set(w.world, (l = names.flatMap(name => {
+      const file = json(w, name) as { kinds: Record<string, Kind>; shapes: { kind: string; pos: number[]; yaw: number }[] }
+      return file.shapes.map(s => {
+        const k = file.kinds[s.kind], { word, known } = wordOf(s.kind, k)
+        return { id: --id, kind: s.kind, word, shape: { [word]: known.place(k.shape[word], { data: s } as unknown as Row) } }
+      })
+    })))
+  }
+  return l
 }
 
 // How many times a shape of the truth has been moved, so what is kept of its shapes knows when to read
@@ -245,6 +310,57 @@ export function move(w: W, row: Row, pos: number[], turn: number | number[]) {
   }
   row.data.pos = [pos[0], pos[1], pos[2]]
   moved.set(w.world, moves(w) + 1)
+}
+
+// The floor a body stands on, as it stood the last step the body was carried: the shape's id, and its
+// place then, [x, y, z, ...turn] as `move` writes `was` (its yaw, or its rot).
+export type Floor = { id: number; at: number[] }
+const placeOf = (row: Row): number[] => [...(row.data.pos as number[]), ...((row.data.rot as number[] | undefined) ?? [(row.data.yaw as number | undefined) ?? 0])]
+const TOP = 1e-9
+
+// Where the body `me`, standing at `pos` facing `yaw`, is now that the shape it stands on has moved,
+// or undefined where it has not, among `movers`, the shapes that may move; asked every step, `grounded`
+// whether the body stands on the ground at all. The body's row keeps `floor` (`Floor`): the highest of
+// `movers` whose top over the body is at its feet or no more than `step` under them, as that shape
+// stood when it was kept, or null. A body kept on a floor that is there still, and whose top as it stood
+// then is still under its feet, is carried by how far the floor has moved since: its point in the
+// floor's frame as it stood put back through the floor as it stands now, by quaternions, so a tilt and a
+// roll carry it as a turn does, and its yaw the heading its facing is turned to by the floor's turn.
+// Then the floor under it now is kept. So a floor that has not moved since carries nothing, however its
+// rule moves it or stops moving it, and a body off the ground keeps no floor.
+export function carried(w: W, movers: Placed[], me: Row, pos: number[], yaw: number, step: number, grounded: boolean): { pos: number[]; yaw: number } | undefined {
+  const d = me.data
+  const last = d.floor as Floor | null | undefined
+  d.floor = null
+  if (!grounded) return undefined
+  let out: { pos: number[]; yaw: number } | undefined
+  const p = last ? movers.find(m => m.id === last.id) : undefined
+  if (last && p) {
+    const was = last.at
+    const before = { ...p.shape[p.word], pos: [was[0], was[1], was[2]], ...(was.length === 7 ? { rot: was.slice(3) } : { yaw: was[3] }) }
+    const t = words[p.word].top(before, pos[0], pos[2])
+    if (t !== undefined && t <= pos[1] + TOP && t >= pos[1] - step) {
+      const row = w.get(p.id)
+      const from = was.length === 7 ? was.slice(3) : aboutUp(was[3])
+      const to = turnOf(row), at = row.data.pos as number[]
+      const local = rotate(conj(from), [pos[0] - was[0], pos[1] - was[1], pos[2] - was[2]])
+      const there = rotate(to, local)
+      const facing = rotate(mul(to, conj(from)), [math.sin(yaw), 0, math.cos(yaw)])
+      out = {
+        pos: [at[0] + there[0], at[1] + there[1], at[2] + there[2]],
+        yaw: math.hypot(facing[0], facing[2]) > 1e-9 ? math.atan2(facing[0], facing[2]) : yaw,
+      }
+    }
+  }
+  const stands = out?.pos ?? pos
+  let on: { id: number; top: number } | undefined
+  for (const m of movers) {
+    const t = words[m.word].top(m.shape[m.word], stands[0], stands[2])
+    if (t === undefined || t > stands[1] + TOP || t < stands[1] - step || (on && t <= on.top)) continue
+    on = { id: m.id, top: t }
+  }
+  if (on) d.floor = { id: on.id, at: placeOf(w.get(on.id)) }
+  return out
 }
 
 export const near = (w: W, x: number, z: number, r: number): Placed[] =>

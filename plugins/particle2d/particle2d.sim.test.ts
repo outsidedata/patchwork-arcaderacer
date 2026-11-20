@@ -2,7 +2,7 @@
 // `gun` kind whose tick emits on the step its row says to, and moves or stops what it emitted.
 import { expect, test } from 'vitest'
 import { boot, type Scene, type Sim } from '#engine/engine.ts'
-import { emit, entry, particle2d, type Entry } from './particle2d.sim.ts'
+import { drive, emit, entry, particle2d, type Entry } from './particle2d.sim.ts'
 
 const DT = 1 / 60
 const HOLD = 0.1
@@ -107,6 +107,30 @@ test('with fly, an entry\'s life is the seconds its point takes to reach its to,
   truth.step(DT)
   expect(live(truth)).toEqual([{ id: 1, effect: 'puff', at: [1, 2], age: 0, life: 1, to: [4, 6], fly: 5, land }])
   expect(() => boot(scene([{ spawn: { fly: 5 } }]), sim).step(DT)).toThrow('particle2d effect puff flies and was spawned with no to')
+})
+
+test('a rule drives a driver on the ledger row for every seat and lets it go, and an entry carries its own drivers', () => {
+  const driver: Sim[string] = {
+    tick(_me, _dt, w) {
+      const d = w.find('gun')!.data
+      if (d.step === 1) drive(w, 'wind', 3)
+      if (d.step === 2) drive(w, 'gust', 1)
+      if (d.step === 3) drive(w, 'wind')
+    },
+  }
+  const s = scene([{ spawn: { life: 1, drivers: { slip: 0.5 } } }])
+  s.actors.push({ is: 'driver' })
+  s.prefabs.driver = {}
+  const truth = boot(s, { ...sim, driver })
+  const ledger = () => truth.rows.find(r => r.kind === 'particle2d')!.data
+  // the gun ticks first, counting its steps, and the driver after it
+  truth.step(DT)
+  expect(live(truth)[0].drivers).toEqual({ slip: 0.5 })
+  expect(ledger().drivers).toEqual({ wind: 3 })
+  truth.step(DT)
+  expect(ledger().drivers).toEqual({ wind: 3, gust: 1 })
+  truth.step(DT)
+  expect(ledger().drivers).toEqual({ gust: 1 })
 })
 
 test('a field of the ledger row particle2d does not know throws, naming it', () => {

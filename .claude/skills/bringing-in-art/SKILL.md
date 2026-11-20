@@ -64,7 +64,7 @@ cover:
   file in it is at its own path from the wad's folder, so the catalogue, the sheets and the maps name
   `hero.png` as ever and never know it came from a wad. The header of `loader.sim.ts` has the
   format. It hides the files and no more: the key ships with core.
-- Its entry is a key of `world.loader.assets` in the scene file: `{ "type", "url", "preload"?, ... }`.
+- Its entry is a key of `world.loader.assets` in the scene file: `{ "type", "url", "preload"?, ... }`, preloaded unless `"preload": false`.
   The `url` is the file's path from the repo's root, with a leading `/`, written as the file is
   named, spaces and all: `"/games/<game>/assets/coin.json"`, as `yarn new-game` writes its
   definitions' entry. The loader encodes it where it fetches it. A file another file names, such as
@@ -120,12 +120,13 @@ cover:
 - `tilemap` is `building-a-level`'s, and `sound` is `sound`'s.
 
 Six types are files a rule reads: `json`, `sheet`, `palette`, `tilemap`, `pixels` and `binary`. The
-server half decodes each once per process. One marked `preload` is there before the first step and
+server half decodes each once per process. Every entry is preloaded unless it says
+`"preload": false`. A preloaded one is there before the first step and
 before the page's first frame, because the scenemanager awaits the loader's `prepare`, so a rule
 reads it on any step and an actor in its `setup`. A preloaded file of these six that cannot be
 fetched or decoded stops the scene before its first step. `texture`, `model`, `bitmapfont`, `font`
-and `sound` are the browser half's alone (a `font` starts on the first tick whether or not it is
-`preload`): `preload` starts them on the loader's first tick, they land
+and `sound` are the browser half's alone (a `font` starts on the first tick even with `"preload": false`):
+a preloaded one starts on the loader's first tick, they land
 some frames later, and no rule reads them. A sheet's data is there from the first frame, but its
 pages land later, and `plugins.loader.get` hands nothing until they have.
 
@@ -153,8 +154,8 @@ with no client file has no actor (`engine/browser.ts`). Each plugin's header giv
 - `anim` draws a `model` per row, posed by skeletal clips from a rig file, a `json` entry. Its table
   is `world.anim.kinds.<kind>: { rig, model, ... }` (`plugins/anim/anim.sim.ts`).
 - Others draw from the entries their tables name. `particle2d` and `particle3d` draw sheets named in
-  an effects file. `grid` and `volley2d` draw sheets. `terrain3d` draws textures. `scatter3d`,
-  `flight3d`, `crowd3d`, `motion3d` and `box3dvehicle` draw models. `solids` draws a model of its
+  an effects file. `grid` and `volley2d` draw sheets. `terrain3d` draws textures. `instances3d`
+  (a lod3d layer's `mesh: { asset }`), `flight3d`, `crowd3d`, `motion3d` and `box3dvehicle` draw models. `solids` draws a model of its
   own, a `json` entry `world.solids.kinds` names, and a paint of it that gives `map` lays a
   `texture` entry on its faces, `scale` metres to one span of the picture.
 
@@ -275,8 +276,9 @@ type touches, as the types there now touch them:
    script, kept beside it in `assets/`. Put
    it in `games/<game>/assets/`.
 2. Pick its type by what draws it and whether a rule reads it (The types).
-3. Write its entry in `world.loader.assets`: the type, the url with its leading `/`, `preload` when a
-   rule reads it on its first step or it should start at once, and the type's own fields
+3. Write its entry in `world.loader.assets`: the type, the url with its leading `/`, `"preload": false`
+   only when it should start no sooner than something asks for it (every entry is preloaded
+   otherwise), and the type's own fields
    (`nearest`, `facing`, `palette`, `for`, `space`, `wrap`, `anisotropy`). An Aseprite or
    TexturePacker sheet's frames each have a `pivot` where the thing stands; a Tiled tileset says it
    with `objectalignment`.

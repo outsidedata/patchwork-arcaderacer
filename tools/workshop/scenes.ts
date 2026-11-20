@@ -38,6 +38,9 @@
 //   place: written in place at that value's own layout when it is there, else added last in the
 //   deepest object the path reaches, the keys still missing made around it. It throws for a path that
 //   runs through a value that is not an object, or past the end of an array.
+// `rows(text, path, items)` sets the list at `path` to `items`, each item on a line of its own and laid on
+//   that one line, as a hand lays a list of holds or capsules, the list made where the path has none: as
+//   the item3d workshop writes a body's `holds` and `capsules` and a fabric's `pins`.
 
 export type Spanned = { from: number; to: number } & (
   | { kind: 'object'; entries: [string, Spanned][] }
@@ -280,6 +283,16 @@ export function set(text: string, path: (string | number)[], value: unknown): st
     node = next
   }
   return replace(text, node, value, '  ')
+}
+
+export function rows(text: string, path: (string | number)[], items: unknown[]): string {
+  // the list made where it is missing, then found again and laid a row an item
+  text = set(text, path, [])
+  let node = spans(text)
+  for (const key of path) node = (node.kind === 'array' ? node.items[key as number] : at(node, String(key)))!
+  if (!items.length) return text.slice(0, node.from) + '[]' + text.slice(node.to)
+  const close = keyIndent(text, node), ind = close + '  '
+  return text.slice(0, node.from) + `[\n${items.map(v => ind + inline(v)).join(',\n')}\n${close}]` + text.slice(node.to)
 }
 
 export function poses(text: string, machine: string, name: string, edit: Record<string, Record<string, unknown>>): string | undefined {

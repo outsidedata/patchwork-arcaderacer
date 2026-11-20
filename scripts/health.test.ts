@@ -160,4 +160,16 @@ describe('health', () => {
     const refuses = tool(path.join(root, 'refuses'), 'magick', 'echo "no encode delegate for this image format WEBP" >&2; exit 1')
     expect((await byName({ MAGICK: refuses })).imagemagick.detail).toBe(`${refuses} cannot write WebP: no encode delegate for this image format WEBP`)
   })
+
+  it('passes a basisu that writes KTX2, and fails one that writes something else, or none, saying how to install it', async () => {
+    const magick = tool(path.join(root, 'magick'), 'magick', 'for a; do last=$a; done; printf "\\211PNG" > "${last#PNG32:}"')
+    const writes = (body: string) => 'while [ $# -gt 0 ]; do [ "$1" = -output_file ] && out=$2; shift; done\n' + body
+    const good = tool(path.join(root, 'good'), 'basisu', writes('printf "\\253KTX 20\\273" > "$out"'))
+    expect((await byName({ MAGICK: magick, BASISU: good })).basisu).toMatchObject({ ok: true, for: 'bake', detail: `${good} writes KTX2` })
+    const png = tool(path.join(root, 'png'), 'basisu', writes('printf "\\211PNG" > "$out"'))
+    expect((await byName({ MAGICK: magick, BASISU: png })).basisu).toMatchObject({ ok: false, detail: `${png} cannot write KTX2: its file is not KTX2` })
+    const r = (await byName({ MAGICK: magick, PATH: path.join(root, 'empty') })).basisu
+    expect(r).toMatchObject({ ok: false, detail: 'no basisu on the PATH' })
+    expect(r.fix).toContain('brew install basis_universal')
+  })
 })

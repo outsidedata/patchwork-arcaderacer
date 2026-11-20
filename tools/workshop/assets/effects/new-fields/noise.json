@@ -1,0 +1,44 @@
+{
+  "forceGenerators": {
+    "lift-even": [{ "direction": [0, 1.5, 0] }],
+    "lift-noisy": [{ "direction": [0, 1.5, 0], "noiseAmplitude": 1, "noiseFrequency": 0.7 }],
+    "rise": [{ "direction": [0, 1.5, 0] }],
+    "rise-turbulent": [{ "direction": [0, 1.5, 0], "turbulence": 2, "noiseFrequency": 0.8 }],
+    "churn-still": [{ "turbulence": 6, "noiseFrequency": 1, "drag": 1 }],
+    "churn-scrolling": [{ "turbulence": 6, "noiseFrequency": 1, "drag": 1, "noiseScroll": [0, 2, 0] }]
+  },
+  "effects": {
+    "noiseAmplitude": [
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [-3, 0, 0, -3, 0, 0], "carry": "noiseAmplitude-off" },
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [3, 0, 0, 3, 0, 0], "carry": "noiseAmplitude-on" }
+    ],
+    "noiseAmplitude-off": [
+      { "n": [3, 3], "every": 0.02, "life": [2.5, 2.5], "shape": "glow", "size": [0.1, 0.14], "box": [-2.2, 0, -0.05, 2.2, 0.1, 0.05], "forces": { "lift-even": 1 }, "tint": 7077770, "gain": 2, "alphas": [[0, 0], [0.15, 1], [0.8, 1], [1, 0]], "add": true }
+    ],
+    "noiseAmplitude-on": [
+      { "n": [3, 3], "every": 0.02, "life": [2.5, 2.5], "shape": "glow", "size": [0.1, 0.14], "box": [-2.2, 0, -0.05, 2.2, 0.1, 0.05], "forces": { "lift-noisy": 1 }, "tint": 7077770, "gain": 2, "alphas": [[0, 0], [0.15, 1], [0.8, 1], [1, 0]], "add": true }
+    ],
+
+    "turbulence": [
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [-3, 0, 0, -3, 0, 0], "carry": "turbulence-off" },
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [3, 0, 0, 3, 0, 0], "carry": "turbulence-on" }
+    ],
+    "turbulence-off": [
+      { "n": [1, 2], "every": 0.04, "life": [3, 3.5], "shape": "puff2", "size": [0.4, 0.6], "grow": 2.5, "dir": [0, 1, 0], "spread": 0.2, "speed": [1, 1.5], "drag": 0.3, "spin": 0.5, "forces": { "rise": 1 }, "tint": 10132122, "alphas": [[0, 0], [0.1, 0.7], [0.7, 0.6], [1, 0]] }
+    ],
+    "turbulence-on": [
+      { "n": [1, 2], "every": 0.04, "life": [3, 3.5], "shape": "puff2", "size": [0.4, 0.6], "grow": 2.5, "dir": [0, 1, 0], "spread": 0.2, "speed": [1, 1.5], "drag": 0.3, "spin": 0.5, "forces": { "rise-turbulent": 1 }, "tint": 10132122, "alphas": [[0, 0], [0.1, 0.7], [0.7, 0.6], [1, 0]] }
+    ],
+
+    "noiseScroll": [
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [-3, 1.2, 0, -3, 1.2, 0], "carry": "noiseScroll-off" },
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [3, 1.2, 0, 3, 1.2, 0], "carry": "noiseScroll-on" }
+    ],
+    "noiseScroll-off": [
+      { "n": [4, 4], "every": 0.02, "life": [2, 2.5], "shape": "spark", "size": [0.06, 0.09], "speed": [0.5, 1], "forces": { "churn-still": 1 }, "tint": 16732112, "gain": 3, "a1": 0, "add": true }
+    ],
+    "noiseScroll-on": [
+      { "n": [4, 4], "every": 0.02, "life": [2, 2.5], "shape": "spark", "size": [0.06, 0.09], "speed": [0.5, 1], "forces": { "churn-scrolling": 1 }, "tint": 16732112, "gain": 3, "a1": 0, "add": true }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 // The browser half of loader. The catalogue is the scene's `world.loader.assets`, which no packet
-// carries: this client reads it off its own scene. Everything marked `preload` starts on the first
-// tick; anything else starts when something calls `load` or `on`. A name asked for before the first
+// carries: this client reads it off its own scene. Every entry starts on the first tick unless it
+// says `preload: false`; one that does starts when something calls `load` or `on`. A name asked for before the first
 // tick waits for it, and is neither started nor failed until then.
 //
 // Every table this half keeps is this client's own and goes with it: what it has decoded, what is
@@ -36,6 +36,17 @@
 // edges, both ways, for a surface that tiles it, and `anisotropy: n` samples it along n texels where a
 // surface is seen at a slant, which three caps at what the GPU allows. Each is set as the texture is
 // decoded, so whatever draws it never sets it on a texture another drawing shares.
+//
+// KTX2. A `texture` entry whose file is `.ktx2` (in any case) is GPU-compressed: Basis Universal,
+// written by a bake (`scripts/bake.ts`, `ktx2`), and transcoded in a page by three's KTX2 reader into the
+// compressed format this GPU reads (BC7, ASTC, ETC2…), so it reaches the GPU several times smaller than
+// a picture's own pixels and is uploaded as it is, with the mips the bake made, none built on the page.
+// One holding several layers is three's CompressedArrayTexture, one array a shader samples. It is
+// decoded once render3d has a renderer, which it is transcoded for; the transcoder is
+// `plugins/loader/basis/`, three's own files copied beside this one so a published site serves them as
+// it serves this file. Its colour space is the one its file says unless the entry gives `space`; `wrap`
+// and `anisotropy` are set as on any texture. In node it is the 1×1 white data texture every picture is
+// there. One for the ui, or in a scene with no render3d, fails.
 //
 // A picture a wad holds (`world.loader.wads`, `loader.sim.ts`) is never fetched: this half starts the
 // wads opening on its first tick, and every picture waits for them. One a wad holds is decoded from its
@@ -74,8 +85,7 @@
 // times the map has been written, so what drew it knows to draw it again. The entry's `nearest`
 // filters every image nearest.
 //
-// `file(name)` is a json, palette, pixels, binary or tilemap entry's value or a sheet entry's `data`, without an
-// image decoded: what the editor reads off the running game. `written(url)` refills every file of
+// `written(url)` refills every file of
 // this client that read that url in place from the file as the sim half now holds it, so the sim
 // half's `written` is called first: a json, a palette, a sheet or a pack of it, a map or a tileset of
 // it, or a picture a sheet or a map draws from, a page say, which the sim half has counted
@@ -113,7 +123,21 @@
 // glTF loader, with three's meshopt decoder, so a glb packed by gltfpack (`EXT_meshopt_compression`)
 // decodes as any other; a `.gltf`, which names files beside it, is refused. `model(name)` is `{ scene,
 // animations }`, the scene cloned with its skeleton each call, so every row that draws it has a
-// skeleton of its own.
+// skeleton of its own: its meshes' geometry and materials are the decoded model's, shared by every
+// copy. In a page, a meshopt-packed glb's buffers are unpacked off the page, in three workers, and no
+// more than four models are fetched and decoded at once, the rest waiting their turn in the order they
+// were asked for. No entry of any type starts, a model, a binary, a json or a texture alike, until every
+// font and every preloaded entry `for: "ui"` has landed or failed: what the ui draws first, a loading
+// screen's words and pictures among it (`loader.ui.ts`), comes down before the rest crowds it out.
+//
+// Whatever has been decoded does not land the moment it is: each tick hands over what has been decoded,
+// in the order it was, those fonts and ui entries ahead of everything else, until four milliseconds of
+// the tick have gone, and at least one picture each
+// tick. A model's pictures and a texture's picture are sent to render3d's GPU first, one picture at a
+// time, so the frame that first draws a model does not upload them; the thing then lands, its `on`
+// callbacks run and its `load` resolves. So a scene that asks for many models at once has them land
+// over several frames, each frame's share of the work no more than four milliseconds, the frame that
+// crosses it once its last picture is sent. A client that is never ticked again lands nothing more.
 //
 // An entry of type `sound` is decoded with `plugins.audio.context.decodeAudioData`, so this half
 // never touches Web Audio itself. `sound(name)` is the AudioBuffer.
@@ -127,6 +151,21 @@
 // again does not fetch again, until `written` for that url; a missing file is not remembered, and
 // every ask for it looks again, so a file put there while the game runs is found.
 //
+// `shaders()` is how many things are still having their shaders compiled, as the plugin named in the
+// scene's `world.loader.mods.shaders` counts them (`render3d.loader.ts`: render3d's own count of what it
+// compiles before drawing), 0 when the scene names none; the loading screen waits on it too and says it
+// is compiling shaders. It throws, as `provided` does, when the scene names a plugin it does not list.
+//
+// `settled()` is whether every plugin the scene's `world.loader.mods.ready` names says what it draws
+// of the world is whole, each its `ready(plugins)` → boolean (`terrain3d.loader.ts`: the land and
+// everything terrain3d's own `mods.ready` waits on, lod3d's tiles say, done where the camera stands);
+// true when it names none. The loading screen waits on it too, so the game is never shown in a world
+// still being made. It throws, as `provided` does, when the scene names a plugin it does not list.
+//
+// `preloads()` is `{ done, of }`: how many entries the first tick starts, every one not marked `preload: false` and every
+// font, and how many of them have landed or failed, so a loading screen (`loader.ui.ts`) knows how far
+// it is and when it is over. Asked before the first tick, it throws, as the catalogue does.
+//
 // `load(name)` is a promise of the thing, and it never throws. A name that cannot be started — no
 // such entry, a type this does not know, a `.gltf`, a scene with nothing to decode it — or a file
 // that cannot be fetched or decoded, fails: its promise rejects, and the error, whose message starts
@@ -139,7 +178,10 @@
 // this plugin, or hands it a callback and draws something else until then.
 import type { Plugins } from '#engine/browser.ts'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
-import { beside, decodePng, fetched, frameOf, fresh, inPage, isPng, mount, pick, refill, sealed, writes as rewrites, type Entry, type Frame, type Sheet, type Tiled } from './loader.sim.ts'
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js'
+import { mod, modsOf, provided } from '#addons/scenemanager/scenemanager.addon.ts'
+import { uncover } from './loader.ui.ts'
+import { beside, decodePng, fetched, frameOf, fresh, inPage, isPng, mount, pick, preloaded as preloads, refill, sealed, writes as rewrites, type Entry, type Frame, type Sheet, type Tiled } from './loader.sim.ts'
 
 export type { Sheet, Tiled }
 
@@ -180,6 +222,9 @@ export type DecodedMap = {
 const imagesOf = (m: Tiled) => [...new Set([...Object.values(m.tiles).map(t => t.page), ...m.layers.flatMap(l => (l.kind === 'image' ? [l.image] : []))])]
 
 const white = () => new Uint8Array([255, 255, 255, 255])
+
+// A texture entry's file that is GPU-compressed (KTX2).
+const KTX2 = /\.ktx2$/i
 
 // An image as node decodes one: 1×1, and loaded the moment it is given a `src`.
 function blank() {
@@ -245,6 +290,18 @@ export function loader() {
   const besides = new Map<string, Promise<ArrayBuffer | undefined>>() // each file beside an entry landed or on its way, by url
   let plugins: Plugins | undefined
   let preloaded = false
+  // How many models are fetched and decoded at once, the milliseconds of a tick spent handing over
+  // what has decoded, and the workers that unpack a meshopt glb's buffers.
+  const decoding = 4, budget = 4, workers = 3
+  let decodingNow = 0 // models fetching or decoding
+  const turns: (() => void)[] = [] // each model waiting for its turn to decode, first first
+  let firstIn: Promise<unknown> = Promise.resolve() // every font and preloaded ui entry landed or failed, from the first tick
+  // render3d's renderer, the first tick it has one: what a KTX2 texture is transcoded for
+  let haveRenderer!: (r: any) => void
+  const rendered = new Promise<any>(ok => { haveRenderer = ok })
+  let ktx2: KTX2Loader | undefined // three's KTX2 reader, made the first time a page decodes a KTX2 texture
+  // What has decoded and waits to land in a page: its pictures not yet sent to the GPU, first first.
+  const settling: { name: string; thing: any; pictures: any[]; ok: (thing: any) => void }[] = []
   let ticked!: () => void
   const first = new Promise<void>(ok => { ticked = ok })
 
@@ -264,6 +321,72 @@ export function loader() {
     made.set(name, thing)
     for (const f of waiting.get(name) ?? []) f(thing)
     waiting.delete(name)
+  }
+
+  // A model's turn to fetch and decode, and the function that ends it: once every font and every
+  // preloaded entry for the ui is in, at once while fewer than `decoding` are, else once one ahead of
+  // it has finished.
+  const turn = (): Promise<() => void> => firstIn.then(() => {
+    const end = () => {
+      decodingNow--
+      turns.shift()?.()
+    }
+    if (decodingNow < decoding) {
+      decodingNow++
+      return end
+    }
+    return new Promise<() => void>(ok => turns.push(() => { decodingNow++; ok(end) }))
+  })
+
+  // Every picture of render3d's that `thing`, an entry of type `type` decoded for the scene's
+  // renderer, draws: a texture's own, and every texture of every material of a model's meshes.
+  const uploads = (type: string, ui: boolean, thing: any): any[] => {
+    if (ui || !plugins?.render3d) return []
+    if (type === 'texture') return [thing]
+    if (type !== 'model') return []
+    const found = new Set<any>()
+    thing.scene.traverse((o: any) => {
+      if (!o.material) return
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+        for (const v of Object.values(m)) if ((v as any)?.isTexture) found.add(v)
+      }
+    })
+    return [...found]
+  }
+
+  // What the ui draws first, the loading screen among it: every font, and every entry for the ui the
+  // first tick starts.
+  const uiFirst = (it: Entry) => it.type === 'font' || (it.for === 'ui' && preloads(it))
+
+  // `thing` landed as `name` on a tick, once its pictures are on the GPU; what the ui draws first goes
+  // ahead of everything else waiting.
+  const settle = (name: string, thing: any): Promise<any> => {
+    const it = catalogue()[name]
+    return new Promise(ok => {
+      const s = { name, thing, pictures: uploads(it.type, it.for === 'ui', thing), ok }
+      if (!uiFirst(it)) return settling.push(s)
+      const at = settling.findIndex(w => !uiFirst(catalogue()[w.name]))
+      settling.splice(at < 0 ? settling.length : at, 0, s)
+    })
+  }
+
+  // Hands over what has decoded, first first, until `budget` milliseconds have gone, sending each
+  // thing's pictures to the GPU before it lands; at least one picture, or one thing with none.
+  const settleSome = (p: Plugins) => {
+    const began = performance.now()
+    const renderer = p.render3d?.renderer
+    while (settling.length) {
+      const s = settling[0]
+      while (s.pictures.length) {
+        const picture = s.pictures.shift()
+        if (renderer) renderer.initTexture(picture)
+        if (s.pictures.length && performance.now() - began >= budget) return
+      }
+      settling.shift()
+      land(s.name, s.thing)
+      s.ok(s.thing)
+      if (performance.now() - began >= budget) return
+    }
   }
 
   // The DOM's image of `blob`.
@@ -339,6 +462,21 @@ export function loader() {
     }
     if (p.render2d) return p.render2d.PIXI.Assets.load(encodeURI(current(url)))
     return image(url)
+  }
+
+  // The GPU-compressed texture of the `.ktx2` file at `url`, transcoded by three's KTX2 reader into what
+  // this GPU reads (KTX2, below): in node, the 1×1 white data texture every picture is there.
+  const compressed = async (p: Plugins, url: string): Promise<any> => {
+    if (!inPage()) return stored(p, url, false)
+    const bytes = await fetched(url)
+    const renderer = await rendered
+    if (!ktx2) {
+      ktx2 = new KTX2Loader().setTranscoderPath(new URL('./basis/', import.meta.url).href)
+      ktx2.detectSupport(renderer)
+    }
+    // the reader hands the bytes to its worker, which takes them from this thread: a copy, so the bytes
+    // the loader keeps for the url stay whole
+    return new Promise((ok, no) => ktx2!.parse(bytes.slice(0), ok, no))
   }
 
   // A three texture sampled as its entry says: its colour space, its wrapping and its anisotropy.
@@ -456,6 +594,7 @@ export function loader() {
   const decodeEntry = (p: Plugins, name: string, it: Entry): Promise<any> => {
     const ui = it.for === 'ui'
     if (it.type === 'json' || it.type === 'palette' || it.type === 'pixels' || it.type === 'binary') return parsed(name, it)
+    if (it.type === 'texture' && KTX2.test(it.url)) return compressed(p, it.url).then(tex => sampled(p, tex, it))
     if (it.type === 'texture') return decode(p, it.url, ui).then(tex => (p.render3d && !ui ? sampled(p, tex, it) : tex))
     if (it.type === 'sheet') return parsed(name, it).then((data: Sheet) => {
       picturesOf.set(name, data.pages)
@@ -498,10 +637,10 @@ export function loader() {
     }
     if (it.type === 'model') {
       const { GLTFLoader } = p.render3d
-      return fetched(it.url).then(bytes => {
+      return turn().then(end => fetched(it.url).then(bytes => {
         const giveBack = inPage() ? () => {} : lend()
         return new Promise((ok, no) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parse(bytes, '', ok, no)).finally(giveBack)
-      })
+      }).finally(end))
     }
     return fetched(it.url).then(bytes => p.audio.context.decodeAudioData(bytes))
   }
@@ -517,6 +656,7 @@ export function loader() {
     if (it.type === 'tilemap' && (it.for !== undefined || !p.render2d)) throw new Error('a tilemap, and this scene names no render2d to draw it')
     if (it.type === 'bitmapfont' && !(it.for === 'ui' ? p.ui : p.render2d)) throw new Error('a bitmap font, and this scene names no render2d, nor ui with the entry for it, to draw it')
     if (it.type === 'model' && !/\.glb$/i.test(it.url)) throw new Error('a model is one .glb')
+    if (it.type === 'texture' && KTX2.test(it.url) && (it.for === 'ui' || !p.render3d)) throw new Error('a .ktx2 texture is GPU-compressed for render3d, and this one is for ui or a scene with no render3d')
     if (it.type === 'model' && !p.render3d) throw new Error('a model, and this scene names no render3d to decode it')
     if (it.type === 'sound' && !p.audio) throw new Error('a sound, and this scene names no audio to decode it')
     if ((it.space !== undefined || it.wrap !== undefined || it.anisotropy !== undefined) && (it.type !== 'texture' || it.for === 'ui' || !p.render3d)) {
@@ -525,7 +665,8 @@ export function loader() {
     if (it.space !== undefined && it.space !== 'linear') throw new Error(`its space is ${it.space}, and a texture's is linear or left out`)
     if (it.wrap !== undefined && it.wrap !== 'repeat') throw new Error(`its wrap is ${it.wrap}, and a texture's is repeat or left out`)
     if (it.anisotropy !== undefined && !(Number.isInteger(it.anisotropy) && it.anisotropy >= 1)) throw new Error(`its anisotropy is ${it.anisotropy}, and a texture's is a whole number from 1`)
-    return decodeEntry(p, name, it)
+    // What the ui draws first starts at once; everything else waits until it is in.
+    return uiFirst(it) ? decodeEntry(p, name, it) : firstIn.then(() => decodeEntry(p, name, it))
   }
 
   // Every failure of `name` says so first, in these words.
@@ -548,7 +689,7 @@ export function loader() {
     let attempt: Promise<any>
     try { attempt = begin(plugins, name) } catch (e) { attempt = Promise.reject(e) }
     const coming = attempt.then(
-      thing => { land(name, thing); return thing },
+      thing => settle(name, thing),
       (e: Error) => {
         failed.add(name)
         throw failure(name, e)
@@ -573,26 +714,26 @@ export function loader() {
     return made.get(name)
   }
 
-  // A json, palette, pixels, binary or tilemap entry's value, or a sheet entry's `data`, with no image decoded.
-  const file = async (name: string): Promise<any> => {
-    if (!plugins) await first
-    const it = entry(name)
-    if (!['json', 'sheet', 'palette', 'pixels', 'binary', 'tilemap'].includes(it.type)) throw new Error(`loader ${name} is a ${it.type}, not a json, sheet, palette, pixels, binary or tilemap file`)
-    return parsed(name, it)
-  }
-
   return {
     tick(p: Plugins) {
       plugins = p
       assets = p.wire.scene.world?.loader?.assets
       if (!assets) throw new Error('the scene\'s world has no loader catalogue')
       if (!preloaded) {
+        if (inPage()) MeshoptDecoder.useWorkers(workers)
         preloaded = true
         mount(p.wire.scene.world ?? {}).catch(e => console.error(e))
-        for (const [name, it] of Object.entries(catalogue())) if (it.preload || it.type === 'font') wanted.add(name)
+        for (const [name, it] of Object.entries(catalogue())) if (preloads(it) || it.type === 'font') wanted.add(name)
+        firstIn = Promise.allSettled(Object.entries(catalogue()).filter(([, it]) => uiFirst(it)).map(([name]) => start(name)))
+        // The page's loading cover (`loader.cover.ts`) stays up until the ui's loading screen is drawn
+        // under it (`loader.ui.ts`); a scene that shows none takes it off now.
+        const panels = Object.values((p.wire.scene.world?.ui?.panels ?? {}) as Record<string, { loading?: unknown }>)
+        if (!p.ui || !panels.some(panel => panel.loading)) uncover()
         ticked()
       }
+      if (p.render3d?.renderer) haveRenderer(p.render3d.renderer)
       for (const name of wanted) void start(name)
+      settleSome(p)
     },
     // The catalogue's entry `name`, or undefined when it has none: for a plugin that asks what kind of
     // file a name is, and so never reads `world.loader` itself.
@@ -617,7 +758,6 @@ export function loader() {
       return { scene: plugins!.render3d.SkeletonUtils.clone(gltf.scene), animations: gltf.animations }
     },
     sound(name: string): AudioBuffer { return landed(name, 'sound') },
-    file,
     // The bytes of the file at `path` beside entry `name`'s file, or undefined when it is not there.
     beside(name: string, path: string): Promise<ArrayBuffer | undefined> {
       const url = beside(entry(name).url, path)
@@ -692,9 +832,34 @@ export function loader() {
     },
     // How many of the ones started and not failed are here.
     progress() { return { done: made.size, started: going.size - failed.size } },
+    // How many things are still having their shaders compiled, by the plugin the scene's
+    // `world.loader.mods.shaders` names; 0 when it names none.
+    shaders(): number {
+      const world = plugins!.wire.scene.world!
+      const f = mod<(p: Plugins) => number>(world, 'loader', 'shaders')
+      if (!f) return 0
+      provided(plugins!.wire.scene, 'loader', 'shaders')
+      return f(plugins!)
+    },
+    // Whether every plugin the scene's `world.loader.mods.ready` names says the world it draws is
+    // whole; true when it names none.
+    settled(): boolean {
+      const scene = plugins!.wire.scene
+      provided(scene, 'loader', 'ready')
+      return modsOf<(p: Plugins) => boolean>(scene.world!, 'loader', 'ready').every(f => f(plugins!))
+    },
+    // Of the catalogue's entries the first tick starts, every `preload` and every font, how many there
+    // are and how many have landed or failed: what a loading screen waits on.
+    preloads(): { done: number; of: number } {
+      const first = Object.entries(catalogue()).filter(([, it]) => preloads(it) || it.type === 'font')
+      return { done: first.filter(([name]) => made.has(name) || failed.has(name)).length, of: first.length }
+    },
     close() {
       for (const frames of cutOf.values()) for (const t of frames.values()) t.destroy()
       cutOf.clear()
+      settling.length = 0
+      ktx2?.dispose()
+      ktx2 = undefined
     },
   }
 }

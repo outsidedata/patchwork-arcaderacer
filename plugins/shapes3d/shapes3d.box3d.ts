@@ -73,5 +73,5 @@ const surfaced = (k: Kind): { baseMaterial?: Partial<Material> } => (k.surface ?
 
 export function fixed(w: W): Fixed[] {
   const kinds = w.world.shapes3d.kinds as Record<string, Kind>
-  return shapes(w).map(p => ({ id: p.id, ...stood[p.word](p.shape[p.word], kinds[p.kind], p.kind, w.get(p.id).data.yaw ?? 0) }))
+  return shapes(w).map(p => ({ id: p.id, ...stood[p.word](p.shape[p.word], kinds[p.kind], p.kind, p.shape[p.word].yaw ?? 0) }))
 }

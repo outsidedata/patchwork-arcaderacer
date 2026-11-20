@@ -66,7 +66,10 @@ each action's time and weight are written from the row's fields and `mixer.updat
 them. The hips are pinned so the travel the row already carries is not drawn twice. Mirrored clips
 (a left strafe made into a right one) are built on the page from their source. A rig's `meshes` and
 `show` hide and show meshes by stance (a helmet, a holstered gun). A kind's `aim` turns listed bones
-by shares of the row's aim pitch, and `props` hangs loader models on bones (a rifle in the hand).
+by shares of the row's aim pitch, and `props` hangs loader models on bones (a rifle in the hand). `capsules` `[{ from, to, radius }]` is
+the body as gpgpu3d holds it on the GPU, a capsule between two bones each (`anim.gpgpu3d.ts`,
+`world.gpgpu3d.mods: { things: ['anim'], behaviors: ['anim'] }`): what a cape drapes on, hair lies on
+and a particle bounces off.
 
 A row whose `limp` field is true is not drawn by anim: whatever made it limp (ragdoll3d) owns the
 model.
@@ -128,7 +131,9 @@ model.
    Bodies are read from the library (`PATCHWORK_LIBRARY`, else `~/patchwork-library`), clips from the
    clip collection (`PATCHWORK_CLIPS`, else `~/troupe-collection`), each from the shell or the repo's
    `.env`. Specular/gloss materials (Adobe Fuse, Mixamo) are turned into metal/rough
-   so skin and cloth do not come out as polished metal. The touch measure and reader also run on their
+   so skin and cloth do not come out as polished metal. The rig's `textures`
+   (`{ color, normal, roughness, emission }`) caps each type of map at that many pixels on its longer
+   side, 512 for a type left out. The touch measure and reader also run on their
    own, over a list of clips as their FBX have them (`anim.touches.py`'s and `anim.touches.mjs`'s
    headers), which the library's touch catalogue is made by.
 5. In the kind's `<kind>.sim.ts`, call `animate(me, w, dt)` every step and apply the travel it
@@ -140,7 +145,14 @@ model.
 ## Plugins it works with
 
 - **loader**: reads the rig file (`json`) and the models (`model`).
+- **gpgpu3d**: the mod `anim.gpgpu3d.ts` hands gpgpu3d each body's `capsules` and delivers the word
+  `capsule`.
+- **fabric3d**, **hair3d**: the mods `anim.fabric3d.ts` (`sources`) and `anim.hair3d.ts` (`skins`) hand
+  every body anim draws, to hold a fabric to and to grow hair on.
 - **render3d**: anim draws into its scene and dresses every material through `render3d.dress`.
+- **lights3d**: every mesh anim draws, a body and the props it holds, is marked moving
+  (`userData.moving`), so lights3d draws its shadow each frame into its moving atlas, while the still
+  scene's shadows are drawn once.
 - **ragdoll3d**: the mod `anim.ragdoll3d.ts` (`world.ragdoll3d.mods: { model: 'anim', pose: 'anim' }`)
   lays limp bodies on the models anim draws. ragdoll3d comes after anim in `plugins`.
 - **ik3d**: the mod `anim.ik3d.ts` (`world.ik3d.mods: { body: 'anim' }`) bends the limbs of anim's

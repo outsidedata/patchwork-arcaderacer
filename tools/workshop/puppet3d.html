@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>puppet3d workshop</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "/three/build/three.module.js",
+    "three/addons/": "/three/examples/jsm/",
+    "#engine/": "/engine/",
+    "#plugins/": "/plugins/",
+    "#addons/": "/addons/",
+    "fflate": "/npm/fflate/esm/browser.js",
+    "fzstd": "/npm/fzstd/esm/index.mjs"
+  }
+}
+</script>
+<style>
+:root { --bg: #16171a; --panel: #1e2024; --line: #2c2f35; --text: #d6d8dc; --dim: #8a8f98; --accent: #e0a33a; --ok: #5bbf7a; --bad: #e0573a; --pick: #4fc3ff }
+* { box-sizing: border-box }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 -apple-system, system-ui, sans-serif }
+.app { display: grid; grid-template-columns: 280px 1fr 320px; grid-template-rows: 48px 1fr 44px; height: 100vh }
+header { grid-column: 1 / 4; display: flex; align-items: center; gap: 6px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--line) }
+header .sp { flex: 1 }
+button, select, input { font: inherit; font-size: 12px; color: var(--text) }
+button { padding: 5px 12px; border: 1px solid var(--line); border-radius: 5px; background: #25282d; cursor: pointer }
+button:disabled { opacity: .4; cursor: default }
+button.go { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 600 }
+button.on { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 600 }
+select, input { background: #15161a; border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px }
+input[type=number] { width: 62px }
+input[type=range] { accent-color: var(--accent); padding: 0; border: 0; background: none }
+#animals { display: flex; gap: 4px }
+#state { color: var(--dim); font-size: 12px }
+#state.ok { color: var(--ok) } #state.bad { color: var(--bad) } #state.dirty { color: var(--accent) }
+aside { background: var(--panel); overflow: auto; padding-bottom: 24px; border-right: 1px solid var(--line) }
+aside.right { border-right: 0; border-left: 1px solid var(--line) }
+h3 { margin: 0; padding: 14px 14px 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim) }
+.say { padding: 0 14px 8px; color: var(--dim); font-size: 12px }
+.line { display: flex; gap: 6px; align-items: center; padding: 4px 14px }
+.line .lab { flex: 0 0 92px; color: var(--dim) }
+.line input[type=range] { flex: 1; min-width: 0 }
+.unit { color: var(--dim); font-size: 12px }
+.motion { padding: 8px 14px; border-top: 1px solid var(--line); cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px }
+.motion:hover { background: #24272c }
+.motion.sel { background: #2a2d33; box-shadow: inset 3px 0 var(--accent) }
+.motion.off { opacity: .45 }
+.motion b { font-size: 14px }
+.motion .when { grid-column: 1 / 3; color: var(--dim); font-size: 12px }
+.motion .changed { color: var(--accent) }
+.motion .tools { display: flex; gap: 4px }
+.motion .tools button { padding: 1px 7px }
+.parts { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 14px 8px }
+.parts button { padding: 2px 8px; font-size: 12px }
+.parts button.moves { border-color: #6b5426 }
+.parts button.on { background: var(--pick); color: #111; border-color: var(--pick) }
+.angle { margin: 6px 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: #1a1c20 }
+.angle .head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px }
+.angle .head i { width: 10px; height: 10px; border-radius: 50%; display: inline-block }
+.angle .head b { flex: 1 }
+.angle .line { padding: 3px 0 }
+.angle .line .lab { flex-basis: 70px }
+.angle .note { color: var(--dim); font-size: 12px; padding-top: 2px }
+.when-form .line .lab { flex-basis: 70px }
+details { margin: 4px 14px; border-top: 1px solid var(--line) }
+details summary { padding: 6px 0; cursor: pointer; color: var(--dim) }
+.num { display: flex; gap: 6px; align-items: center; padding: 2px 0 }
+.num span { flex: 1; font: 11px ui-monospace, monospace; color: var(--dim) }
+.num.changed span { color: var(--accent) }
+.num input { width: 80px }
+main { position: relative; overflow: hidden }
+main canvas { display: block }
+#views { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; z-index: 2 }
+#error { position: absolute; bottom: 10px; left: 10px; right: 10px; font: 11px ui-monospace, monospace; color: #fff; background: #7a2a1d; padding: 6px 8px; border-radius: 4px; white-space: pre-wrap; display: none; z-index: 3 }
+footer { grid-column: 1 / 4; display: flex; align-items: center; gap: 10px; padding: 0 14px; background: var(--panel); border-top: 1px solid var(--line) }
+footer #time { flex: 1 }
+footer .mono { font: 12px ui-monospace, monospace; color: var(--dim); width: 64px; text-align: right }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <select id="game" title="game"></select>
+    <div id="animals"></div>
+    <span class="sp"></span>
+    <span id="state"></span>
+    <button id="revert">Revert</button>
+    <button id="save" class="go">Save</button>
+  </header>
+  <aside>
+    <h3>What it's doing</h3>
+    <div id="doing"></div>
+    <h3>Its motions</h3>
+    <div class="say">Pick one to see it played in full and shape it.</div>
+    <div id="motions"></div>
+    <div id="library"></div>
+  </aside>
+  <main id="view">
+    <div id="views"></div>
+    <div id="error"></div>
+  </main>
+  <aside class="right" id="shape"></aside>
+  <footer>
+    <button id="play">Pause</button>
+    <input id="time" type="range" min="0" max="10" step="0.01" value="0">
+    <span class="mono" id="clock">0.00 s</span>
+  </footer>
+</div>
+<script type="module" src="/puppet3d.ts"></script>
+</body>
+</html>

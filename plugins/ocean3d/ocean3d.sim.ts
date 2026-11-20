@@ -99,8 +99,7 @@
 // `spectrumOf(w)` is the spectrum of the truth's `world.ocean3d`, memoised per truth by `inputs(sea)`,
 // the numbers the spectrum reads, `keyed`: amp, chop, foamRecovery and the shoaling never change it
 // and are not in the key. The truth is its `world`, which it copies for itself at boot, not the `w`
-// it is read through: the editor's `reading` makes a `w` a call, and a panel that redrew the sea four
-// times a second made the whole spectrum each time.
+// it is read through, so every `w` over one truth reads the one spectrum.
 // The row's `tick` asks for it, so a bad `patches` throws on the first step.
 import { seeded, type Kind, type W } from '#engine/engine.ts'
 import * as math from '#plugins/math/math.sim.ts'

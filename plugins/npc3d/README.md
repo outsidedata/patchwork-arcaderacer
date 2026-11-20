@@ -431,14 +431,14 @@ which a clone of core does not have. They check:
 - a walker held up on the way to a place on its route asks for a new route from where it stands;
 - in the town, the guards hunt the intruders down, and the people run from the shots.
 
-`demo_castle` (`demo_castle.sim.test.ts`) checks the people climbing: a visitor goes to a roof of
+`demo_world3d` (`demo_world3d.sim.test.ts`) checks the people climbing: a visitor goes to a roof of
 castle-plus's fortress along its route, its feet rising leg by leg up the stair, its course written once
 a leg.
 
 ```
 yarn vitest run plugins/npc3d/npc3d.sim.test.ts
 yarn vitest run games/demo_npc3d/demo_npc3d.sim.test.ts
-yarn vitest run games/demo_castle/demo_castle.sim.test.ts
+yarn vitest run games/demo_world3d/demo_world3d.sim.test.ts
 ```
 
 ## Keywords

@@ -48,18 +48,18 @@ A group is what the props are (`anime_trees`); a pack keeps the name it came wit
    writes built files into `games/<game>/assets/` (`bringing-in-art`, `making-game-assets`). The
    drive game's `assets/stylized/stylized.mjs` is one: Blender (`stylized.py`) builds a plain glb from the
    library's FBX, then gltfpack packs it beside the script. What such a script has to do for
-   scatter3d, each found the hard way:
+   instances3d (a lod3d layer's `mesh: { asset }`), each found the hard way:
    - Apply the object's 0.01 scale and its place into the mesh, foot at the origin.
    - Split each row by material into nodes of one primitive each, named `<row>-<lod>-<part>`.
      gltfpack keeps node names and drops glTF mesh names, and three names the parts of a node of
      several primitives after the mesh, so a multi-material row arrives nameless: `has no LOD 0`.
-   - Never name a part all digits: scatter3d reads `<row>-<lod>-<part>` greedily, so `tree1-0-0` is
+   - Never name a part all digits: instances3d reads `<row>-<lod>-<part>` greedily, so `tree1-0-0` is
      row `tree1-0`. The drive trees use `bark` and `leaf<k>`.
    - Set the Principled alpha to 1 on a material no picture feeds alpha to. The Jabami bark came in
      at alpha 0, which the glTF exporter writes as a cut-out material of alpha 0: trees with no
      trunk.
    - Read the packed glb back before the game loads it: every node named, bark `OPAQUE`, leaves
-     `BLEND` (scatter3d cuts them at `cutout`).
+     `BLEND` (instances3d cuts them at `world.instances3d.cutout`).
 
 ## `yarn inspect`
 

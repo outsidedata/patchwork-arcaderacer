@@ -20,7 +20,16 @@
 //   ways                  x and z across the land, without end, and y, which no want moves
 // The ground under a body is the land, or the top of a solid there no more than the body's `step` over
 // its feet, where that is higher; a solid whose top rises past that and whose underside is under the
-// body's head stands in its way. `ground(w, feet, k)` is that ground for feet at y = `feet`.
+// body's head stands in its way; and its `roof` is the lowest underside at or over the body's head of
+// the solids reaching within r of (x, z), Infinity where there is none. `ground(w, feet, k)` is that
+// ground for feet at y = `feet`. A body carried up (`step` handed a place higher than the body stood)
+// reads the ground from the feet it stood on, and, its head past the roof over where the move ends, is
+// put back under it, no lower than it stood, so a jump under a ceiling bumps its head.
+//
+// The move across is swept: where the body stands clear of a solid and the move passes through it, it
+// stops where the body's circle first meets the footprint and the rest goes on along it, so none is
+// passed through however fast; a footprint that held the body's middle as the move began is over or
+// under it, not beside it, and is not got out of across the ground.
 //
 // The numbers, `world.kinematics3d.kinds.<kind>.triangles` (the row's `as` when it names one, else its kind):
 //   radius     metres: the body's circle against solids' footprints
@@ -72,12 +81,15 @@ export type Ground = {
   height(x: number, z: number): number
   depth?(x: number, z: number): number
   solids(x: number, z: number, r: number): (Solid | Worded)[]
+  // The lowest underside over a body whose head is where the ground was made for, of what reaches
+  // within r of (x, z), or Infinity where nothing is over it.
+  roof?(x: number, z: number, r: number): number
   cell?: number
 }
 // The ground's heights and water, what the footprint stands on, without its solids.
 type Heights = Omit<Ground, 'solids'>
 // A plugin's `fixed`: every solid that never moves reaching within r of
-// (x, z), from the walls of a level, the trunks and boulders scatter3d places, anything that stands
+// (x, z), from the walls of a level, the trunks and boulders lod3d places, anything that stands
 // where it stands for the life of the truth.
 export type Fixed = (w: W, x: number, z: number, r: number) => (Solid | Worded)[]
 
@@ -170,6 +182,58 @@ function within(f: Footprint, x: number, z: number, r: number): boolean {
   return gap(f, x, z) <= r + f.round
 }
 
+// Whether a footprint holds the point (x, z) itself: within its outline, or within a round one's
+// rounding of its one corner. A body whose middle a footprint held as its move began has that thing over
+// or under it, not beside it, and is not got out of it across the ground.
+function holds(s: Footprint, x: number, z: number): boolean {
+  if (s.points.length === 1) return math.hypot(x - s.points[0][0], z - s.points[0][1]) < s.round
+  return nearest(s.points, x, z).inside
+}
+
+// The least t ≥ 0 at which the ray from (px, pz) along (dx, dz) meets an outline taken `r` wider, or
+// Infinity when it never does; 0 from within it.
+function enter(points: number[][], r: number, px: number, pz: number, dx: number, dz: number): number {
+  const f = { points, round: r }
+  if (gap(f, px, pz) <= r) return 0
+  let best = Infinity
+  const a = dx * dx + dz * dz
+  if (!(a > 0)) return best
+  // Each corner, a circle `r` across.
+  for (const [cx, cz] of points) {
+    const qx = px - cx, qz = pz - cz
+    const b = qx * dx + qz * dz, c = qx * qx + qz * qz - r * r, disc = b * b - a * c
+    if (disc < 0) continue
+    const t = (-b - Math.sqrt(disc)) / a
+    if (t >= 0) best = Math.min(best, t)
+  }
+  // Each side, moved `r` out along its outward normal.
+  if (points.length > 1) {
+    let area = 0
+    for (let i = 0; i < points.length; i++) {
+      const [ax, az] = points[i], [bx, bz] = points[(i + 1) % points.length]
+      area += ax * bz - bx * az
+    }
+    const sign = area >= 0 ? 1 : -1
+    for (let i = 0; i < points.length; i++) {
+      const [ax, az] = points[i], [bx, bz] = points[(i + 1) % points.length]
+      const ex = bx - ax, ez = bz - az, len = math.hypot(ex, ez)
+      if (!(len > 0)) continue
+      for (const out of points.length === 2 ? [1, -1] : [sign]) {
+        const nx = (ez / len) * out, nz = (-ex / len) * out
+        const towards = dx * nx + dz * nz
+        if (!(towards < 0)) continue
+        const sx = ax + nx * r, sz = az + nz * r
+        const t = ((sx - px) * nx + (sz - pz) * nz) / towards
+        if (t < 0) continue
+        const hx = px + dx * t - sx, hz = pz + dz * t - sz
+        const along = (hx * ex + hz * ez) / (len * len)
+        if (along >= 0 && along <= 1) best = Math.min(best, t)
+      }
+    }
+  }
+  return best
+}
+
 // ---------------------------------------------------------------- one body's read of the ground
 
 // The ground as one body reads it in one call: on a ground with a `cell`, its height and depth are
@@ -216,6 +280,7 @@ function read(ground: Ground | Read, x: number, z: number, reach: number, foot: 
     height: c ? lattice(ground.height, c, kept?.height) : ground.height,
     ...(ground.depth && { depth: c ? lattice(ground.depth, c, kept?.depth) : ground.depth }),
     solids: (qx, qz, r) => (held && math.hypot(qx - x, qz - z) + r <= reach ? near(held, qx, qz, r) : asked(qx, qz, r).map(foot)),
+    ...(ground.roof && { roof: ground.roof }),
     ...(c && { cell: c }),
   }
 }
@@ -418,12 +483,47 @@ function limits(k: Numbers, ground: Heights, p: number[], y: number, q: number[]
   return wading(k, ground, p, q) ?? stepping(k, ground, p, y, q) ?? sloping(k, ground, p, y, q)
 }
 
-// The point pushed out of every solid it is within the body's radius of: a round one along the line
-// from its middle, one with corners from the nearest point of its outline, along the way out there.
+// The way a point within a footprint's reach is pushed out of it: from its one corner, or from the
+// nearest point of its outline (that side's outward normal from within it).
+function outOf(s: Footprint, x: number, z: number): number[] {
+  if (s.points.length === 1) return [x - s.points[0][0], z - s.points[0][1]]
+  const near = nearest(s.points, x, z)
+  return near.inside ? near.n ?? [0, 0] : [x - near.at[0], z - near.at[1]]
+}
+
+// The move from `from` to `q` against every solid along it. Where the body stands clear of a solid as
+// the move begins and the move passes through it, ending beyond its reach or so deep that pushing the
+// point out would put it on the far side from where it came, the move stops where the body's circle
+// first meets the footprint on the way (`enter`), and the rest goes on along the footprint there, its
+// part into it taken off: no wall is passed through however long the move. Then the point is pushed out
+// of every solid it is still within the body's radius of: a round one along the line from its middle,
+// one with corners from the nearest point of its outline, along the way out there, so a post or a corner
+// is slid round. A solid that held the body's middle as the move began (`holds`) is left out of both.
 function push(k: Numbers, ground: Read, q: number[], from: number[]): number[] {
   let [x, z] = q
-  for (const s of ground.solids(x, z, k.radius)) {
+  const half = math.hypot(x - from[0], z - from[1]) / 2
+  for (const s of ground.solids((from[0] + x) / 2, (from[1] + z) / 2, half + k.radius)) {
     const reach = s.round + k.radius
+    if (holds(s, from[0], from[1])) continue
+    const dx = x - from[0], dz = z - from[1]
+    const start = s.points.length === 1 ? math.hypot(from[0] - s.points[0][0], from[1] - s.points[0][1]) : gap(s, from[0], from[1])
+    if (start >= reach - TOLERANCE && (dx !== 0 || dz !== 0)) {
+      const t = enter(s.points, reach, from[0], from[1], dx, dz)
+      const out = outOf(s, x, z)
+      const end = s.points.length === 1 ? math.hypot(out[0], out[1]) : gap(s, x, z)
+      const through = !(end < reach) || out[0] * (from[0] - x) + out[1] * (from[1] - z) < 0
+      if (t < 1 && through) {
+        const cx = from[0] + dx * t, cz = from[1] + dz * t
+        const near = nearest(s.points, cx, cz)
+        const off = math.hypot(cx - near.at[0], cz - near.at[1])
+        const n = off > 0 ? [(cx - near.at[0]) / off, (cz - near.at[1]) / off] : near.n ?? [-dx / math.hypot(dx, dz), -dz / math.hypot(dx, dz)]
+        let rx = dx * (1 - t), rz = dz * (1 - t)
+        const into = rx * n[0] + rz * n[1]
+        if (into < 0) { rx -= into * n[0]; rz -= into * n[1] }
+        x = cx + rx
+        z = cz + rz
+      }
+    }
     if (s.points.length === 1) {
       const [sx, sz] = s.points[0]
       let dx = x - sx, dz = z - sz
@@ -445,10 +545,12 @@ function push(k: Numbers, ground: Read, q: number[], from: number[]): number[] {
   return [x, z]
 }
 
-const clear = (k: Numbers, ground: Read, q: number[]) =>
-  ground.solids(q[0], q[1], k.radius).every(s => s.points.length === 1
+// Whether the point stands the body's radius clear of every solid, but those that held its middle at
+// `from` (`push`).
+const clear = (k: Numbers, ground: Read, q: number[], from: number[]) =>
+  ground.solids(q[0], q[1], k.radius).every(s => holds(s, from[0], from[1]) || (s.points.length === 1
     ? math.hypot(q[0] - s.points[0][0], q[1] - s.points[0][1]) >= s.round + k.radius - TOLERANCE
-    : gap(s, q[0], q[1]) >= s.round + k.radius - TOLERANCE)
+    : gap(s, q[0], q[1]) >= s.round + k.radius - TOLERANCE))
 
 function slideOn(me: Row, k: Numbers, ground: Read, delta: number[]): number[] {
   const b = me.data
@@ -465,7 +567,7 @@ function slideOn(me: Row, k: Numbers, ground: Read, delta: number[]): number[] {
     d = [q[0] - px, q[1] - pz]
     const refused = limits(k, ground, p, y, q)
     if (!refused) {
-      if (clear(k, ground, q)) return take(q)
+      if (clear(k, ground, q, p)) return take(q)
       continue
     }
     const { n } = refused
@@ -500,7 +602,7 @@ function slideOn(me: Row, k: Numbers, ground: Read, delta: number[]): number[] {
     for (let h = 0; h < FRACTION; h++) {
       const t = (lo + hi) / 2
       const c = push(k, ground, [px + d[0] * t, pz + d[1] * t], p)
-      if (!limits(k, ground, p, y, c) && clear(k, ground, c)) lo = t
+      if (!limits(k, ground, p, y, c) && clear(k, ground, c, p)) lo = t
       else hi = t
     }
     if (lo * math.hypot(d[0], d[1]) <= TOLERANCE) break
@@ -532,12 +634,16 @@ type Triangles = { yaw?: number; normal?: number[] }
 function stepOn(me: Row, w: W, pos: number[], want: number[], dt: number): number[] {
   const k = numbers(me, w)
   const d = me.data
+  // A body carried up (kinematics3d's gravity, a jump) reads the ground from the feet it stood on, as
+  // walker's body does, so what was over its head is over it all the step.
+  const before = d.pos as number[] | undefined
+  const rising = !!before && pos[1] > before[1]
   d.pos = pos
   const [px, py, pz] = pos
   // Held up by the land the step before, as kinematics3d last found it.
   const was = d.grounded !== false
   // The farthest this step can move it: its want, and steep ground's slide added to it.
-  const g = ready(me, w, k, ground(w, py, k), (math.hypot(want[0], want[2]) + k.slide) * dt)
+  const g = ready(me, w, k, ground(w, rising ? before![1] : py, k), (math.hypot(want[0], want[2]) + k.slide) * dt)
   // A slide starts past maxSlope and ends only below maxSlope − slopeBand.
   const up = was || d.sliding ? steep(k, g, px, pz, d.sliding ? k.maxSlope - k.slopeBand : k.maxSlope) : undefined
   let vx = want[0], vz = want[2]
@@ -556,6 +662,12 @@ function stepOn(me: Row, w: W, pos: number[], want: number[], dt: number): numbe
     d.pos = [x, S, z]
     d.sliding = !!steep(k, g, x, z, d.sliding || up ? k.maxSlope - k.slopeBand : k.maxSlope)
   } else d.sliding = false
+  // A head rising into the underside of what is over where the body ends the move is put back under it,
+  // no lower than the body stood.
+  if (rising) {
+    const roof = g.roof?.(x, z, k.radius) ?? Infinity
+    if (d.pos[1] + k.height > roof) d.pos = [x, Math.max(before![1], roof - k.height), z]
+  }
   return d.pos
 }
 
@@ -609,7 +721,7 @@ function landOf(w: W) {
   return l
 }
 
-export function ground(w: W, feet: number, k: Pick<Numbers, 'step' | 'height'>): Ground {
+export function ground(w: W, feet: number, k: Pick<Numbers, 'step' | 'height'>): Ground & Required<Pick<Ground, 'roof'>> {
   const reach = feet + k.step + TOLERANCE, head = feet + k.height
   const l = landOf(w)
   const foot = footOf(behaviorsOf(w.world))
@@ -630,5 +742,14 @@ export function ground(w: W, feet: number, k: Pick<Numbers, 'step' | 'height'>):
     },
     depth: l.depth,
     solids: (x, z, r) => solidsAt(w, x, z, r).filter(wall),
+    // The undersides at or over its head of the solids reaching within r, the lowest of them.
+    roof(x, z, r) {
+      let low = Infinity
+      for (const s of solidsAt(w, x, z, r)) {
+        const f = foot(s)
+        if (f.base !== undefined && f.base >= head - TOLERANCE && within(f, x, z, r)) low = Math.min(low, f.base)
+      }
+      return low
+    },
   }
 }

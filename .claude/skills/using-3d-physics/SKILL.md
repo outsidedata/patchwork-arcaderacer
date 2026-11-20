@@ -50,7 +50,7 @@ it by that word's behavior: hitscan3d where a line meets it, walker its footprin
 behind it. Each has `cylinder` of its own (hitscan3d `capsule` too); a plugin that hands them another
 word delivers its behavior through `world.<p>.mods.behaviors` (shapes3d's `box`), and a delivered word
 takes the place of the plugin's own of that word. A bare solid (`{x, z, radius}` to walker, `{x, z,
-radius, base, tall?}` to hitscan3d, `{x, z, radius, tall?}` to cover3d), as scatter3d hands them, is read
+radius, base, tall?}` to hitscan3d, `{x, z, radius, tall?}` to cover3d), as lod3d hands them, is read
 as the cylinder it always was (each plugin's `fromBare`).
 
 ## How the world reaches each plugin: the mods
@@ -102,15 +102,22 @@ The providers core ships:
 | `plugins/shapes3d/shapes3d.nav3d.ts` | `solids`: each shape in the bake's area as its footprint |
 | `plugins/terrain3d/terrain3d.box3dvehicle.ts` | `land`, `grip` and `drag` off the painted surface |
 | `plugins/terrain3d/terrain3d.ragdoll3d.ts`, `terrain3d.solids.ts` | `land` = the page's ground |
-| `plugins/scatter3d/scatter3d.walker.ts` | `solids`: trunks and boulders as circles |
-| `plugins/scatter3d/scatter3d.hitscan3d.ts` | `solids`: the same as cylinders with `base`, `tall` |
-| `plugins/scatter3d/scatter3d.box3d.ts` | `props`: a capsule (or a sunk sphere) per solid in the chunk; throws on a solid with no `tall` |
-| `plugins/scatter3d/scatter3d.ragdoll3d.ts`, `scatter3d.cover3d.ts` | `solids` for those two |
+| `plugins/lod3d/lod3d.walker.ts` | `solids` and `fixed`: the instances of every row that gives `solid` (trunks and boulders) as circles `solid`·size round, with `base` and `tall`·size; needs `world.lod3d.widest` and `remember` |
+| `plugins/lod3d/lod3d.hitscan3d.ts` | `solids`: the same, those whose circle the line's path crosses |
+| `plugins/lod3d/lod3d.box3d.ts` | `props`: a capsule (or a sunk sphere) per solid in the chunk; throws on a solid with no `tall` |
+| `plugins/lod3d/lod3d.ragdoll3d.ts`, `lod3d.cover3d.ts` | `solids` for those two (ragdoll3d's off the tiles this page's lod3d holds) |
 | `plugins/shapes3d/shapes3d.walker.ts` | `fixed`: its shapes; `behaviors`: `box`, its four corners |
 | `plugins/shapes3d/shapes3d.hitscan3d.ts` | `solids`: its shapes a line may cross; `behaviors`: `box`, where a line meets it |
 | `plugins/shapes3d/shapes3d.cover3d.ts` | `solids`: its shapes; `behaviors`: `box`, the spot behind it |
 | `plugins/shapes3d/shapes3d.solids.ts` | `models`: a plain model of each of its kinds with a `look` |
+| `plugins/shapes3d/shapes3d.particle3d.ts` | `solids` (page): where a line first meets its boxes, planes, hyperplanes and cylinders, which particles of a layer with a `bounce` bounce off |
 | `plugins/shapes3d/shapes3d.box3d.ts` | `fixed`: every box, cylinder and plane as the solid solids draws of it, of its kind's `surface`, named by its row |
+| `plugins/shapes3d/shapes3d.gpgpu3d.ts` | `things` and `behaviors` (page): every box, plane, hyperplane and cylinder within gpgpu3d's reach, where the frame draws it, as things on the GPU of those four words, which gpuparticle3d's particles bounce off, fabric3d's cloths drape on and hair3d's locks are kept out of (`using-gpgpu3d`) |
+| `plugins/shapes3d/shapes3d.fabric3d.ts` | `sources` (page): every box, plane, hyperplane and cylinder as a thing a fabric is pinned to, its one point `pos`; `behaviors`: the cut `plane` (`using-fabric3d`) |
+| `plugins/walker/walker.gpgpu3d.ts` | `things` (page): every walking body that is not limp as an upright `cylinder` of its kind's `radius` and `height`, shapes3d's word, so `world.gpgpu3d.mods: { things: ['walker'], behaviors: ['shapes3d'] }` |
+| `plugins/walker/walker.grass3d.ts` | `behaviors` (page): how a `cylinder` presses grass3d's grass, trampling it under the body while its foot is on the ground (`world.grass3d.mods: { pressed: 'gpgpu3d', behaviors: ['walker'] }`, `using-grass3d`) |
+| `plugins/box3dvehicle/box3dvehicle.gpgpu3d.ts` | `things` and `behaviors` (page): each car's body and wheels as `hyperbox`, a box turned any way |
+| `plugins/box3dvehicle/box3dvehicle.grass3d.ts` | `behaviors` (page): how a `hyperbox` presses the grass, so a car's wheels lay tracks behind it |
 | `plugins/walker/walker.hitscan3d.ts` | `bodies`: every row of `world.walker.kinds` as one upright cylinder |
 | `plugins/ragdoll3d/ragdoll3d.hitscan3d.ts` | `bodies`: every standing anim body whose rig carries `ends` as its bone capsules, the rest from `world.ragdoll3d.mods.bodies` |
 | `plugins/dismember3d/dismember3d.hitscan3d.ts` | `bodies`: every body of `world.dismember3d.kinds` as its joint spheres, which its `hit` cuts off, the rest from `world.dismember3d.mods.bodies` |
@@ -128,8 +135,8 @@ The providers core ships:
 A key read with `mod` takes one plugin. When a game has more than one thing to hand in, a game plugin
 takes the slot and hands back its own things **plus** whatever its own mod names — the chain. A game's
 plugin `a` provides `solids` to walker in `games/<game>/plugins/<a>/<a>.walker.ts`, returns its own
-circles, and asks `mod(w.world, '<a>', 'solids')` for scatter3d's, which the scene names in
-`world.<a>.mods.solids: 'scatter3d'`. The same works for `height`: a game plugin that gives `height`
+circles, and asks `mod(w.world, '<a>', 'solids')` for lod3d's, which the scene names in
+`world.<a>.mods.solids: 'lod3d'`. The same works for `height`: a game plugin that gives `height`
 answers its own floors where they stand and hands every other point to the `height` its own mod names
 (terrain3d's `rawAt`). Find the provider once per `world` (a `WeakMap` on `w.world`), as the mod is
 asked many times a step.
@@ -189,7 +196,7 @@ deleted after), `target {pos, rot}` (kinematic), `wind`, `friction`, and the liv
    chooses them. A new key is built from the `ground` mod and then every `props` mod; a dropped key is
    freed. Chunks and their props are named `0` in queries.
 3. A `props` mod of a game's own plugin, `games/<game>/plugins/<a>/<a>.box3d.ts` returning a Static for
-   what of it stands in chunk [i, j]; named in `world.box3d.mods.props` beside scatter3d. Needs a
+   what of it stands in chunk [i, j]; named in `world.box3d.mods.props` beside lod3d. Needs a
    `ground` mod and `chunk` too.
 4. A row of a kind whose Body is `type: 'static'`: answered by its row id.
 5. A `fixed` mod: `(w) => Fixed[]`, each a Static with the `id` of the row it stands for, asked once
@@ -232,9 +239,13 @@ has dust or exhaust.
 ## walker
 
 A kinematic body on any ground. A rule builds the ground with `groundOf(w)` from `world.walker.mods`
-(or hands a `Ground` it built: `{ height, depth?, solids, cell?, footing? }`) and calls `walk`, `slide`, `carry`
-or `seek` on its own row. `footing(pos, yaw)`, shapes3d's ground's, is where a body is carried once the
-shape under it has moved (`move`): `walk` puts a grounded body there first, so it rides a moving floor.
+(or hands a `Ground` it built: `{ height, depth?, solids, cell?, roof?, footing? }`) and calls `walk`, `slide`, `carry`
+or `seek` on its own row. `footing(pos, yaw, me, grounded)`, shapes3d's ground's, is where a body is
+carried once the shape under it has moved (`move`), by how far that floor moved since it last carried
+the body: `walk` asks it every step and puts the body there first, so it rides a moving floor.
+`roof(x, z, r)`, shapes3d's ground's too, is the lowest underside over the body's head: a head rising
+into it stops there and rises no more, so a jump under a ceiling bumps its head. `groundOf` gives
+neither, so a body on it has nothing over it and no floor that moves.
 
 - **Standing.** The feet are the four corners of a `span` square plus its centre. S is the mean height
   of the feet within `step` of the highest. A body stands on S, follows rises and drops of up to `step`
@@ -246,6 +257,13 @@ shape under it has moved (`move`): `walk` puts a grounded body there first, so i
   radius}`), four corners for shapes3d's `box`, each word's footprint its behavior's. They push a body out
   sideways. **They never hold one up.** A body stands only on `height`. A wall made of solids stops a
   body; a floor needs `height`.
+- **A move is swept.** A move that passes through a footprint the body stood clear of stops where the
+  body's circle first meets it, and the rest goes on along it, so no wall is passed through however
+  fast the body goes. A footprint that held the body's middle as the move began is over or under it,
+  not beside it: it is not swept against and the body is not pushed out of it.
+- **A correction is never a speed.** `vel` is read back from the move made: where a wall or a slope
+  turned it, the part against the eased velocity is taken off and it is no faster than that velocity,
+  so a push out of a solid flings no body.
 - **`bodies`** in a kind's numbers names the kinds (or `player`) whose rows are solid circles to it.
 - **`cell`**: on a ground with one, height is read at the lattice corners and split into the two
   triangles terrain3d draws, so a body stands on the ground that is drawn. A body standing wrong is fixed
@@ -330,10 +348,13 @@ For each thing that must stop, carry or be hit, ask each plugin that meets it, o
 | be landed on by a plane | flight3d | `ground` |
 | catch a limp body | ragdoll3d | `land`, `solids` |
 | hide a bot | cover3d | `solids` |
+| be met by what is moved on the GPU: bounce gpuparticle3d's particles, hold up fabric3d's cloth, keep hair3d's hair out, press grass3d's grass | gpgpu3d | `things` and `behaviors` on the page: shapes3d's shapes, terrain3d's land, each car's body and wheels, each walking body, a body's `capsules` (`using-gpgpu3d`) |
 
 A wall, a crate, a pillar or a floor that must do all of these at once is a row of a shapes3d kind: one
 entry, named in `world.walker.mods.fixed`, `world.hitscan3d.mods.solids`, `world.cover3d.mods.solids`
 and each one's `behaviors`, in `world.box3d.mods.fixed`, and drawn through `world.solids.mods.models`.
+What it is to the GPU is one more name: `shapes3d` under `world.gpgpu3d.mods.things` and `behaviors`.
+That is the page's alone and no rule reads it: a cloth lying on a table changes nothing a seat is sent.
 
 The numbers of the shape (a floor's rectangle and top, a wall's circles) are the definition of the kind
 whose row stands there, in its own frame, placed by the row's `pos` and `yaw`; the provider reads them
@@ -354,6 +375,7 @@ floor that is drawn.
 | `Math.sin` in a rule or a server mod | `math.sin`: the page's copy drifts otherwise |
 | A mod's provider found on every call | Find it once per `w.world` in a `WeakMap` |
 | walker's `accel` written as m/s² | It is a rate a second |
+| A walker body jumps up through a box over its head | Its rule hands `walk` `groundOf(w)`, which has no `roof`. Hand it shapes3d's `ground(w, feet, k)` |
 | A car with no `gravity` mod | `world.box3dvehicle.mods.gravity: 'box3d'` |
 | A plugin's top-level `solids` plugin mistaken for collision | It only draws |
 
@@ -371,6 +393,7 @@ Beside each file, run one at a time with `yarn vitest run <file>`: `plugins/box3
 names it through `load` (`building-a-plugin`); a game's own provider is proven through the rule that
 walks, drives or shoots on the booted game.
 
-Related: `using-terrain3d` (the ground every one of these stands on), `building-a-plugin` (writing a
+Related: `using-terrain3d` (the ground every one of these stands on), `using-shapes3d` (the whole of
+shapes3d: its words, moving shapes, spaces and every mod), `building-a-plugin` (writing a
 mod), `tuning-feel` (the numbers), `designing-a-seat` (a seat that drives or gets in), `going-multiplayer`
 (prediction and rewind).

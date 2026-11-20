@@ -80,8 +80,8 @@ export type Graze = { id: number; entry: number; k: number; pos: [number, number
 
 const FIELDS = ['next', 'live', 'frame']
 
-// Every bullet of a pattern, numbered, made once per name for each read of the file: a file the
-// editor writes is refilled in place with a new `patterns`, so a new read is a new key.
+// Every bullet of a pattern, numbered, made once per name for each read of the file: a file written
+// while the game runs is refilled in place with a new `patterns`, so a new read is a new key.
 const made = new WeakMap<object, Map<string, Shot[]>>()
 
 export function shots(file: Patterns, name: string, seen: string[] = []): Shot[] {

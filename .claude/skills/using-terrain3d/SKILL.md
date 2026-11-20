@@ -1,6 +1,6 @@
 ---
 name: using-terrain3d
-description: Use in core, or any clone of it, whenever terrain3d comes up - the 3D ground plugin, its field file (`program` and its nodes, `analysis`, `ground` and its texture layers with their rules, noise edges and warps, `surfaces`, `layers` and their strokes), `world.terrain3d` (`field`, `rings`, `shadowReach`, `budget`, `seabed`, `static`, `preload`, `bake`, `maps`, `mods.ready`), biomes, the sea and `flood`, ground textures (colour and normal maps fetched from cc0-textures.com and drawn as ground layers), the baked rings (virtual texturing) and the near maps, the land record's keys (`layer:<name>`, `biome:<name>`, `surface:<name>`), `heightAt`, `rawAt`, `depthAt`, `paintAt`, `ray` and the other queries, the page's `ground`, preparing a place, the workers and `task`, the brush, and the `terrain3d.<p>.ts` mods that stand walker, kinematics3d, nav3d, shapes3d, box3d, box3dvehicle, scatter3d, solids, hitscan3d, flight3d, ragdoll3d, dismember3d, skydome3d, weather3d, ocean3d and the cutscene on the land. Also when the ground does not draw, draws grey, shows a hole or a seam, throws about its rings, nodes, rules, ground layers, bake or maps, or a thing floats over it or sinks into it. Also whenever the ground's height at a point is wanted while a game is made: "find the point", "what's the height at", "the y at x, z", "put it on the ground", "place it on the terrain", an `actors` entry's `pos[1]`, every entry checked for sitting under or over the land. `height.ts` beside this skill prints it from the scene (Asking the ground); never a new script of the game's.
+description: Use in core, or any clone of it, whenever terrain3d comes up - the 3D ground plugin, its field file (`program` and its nodes, `analysis`, `ground` and its texture layers with their rules, noise edges and warps, `surfaces`, `layers` and their strokes), `world.terrain3d` (`field`, `rings`, `shadowReach`, `budget`, `seabed`, `static`, `preload`, `bake`, `maps`, `mods.ready`), biomes, the sea and `flood`, ground textures (colour and normal maps fetched from cc0-textures.com and drawn as ground layers), the baked rings (virtual texturing) and the near maps, the land record's keys (`layer:<name>`, `biome:<name>`, `surface:<name>`), `heightAt`, `rawAt`, `depthAt`, `paintAt`, `ray` and the other queries, the page's `ground`, preparing a place, the workers and `task`, the brush, and the `terrain3d.<p>.ts` mods that stand walker, kinematics3d, nav3d, shapes3d, box3d, box3dvehicle, lod3d, solids, hitscan3d, flight3d, ragdoll3d, dismember3d, skydome3d, weather3d, ocean3d and the cutscene on the land. Also when the ground does not draw, draws grey, shows a hole or a seam, throws about its rings, nodes, rules, ground layers, bake or maps, or a thing floats over it or sinks into it. Also whenever the ground's height at a point is wanted while a game is made: "find the point", "what's the height at", "the y at x, z", "put it on the ground", "place it on the terrain", an `actors` entry's `pos[1]`, every entry checked for sitting under or over the land. `height.ts` beside this skill prints it from the scene (Asking the ground); never a new script of the game's.
 ---
 
 # Using terrain3d
@@ -22,7 +22,7 @@ The files, in `plugins/terrain3d/`:
 | `terrain3d.worker.ts` | worker | builds rings and runs `task`s off the page |
 | `terrain3d.bake.ts` | page | the baked rings: the look rendered into textures round the camera |
 | `terrain3d.present.ts` | worker or page | which ground layers the ground round a point hits, for the near maps |
-| `terrain3d.<p>.ts` (16) | either | mods: what plugin `p` gets when a scene names terrain3d in `world.<p>.mods` |
+| `terrain3d.<p>.ts` (19) | either | mods: what plugin `p` gets when a scene names terrain3d in `world.<p>.mods` |
 
 The headers of `terrain3d.sim.ts`, `terrain3d.warp.ts`, `terrain3d.plugin.ts`, `terrain3d.rings.ts`
 and `terrain3d.bake.ts` hold the whole contract. This skill summarises them. Where they disagree with
@@ -56,7 +56,7 @@ it, the headers are right and this file gets fixed.
   "preload": true,
   "bake": { "rings": [512, 2048, 8192], "res": 2048, "near": 150, "far": 300, "cliff": 0.6, "band": 0.06, "budget": 1024 },
   "maps": { "near": 6, "reach": 300, "step": 8, "small": 256 },
-  "mods": { "ready": ["scatter3d"] }
+  "mods": { "ready": ["lod3d"] }
 }
 ```
 
@@ -71,7 +71,7 @@ it, the headers are right and this file gets fixed.
 | `preload` | optional, default false. Nothing of the land goes on the scene until the camera's first place is built whole (Prepared places) |
 | `bake` | optional. The baked rings (Baked rings) |
 | `maps` | optional. The near maps (Near maps) |
-| `mods.ready` | plugins whose share of a prepared place must be done before the place is, as scatter3d's cells |
+| `mods.ready` | plugins whose share of a prepared place must be done before the place is, as lod3d's tiles (`lod3d.terrain3d.ts`, lod3d's `ready()`) |
 
 3. List `terrain3d` in the scene's `plugins` **before `render3d`**. It places its rings in
    `afterTick` and render3d draws in its own `afterTick`, so listing it after render3d draws round
@@ -164,6 +164,7 @@ A layer's pixel is `size / px` metres. Make it fine enough for the narrowest str
 | `smooth` | the mean of the pixel and ±radius/2 along x and z |
 | `bench` | the ground under the nearest point of the path: it follows the hill along the path and is flat across it. This is how a road is cut |
 | `surface` | no height: paints `surface` (it must be a key of `surfaces`) |
+| `erase` | takes the ground away: where any layer's erasure is at least a half, `heightAt` and `rawAt` answer `ERASED` (−1e9), so a shapes3d shape standing there (a basement) is always the higher. The strokes, the land record and the look read the ground whole (`land.whole`), the finest ring leaves out each cell with a corner on erased ground, and every coarser ring draws it whole. `land.erased(x, z)` says which |
 
 ### Surfaces
 
@@ -173,7 +174,7 @@ surface at a point:
 - `colour`, when a surface has one, is drawn over the ground layers by the paint's weight, through
   its `edge` when it has one. Leave it out and give a ground layer a rule on `surface:<name>`
   instead to lay a texture where it is painted (a road layer).
-- `cover` = 1 + (cover − 1)·weight multiplies scatter3d's density (0 on a road clears it).
+- `cover` = 1 + (cover − 1)·weight multiplies the share of a lod3d layer's tries kept on the land, its `density` (0 on a road clears it).
 - `grip` (1 on unpainted ground) multiplies a wheel's friction.
 - `drag` (0 unpainted) is rolling resistance, newtons lost per newton of load.
 - `spray` is a particle3d effect name, or `false` for nothing. `mark`, 0 to 1, is how dark a tyre
@@ -184,7 +185,7 @@ surface at a point:
 
 The one ramp is `shape(v, lo, hi)` = clamp01((v − lo)/(hi − lo)). It inverts when lo > hi and is a
 step at lo when they are equal. A rule `{ q, lo, hi }` is that ramp over the land record's key `q`.
-Ground layers, scatter3d's keep rules and boulders all use it.
+Ground layers and lod3d's layer rules all use it.
 
 A surface's `edge { width, ragged, scale }` turns a weight w into smoothstep(0.5 − width/2,
 0.5 + width/2, w + ragged·(noise − 0.5)): a crisp line where w crosses a half, broken up by
@@ -212,8 +213,8 @@ when it is first read. These are the keys a rule's `q` can name:
 | `surface:<name>` | that surface's painted weight, 0 where another surface is painted |
 | `layer:<name>` | that ground layer's weight as the shader draws it, before the height blend |
 
-A ground layer's own rules may read every key but `layer:<name>`. Anything else (scatter3d's rules
-on the server, on the page and in its workers) may read `layer:<name>`, so trees stand on the meadow
+A ground layer's own rules may read every key but `layer:<name>`. Anything else (a lod3d layer's rules
+on the server, on the page and in lod3d's workers) may read `layer:<name>`, so trees stand on the meadow
 that is drawn: `{ "q": "layer:meadow", "lo": 0.5, "hi": 0.85 }`.
 
 ## The ground
@@ -312,8 +313,9 @@ API.
 - **Workers.** Where the page has `Worker`, rings are built in a pool of module workers (one fewer
   than the cores, at most one a ring), with the same arithmetic, so the floats are the page's.
   `budget` then bounds only the page's own work. `task(url, input)` lends the workers to any plugin
-  that reads the land: the module at `url`'s `task(ground, input)` runs there (scatter3d places its
-  cells so).
+  that reads the land: the module at `url`'s `task(ground, input)` runs there. lod3d does not use
+  them: it works its tiles in a pool of workers of its own, loading `terrain3d.lod3d.ts` there to
+  make the same land from the field and unsaved strokes its `seen` hands.
 - **What a change rebuilds.** The field is compared by content, never by identity, since the loader
   refills a rewritten file in place.
   - A change to the ground layers but their carried rules, or to the surfaces' colours, covers and
@@ -457,9 +459,9 @@ when the job is placing that entry. A walker body under water stands on `raw`, e
 **On the page**, `plugins.terrain3d` hands out:
 
 - `ground`, undefined until the field has loaded: `{ height, raw, depth, at, cover, spray, mark,
-  ramp, rules, edits, ray, mix, layers, rings, shown, prepare, prepared, unprepare, task }` over this
-  client's own land. `at` is the land record, `ray(origin, dir)` marches out to the camera's far
-  plane, and `rings()` is each ring's `reach`, finest first, which scatter3d draws its LODs on.
+  ramp, rules, edits, ray, mix, layers, shown, prepare, prepared, unprepare, task }` over this
+  client's own land. `at` is the land record, and `ray(origin, dir)` marches out to the camera's far
+  plane.
 - `land`, the client's land itself.
 - `rings`, each `{ at, half, cell, mesh }`.
 - `building()`, `shown()`, `prepare`, `prepared`, `unprepare`, `task`.
@@ -479,7 +481,10 @@ A scene switches each on with `world.<p>.mods: { <function>: 'terrain3d' }`. The
 | `walker` | `height`, `depth`, `cell` | `rawAt` (bodies wade on the bed), `depthAt`, and the finest ring's cell, 2·reach/seg, so walker stands bodies on the triangles that are drawn. What a body does in that depth is walker's |
 | `box3d` | `ground` | chunk [i, j] as a height-field Static of `world.box3d.chunk.count` heights a side, `chunk.cell` m apart |
 | `box3dvehicle` | `land` (page), `grip`, `drag` (server) | dust spray and tyre marks off the painted surface, and its grip and rolling drag |
-| `scatter3d` | `ground` (server), `land` (page) | `{ height, cover, ramp, rules, edits }`, so the trunk a rule hits is the one a seat sees; its rules may read `layer:<name>`. The other way round, scatter3d's own `scatter3d.terrain3d.ts` is terrain3d's `mods.ready`: whether every cell in reach of a prepared place is placed |
+| `lod3d` | `surfaces` (server), `seen` (page), `behaviors` | the land as one surface, `land`, of the word `land` (its (u, v) the world's (x, z)), which a layer stands on with `"on": ["land"]`: a foot at `heightAt`, its normal off the height half a metre either side, kept by the paint's `cover`, its rules over the land record (`layer:<name>` too), so the trunk a rule hits is the one a seat sees. `seen` hands the land as this page has it, its `version` moving with a new land and each stroke, `shown`, `prepared` (the place `prepare` holds), and `worker` (this module, with the field and unsaved strokes) for lod3d's workers. The other way round, lod3d's own `lod3d.terrain3d.ts` is terrain3d's `mods.ready`: whether every layer is held and every tile in reach of a prepared place worked |
+| `grass3d` | `land` (page) | the land a meadow stands on: `ground` (`height`, `cover`, `ramp`, `rules`), `version` moving with a new land and each stroke, `cell`, the finest ring's cell, so every blade stands on the triangle that is drawn, `shown`, `prepared`, and `worker` (this module, with the field and unsaved strokes) for grass3d's workers. The other way round, grass3d's own `grass3d.terrain3d.ts` is terrain3d's `mods.ready`: whether every block of ground round a prepared place is filled (`using-grass3d`) |
+| `gpgpu3d` | `things`, `behaviors` (page) | the land as a thing on the GPU, of the word `land`: a window of heights on the finest ring's lattice round the camera, wide enough to hold `world.gpgpu3d.reach` metres, filled in terrain3d's workers when its middle moves and when the land does, the old window handed until the new one lands. gpuparticle3d's particles bounce off it, fabric3d's cloths lie on it and hair3d's locks are kept out of it. A line that starts under the land or off the window meets nothing (`using-gpgpu3d`) |
+| `puppet3d` | `land` (page) | the ground puppet3d's bodies stand on: their feet put down on it, their trunks riding it. List terrain3d before puppet3d |
 | `solids` | `land` | models stood on the land |
 | `hitscan3d` | `ground` | `{ t, normal }` where a shot meets the land, or undefined |
 | `flight3d` | `ground` | `heightAt`: a plane that flies into the sea has hit it |
@@ -535,7 +540,7 @@ Each names its culprit:
 | Using `heightAt` for a walker on a flooded land | The walker mod uses `rawAt` plus `depthAt` on purpose, so bodies wade |
 | Expecting a dry valley below 0 to hold water | Water only exists with `flood: true` |
 | The ground draws mid grey | Its maps have not all landed, or one failed (the loader says so in the console) |
-| A scatter rule on `biome:meadow` putting trees on the rock in the meadow | `layer:meadow`: the layer that is drawn |
+| A lod3d layer's rule on `biome:meadow` putting trees on the rock in the meadow | `layer:meadow`: the layer that is drawn |
 | Many layers at 4K and the page runs out of memory | `maps`: full maps only for the layers near the camera |
 | The far ground costs as much as the near | `bake`: past `far` it reads one baked texel |
 | Editing a parsed field object in place | Change the file. The loader refills it and terrain3d compares content |
@@ -546,9 +551,9 @@ Each names its culprit:
 
 Beside the plugin, in node, one happy path each: `terrain3d.sim.test.ts` (the ground a rule reads),
 `terrain3d.plugin.test.ts` (the rings a page draws), `terrain3d.present.test.ts`, and a test for the
-box3d, box3dvehicle (its page `land`), flight3d, hitscan3d, nav3d, scatter3d (its server `ground`), solids and
-walker mods (`terrain3d.<p>.test.ts`). The skydome3d, cutscene, ocean3d, ragdoll3d and scatter3d page
-mods are proven by their consumers' tests. Nothing proves box3dvehicle's `grip` and `drag` mods yet,
+box3d, box3dvehicle (its page `land`), flight3d, hitscan3d, nav3d, solids and walker mods (`terrain3d.<p>.test.ts`). The
+skydome3d, cutscene, ocean3d, ragdoll3d and lod3d mods are proven by their consumers' tests (lod3d's
+`lod3d.sim.test.ts` and `lod3d.plugin.test.ts` stand layers on terrain3d's `land`). Nothing proves box3dvehicle's `grip` and `drag` mods yet,
 nor the baked rings and the near maps' arrays, which need WebGL. Run only the file beside what changed:
 `yarn vitest run plugins/terrain3d/<file>`. A change to the field or the look is looked at in Chrome
 (`verifying-3d-visuals`), on demo_terrain3d's `dev.html`, whose ground-view menu sets `tdDebug`.

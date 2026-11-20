@@ -25,7 +25,9 @@
 //   The upper half: `upper` at `upperW` and `was` at `wasW`, each clip's tracks of the bones from the
 //     row's `upperBone` (`wasBone`) up as a clip of their own, bound to the model root, weighted as
 //     `partsOf` weighs them, over the body's two (anim's upper layer, its mask each move's own bone).
-//
+//   The additive layers (`adds`): once the mixer has posed the body and its hips are pinned, each laid
+//     on top by hand as `motion3d.play.ts`'s `posed` lays it (Additive layers), so the page and the server
+//     draw the same body.
 //
 // Pinning. The row carries the body's travel, so the hips must not carry it again. The hips are the
 // bone the clips key that has no bone above it. A one-shot that carries travel has their horizontal
@@ -40,7 +42,16 @@
 // frame of `bone` (the first bone whose name ends with it) with that frame's scale taken off, then moved
 // by `at` (metres) and turned by `turn` (degrees, an XYZ Euler) in the bone's scale-free frame. They are
 // placed at the end of the `tick` and again in the `afterTick`, so motion3d is listed before render3d
-// (the other order throws).
+// (the other order throws). A prop that names an `item` in place of a `model`, `{ item, bone, at, turn }`,
+// is not the loader's: the `props` mod hands it (`world.motion3d.mods: { props: 'item3d' }`,
+// `plugins/item3d/item3d.motion3d.ts`), `props(plugins)` handing back `{ ready(item), make(item) }`, `make`
+// a new object of the item already wearing its materials and casting its shadows. It is hung, placed and
+// dropped as a model is, and never dressed: its materials are its maker's. A carry names it by its item's
+// name, as it names a model. The mod's plugin is listed before motion3d (`ahead`). A prop that names an
+// item in a scene whose `world.motion3d.mods` names no `props` throws, naming the item. The `props` mod
+// hangs props of its own on a kind too: `held(kind)` is a list as `<kind>.props` is, models and items both,
+// hung after the kind's own (item3d's are the `holds` of its bodies sheet's body of that name). A kind's
+// props are the two together (`motion3d.play.ts`'s `propsOf`).
 //
 // A row limp by the field its kind's `reads` names `limp` is not drawn: whatever made it limp owns its
 // model, reached through `model(id)`; once it gets up its bones are put back at their rest and its mixer
@@ -95,7 +106,10 @@ import type { Row, W } from '#engine/engine.ts'
 import { ahead, mod } from '#addons/scenemanager/scenemanager.addon.ts'
 import { anchor, reach } from '#plugins/ik3d/ik3d.solve.ts'
 import { carriedProps, carrying, reachesOf, type Numbers } from './motion3d.sim.ts'
-import { at, carries, clipOf, movesOf, playKind, readsOf, rigOf, type Body as Kind, type Moves, type Part, type Prop, type Reads, type Rig, partsOf } from './motion3d.play.ts'
+import { at, bareBone, carries, clipOf, inertiaOf, movesOf, playKind, propName, propsOf, readsOf, rigOf, type Body as Kind, type Moves, type Part, type Prop, type Reads, type Rig, partsOf } from './motion3d.play.ts'
+
+// The `props` mod: what hands a prop that names an `item`, and the props it hangs on a kind (Props, the header).
+export type Props = (plugins: Plugins) => { ready(item: string): boolean; make(item: string): THREE.Object3D; held(kind: string): Prop[] }
 
 type Three = typeof import('three')
 const DEG = Math.PI / 180
@@ -127,7 +141,7 @@ type Drawing = {
   sockets: Map<string, THREE.Object3D | undefined>
   bones: Map<string, THREE.Object3D>
   props: { root: THREE.Object3D; bone: THREE.Object3D; offset: THREE.Matrix4 }[] | undefined
-  hung: string | undefined
+  hung: Prop[] | undefined // a copy of the kind's `props` the body's props were hung by
   row: Row
   limp: boolean
   turned: { bone: THREE.Object3D; before: THREE.Quaternion; after: THREE.Quaternion }[] // each bone the last bend turned
@@ -135,6 +149,7 @@ type Drawing = {
   reached: Map<string, THREE.Object3D> // a carried limb's target eased in, by its end bone
   carried: number // the prop its carry sets this frame, by its place in its kind's props, or −1
   aimed: Aimed | undefined // the last aim, before its turn; none when not aimed
+  laid: { node: THREE.Object3D; quaternion: THREE.Quaternion; position: THREE.Vector3 }[] // each bone the last layers changed, as it stood before them
 }
 // The last aim of a body: before its turn, the prop's forward and its anchor bone's turn; after it and
 // before the bend, the anchor bone's frame (its scale taken off) and each of its carry's limbs' end
@@ -142,6 +157,25 @@ type Drawing = {
 type Aimed = { forward: number[]; bone: number[]; anchor?: number[]; hands?: number[][] }
 // A limb bent this frame: its three bones, its pole and the object its end bone reaches.
 type Bent = { bones: [string, string, string]; pole: number[]; end: THREE.Object3D }
+
+// Whether two values are the same: the same number (NaN the same as NaN), string, boolean or null, or
+// arrays and plain objects of the same, item by item and field by field, a field holding undefined the
+// same as one not there. Read for every body every frame, so it walks the two and makes nothing.
+function same(a: unknown, b: unknown): boolean {
+  if (a === b || (a !== a && b !== b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a)) {
+    const c = b as unknown[]
+    if (a.length !== c.length) return false
+    for (let i = 0; i < a.length; i++) if (!same(a[i], c[i])) return false
+    return true
+  }
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>
+  for (const k in x) if (!same(x[k], y[k])) return false
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false
+  return true
+}
 
 const swap = (name: string) => name.replace(/Left|Right/g, s => (s === 'Left' ? 'Right' : 'Left'))
 // A bone's name with the `_N` three's loaders give a repeated name taken off.
@@ -306,6 +340,16 @@ export function motion3d() {
     b.actions.clear()
     b.turned = []
     b.short = []
+    b.laid = []
+  }
+
+  // What the `props` mod hands, for a prop that names the item `item`.
+  function items(plugins: Plugins, item: string) {
+    const scene = plugins.wire.scene
+    const from = mod<Props>(scene.world!, 'motion3d', 'props')
+    if (!from) throw new Error(`motion3d: the prop ${item} is an item, and world.motion3d.mods names no props to hand it`)
+    ahead(scene, 'motion3d', 'props')
+    return from(plugins)
   }
 
   // Whether the loader's model has landed, asking for it once.
@@ -365,7 +409,7 @@ export function motion3d() {
     const b: Drawing = {
       root, kit, key, mixer: new T.AnimationMixer(root), actions: new Map(), rest, hips, bind: hips && [hips.position.clone(), hips.quaternion.clone()],
       sockets: new Map(), bones: new Map(), props: undefined, hung: undefined, row: r, limp: false, aimed: undefined,
-      turned: [], short: [], reached: new Map(), carried: -1,
+      turned: [], short: [], reached: new Map(), carried: -1, laid: [],
     }
     place(b, r.data, reads)
     b.root.updateMatrixWorld(true)
@@ -390,19 +434,23 @@ export function motion3d() {
   }
 
   // The kind's props, each its own clone of its model, made once every one has landed, and made again
-  // when the kind's `props` change.
-  function props(b: Drawing, plugins: Plugins, k: Kind) {
-    const text = JSON.stringify(k.props ?? [])
-    if (b.hung !== text) {
+  // when the kind's `props` change, in place or not: they are walked against the copy taken when they
+  // were last hung, and copied again only when they differ.
+  function props(b: Drawing, plugins: Plugins, k: Kind, kind: string) {
+    const list: Prop[] = propsOf(plugins, kind)
+    if (!b.hung || !same(b.hung, list)) {
       unhang(b)
-      b.hung = text
+      b.hung = structuredClone(list)
     }
-    const list: Prop[] = k.props ?? []
-    if (b.props || !list.length || !list.every(p => ready(plugins, p.model))) return
+    if (b.props || !list.length || !list.every(p => ('item' in p ? items(plugins, p.item).ready(p.item) : ready(plugins, p.model)))) return
     const T = three!
     b.props = list.map(p => {
-      const root = (plugins.loader.model(p.model) as { scene: THREE.Object3D }).scene
-      dress(root, plugins)
+      let root: THREE.Object3D
+      if ('item' in p) root = items(plugins, p.item).make(p.item)
+      else {
+        root = (plugins.loader.model(p.model) as { scene: THREE.Object3D }).scene
+        dress(root, plugins)
+      }
       scene!.add(root)
       const turn = new T.Quaternion().setFromEuler(new T.Euler(p.turn[0] * DEG, p.turn[1] * DEG, p.turn[2] * DEG, 'XYZ'))
       return { root, bone: boneOf(b, p.bone, k.model), offset: new T.Matrix4().compose(new T.Vector3().fromArray(p.at), turn, new T.Vector3(1, 1, 1)) }
@@ -440,7 +488,7 @@ export function motion3d() {
     return m
   }
 
-  const action = (b: Drawing, p: Part) => {
+  const action = (b: Drawing, p: Part & { slot: Exclude<Part['slot'], 'add'> }) => {
     const key = `${p.slot} ${p.bone ?? ''} ${p.clip}`
     let a = b.actions.get(key)
     if (!a) {
@@ -454,17 +502,105 @@ export function motion3d() {
   }
 
   // The body in the parts given, every other action at weight 0, with its hips pinned by the body's two
-  // parts.
-  function weigh(b: Drawing, rig: Rig, parts: Part[], moves: Moves) {
+  // parts; then what is left of each change of clip it inertializes laid on each joint (`inertia`,
+  // `motion3d.play.ts`'s `inertiaOf`, as `posed` lays it); then its additive layers.
+  function weigh(b: Drawing, rig: Rig, parts: Part[], moves: Moves, inertia: Map<string, { q: THREE.Quaternion; t: THREE.Vector3 }> | undefined) {
     for (const a of b.actions.values()) a.setEffectiveWeight(0)
     for (const p of parts) {
-      const a = action(b, p)
+      if (p.slot === 'add') continue
+      const a = action(b, { ...p, slot: p.slot })
       a.time = p.t
       a.setEffectiveWeight(p.w)
     }
     putBack(b)
+    unlay(b)
     b.mixer.update(0)
     pin(b, rig, parts.filter(p => p.slot === 'to' || p.slot === 'from'), moves)
+    if (inertia) {
+      for (const [name, o] of inertia) {
+        const node = jointOf(b, name)
+        if (!node) continue
+        if (!b.laid.some(l => l.node === node)) b.laid.push({ node, quaternion: node.quaternion.clone(), position: node.position.clone() })
+        node.quaternion.premultiply(o.q)
+        node.position.add(o.t)
+      }
+    }
+    for (const p of parts) if (p.slot === 'add') addOn(b, p)
+  }
+
+  // The model's joint a clip's tracks drive, by its Mixamo name with no prefix (`bareBone`): the bone of
+  // that name with no `_N` copy mark, the first found; found once per model.
+  const jointsOf = new WeakMap<THREE.Object3D, Map<string, THREE.Object3D>>()
+  function jointOf(b: Drawing, name: string): THREE.Object3D | undefined {
+    let joints = jointsOf.get(b.root)
+    if (!joints) {
+      joints = new Map()
+      const found = joints
+      b.root.traverse(o => {
+        if (!(o as THREE.Bone).isBone || /_\d+$/.test(o.name)) return
+        const bare = bareBone(o.name)
+        if (!found.has(bare)) found.set(bare, o)
+      })
+      jointsOf.set(b.root, joints)
+    }
+    return joints.get(name)
+  }
+
+  // Each track of a clip as this model draws it, its bone and an interpolant of it, by the bone an
+  // additive layer is laid from (none: all of them); made once per kit.
+  const layered = new WeakMap<Drawn, Map<string, { node: THREE.Object3D; quat: boolean; at: THREE.Interpolant }[]>>()
+  function layerOf(b: Drawing, drawn: Drawn, bone: string | undefined) {
+    let byBone = layered.get(drawn)
+    if (!byBone) layered.set(drawn, (byBone = new Map()))
+    const key = bone ?? ''
+    let got = byBone.get(key)
+    if (got) return got
+    const T = three!
+    got = []
+    for (const track of drawn.slots.to.tracks) {
+      const { nodeName, propertyName } = T.PropertyBinding.parseTrackName(track.name)
+      if (propertyName !== 'quaternion' && propertyName !== 'position') continue
+      const node = T.PropertyBinding.findNode(b.root, nodeName) as THREE.Object3D | null
+      if (!node || !(node as THREE.Bone).isBone) continue
+      let under = bone === undefined
+      for (let o: THREE.Object3D | null = node; !under && o && (o as THREE.Bone).isBone; o = o.parent) if (o.name.endsWith(bone!)) under = true
+      if (!under) continue
+      got.push({ node, quat: propertyName === 'quaternion', at: (track as THREE.KeyframeTrack & { createInterpolant(): THREE.Interpolant }).createInterpolant() })
+    }
+    byBone.set(key, got)
+    return got
+  }
+
+  // An additive layer laid on the pose the mixer and the pin left (`motion3d.play.ts`, Additive layers):
+  // each bone it keys turned on by the turn its clip makes from its first frame to its playhead, at its
+  // weight, and moved on by the move it makes.
+  function addOn(b: Drawing, p: Part) {
+    const T = three!
+    const drawn = b.kit.clips.get(p.clip)
+    if (!drawn) throw new Error(`motion3d: the model has no clip ${p.clip}`)
+    for (const { node, quat, at: track } of layerOf(b, drawn, p.bone)) {
+      if (!b.laid.some(l => l.node === node)) b.laid.push({ node, quaternion: node.quaternion.clone(), position: node.position.clone() })
+      if (quat) {
+        const q0 = new T.Quaternion().fromArray(track.evaluate(0))
+        const qt = new T.Quaternion().fromArray(track.evaluate(p.t))
+        node.quaternion.multiply(new T.Quaternion().slerp(q0.invert().multiply(qt), p.w))
+      } else {
+        const p0 = new T.Vector3().fromArray(track.evaluate(0))
+        const pt = new T.Vector3().fromArray(track.evaluate(p.t))
+        node.position.add(pt.sub(p0).multiplyScalar(p.w))
+      }
+    }
+  }
+
+  // Each bone the last frame's layers turned or moved, put back as the mixer and the pin left it: three's
+  // mixer writes a bone only when what it would write changes, so a layer would otherwise be laid on the
+  // one before it.
+  function unlay(b: Drawing) {
+    for (const l of b.laid) {
+      l.node.quaternion.copy(l.quaternion)
+      l.node.position.copy(l.position)
+    }
+    b.laid = []
   }
 
   function pin(b: Drawing, rig: Rig, parts: Part[], moves: Moves) {
@@ -531,7 +667,7 @@ export function motion3d() {
         drawings.set(r.id, b)
       }
       b.row = r
-      props(b, plugins, k)
+      props(b, plugins, k, kind)
       if (r.data[reads.limp]) {
         b.limp = true
         hang(b)
@@ -542,7 +678,8 @@ export function motion3d() {
         b.limp = false
       }
       place(b, r.data, reads)
-      weigh(b, rig, partsOf(r.data), movesOf(plugins.wire, kind))
+      const inertial = k.blend === 'inertial'
+      weigh(b, rig, partsOf(r.data, inertial), movesOf(plugins.wire, kind), inertial ? inertiaOf(plugins.wire, r) : undefined)
       b.root.updateMatrixWorld(true)
       hang(b)
     }
@@ -647,7 +784,7 @@ export function motion3d() {
     }
     const { carry, weight } = held
     const where = `motion3d's carry of ${carry.prop}`
-    const i = (k.props ?? []).findIndex(p => p.model === carry.prop)
+    const i = (b.hung ?? []).findIndex(p => propName(p) === carry.prop)
     if (i < 0) throw new Error(`${where}: the body's kind hangs no ${carry.prop} among its props`)
     const prop = b.props?.[i]?.root
     if (!prop) return []
@@ -689,7 +826,7 @@ export function motion3d() {
     if (!held || !Array.isArray(d.aim) || typeof d.upper !== 'string' || typeof d.upperBone !== 'string') return
     if (!clipOf(rigOf(w, playKind(b.row)), d.upper).loop) return
     const { carry, weight } = held
-    const i = (k.props ?? []).findIndex(p => p.model === carry.prop)
+    const i = (b.hung ?? []).findIndex(p => propName(p) === carry.prop)
     const prop = i < 0 ? undefined : b.props?.[i]?.root
     if (!prop) return
     const T = three!
@@ -763,7 +900,7 @@ export function motion3d() {
       // Every other prop hung again on its bone as bent; a prop some carry holds drawn only while carried.
       hang(b, b.carried)
       const held = carriedProps(w, b.row)
-      for (const [i, p] of (b.props ?? []).entries()) if (held.includes(k.props![i].model)) p.root.visible = i === b.carried
+      for (const [i, p] of (b.props ?? []).entries()) if (held.includes(propName(b.hung![i]))) p.root.visible = i === b.carried
     }
   }
 

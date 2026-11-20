@@ -1,0 +1,65 @@
+{
+  "forceGenerators": {
+    "breeze": [{ "direction": [3, 0, 0] }],
+    "gather-all": [{ "pull": 4, "drag": 1.5 }],
+    "gather-near": [{ "pull": 4, "drag": 1.5, "range": 1.2 }],
+    "gather-edge": [{ "pull": 25, "drag": 3, "range": 1.6 }],
+    "gather-soft": [{ "pull": 25, "drag": 3, "range": 1.6, "falloff": 4 }],
+    "fall-always": [{ "direction": [0, -12, 0] }],
+    "fall-late": [{ "direction": [0, -12, 0], "overLife": [[0, 0], [0.45, 0], [0.5, 1]] }],
+    "age-push-off": [{ "pull": -20, "at": [-3.5, 1, 0], "range": 3 }],
+    "age-push-on": [{ "pull": -20, "at": [3.5, 1, 0], "range": 3, "overAge": [[0, 1], [0.2, 0]] }]
+  },
+  "effects": {
+    "direction": [
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [-3.5, 0, 0, -3.5, 0, 0], "carry": "direction-off" },
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [2, 0, 0, 2, 0, 0], "carry": "direction-on" }
+    ],
+    "direction-off": [
+      { "n": [3, 4], "every": 0.03, "life": [1.6, 2], "shape": "spark", "size": [0.07, 0.1], "dir": [0, 1, 0], "spread": 0.15, "speed": [6, 7], "g": 6, "tint": 5232895, "gain": 3, "a1": 0.2, "add": true }
+    ],
+    "direction-on": [
+      { "n": [3, 4], "every": 0.03, "life": [1.6, 2], "shape": "spark", "size": [0.07, 0.1], "dir": [0, 1, 0], "spread": 0.15, "speed": [6, 7], "g": 6, "forces": { "breeze": 1 }, "tint": 5232895, "gain": 3, "a1": 0.2, "add": true }
+    ],
+
+    "range": [
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [-3, 1.3, 0, -3, 1.3, 0], "carry": "range-off" },
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [3, 1.3, 0, 3, 1.3, 0], "carry": "range-on" }
+    ],
+    "range-off": [
+      { "n": [6, 8], "every": 0.05, "life": [2.5, 2.5], "shape": "glow", "size": [0.12, 0.16], "box": [-2.2, -1.2, -0.05, 2.2, 1.2, 0.05], "forces": { "gather-all": 1 }, "tint": 7077770, "gain": 2, "alphas": [[0, 0], [0.15, 1], [0.8, 1], [1, 0]], "add": true }
+    ],
+    "range-on": [
+      { "n": [6, 8], "every": 0.05, "life": [2.5, 2.5], "shape": "glow", "size": [0.12, 0.16], "box": [-2.2, -1.2, -0.05, 2.2, 1.2, 0.05], "forces": { "gather-near": 1 }, "tint": 7077770, "gain": 2, "alphas": [[0, 0], [0.15, 1], [0.8, 1], [1, 0]], "add": true }
+    ],
+
+    "falloff": [
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [-3, 1.3, 0, -3, 1.3, 0], "carry": "falloff-off" },
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [3, 1.3, 0, 3, 1.3, 0], "carry": "falloff-on" }
+    ],
+    "falloff-off": [
+      { "n": [6, 8], "every": 0.05, "life": [2.5, 2.5], "shape": "glow", "size": [0.12, 0.16], "box": [-2.2, -1.2, -0.05, 2.2, 1.2, 0.05], "forces": { "gather-edge": 1 }, "tint": 4029439, "gain": 2, "alphas": [[0, 0], [0.15, 1], [0.8, 1], [1, 0]], "add": true }
+    ],
+    "falloff-on": [
+      { "n": [6, 8], "every": 0.05, "life": [2.5, 2.5], "shape": "glow", "size": [0.12, 0.16], "box": [-2.2, -1.2, -0.05, 2.2, 1.2, 0.05], "forces": { "gather-soft": 1 }, "tint": 4029439, "gain": 2, "alphas": [[0, 0], [0.15, 1], [0.8, 1], [1, 0]], "add": true }
+    ],
+
+    "overLife": [
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [-3, 0, 0, -3, 0, 0], "carry": "overLife-off" },
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [3, 0, 0, 3, 0, 0], "carry": "overLife-on" }
+    ],
+    "overLife-off": [
+      { "n": [2, 3], "every": 0.03, "life": [2.4, 2.4], "shape": "spark", "size": [0.08, 0.12], "dir": [0, 1, 0], "spread": 0.6, "speed": [3, 4], "drag": 1, "forces": { "fall-always": 1 }, "tint": 16760896, "gain": 3, "a1": 0.3, "add": true }
+    ],
+    "overLife-on": [
+      { "n": [2, 3], "every": 0.03, "life": [2.4, 2.4], "shape": "spark", "size": [0.08, 0.12], "dir": [0, 1, 0], "spread": 0.6, "speed": [3, 4], "drag": 1, "forces": { "fall-late": 1 }, "tint": 16760896, "gain": 3, "a1": 0.3, "add": true }
+    ],
+
+    "overAge": [
+      { "n": [150, 150], "life": [1.6, 2], "shape": "spark", "size": [0.07, 0.1], "box": [-3.5, 1, 0, -3.5, 1, 0], "jitter": [0.05, 0.05, 0.05], "drag": 1, "forces": { "age-push-off": 1 }, "tint": 10514687, "gain": 3, "a1": 0, "add": true },
+      { "n": [25, 25], "after": 0.6, "life": [1.3, 1.3], "shape": "glow", "size": [0.25, 0.3], "box": [-3.8, 0.7, -0.3, -3.2, 1.3, 0.3], "drag": 1, "forces": { "age-push-off": 1 }, "tint": 16769126, "gain": 2, "a1": 0, "add": true },
+      { "n": [150, 150], "life": [1.6, 2], "shape": "spark", "size": [0.07, 0.1], "box": [3.5, 1, 0, 3.5, 1, 0], "jitter": [0.05, 0.05, 0.05], "drag": 1, "forces": { "age-push-on": 1 }, "tint": 10514687, "gain": 3, "a1": 0, "add": true },
+      { "n": [25, 25], "after": 0.6, "life": [1.3, 1.3], "shape": "glow", "size": [0.25, 0.3], "box": [3.2, 0.7, -0.3, 3.8, 1.3, 0.3], "drag": 1, "forces": { "age-push-on": 1 }, "tint": 16769126, "gain": 2, "a1": 0, "add": true }
+    ]
+  }
+}

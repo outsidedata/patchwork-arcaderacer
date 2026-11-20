@@ -95,12 +95,14 @@
 //                chassis row in place of the body, its cabin, the fenders, the bumpers, the grille,
 //                the rocker panels, the spare and the lamps' housings and lenses, none of which is
 //                then drawn; the wheels, the corners (springs, dampers, upper and lower arms), the
-//                exhaust, the dust and the tracks are drawn as without it. Its origin is at `at` in the
-//                chassis's frame ([0, 0, 0] when left out), `scale` metres to one of its units (1 when
-//                left out), its +x the car's forward, +y up and +z its right, as the chassis's. It is
+//                exhaust and the tracks are drawn as without it. Its origin is at `at` in the
+//                chassis's frame ([0, 0, 0] when left out), turned `turn` (a quaternion, none when left
+//                out), `scale` metres to one of its units (1 when left out), so that once turned its +x
+//                is the car's forward, +y up and +z its right, as the chassis's. It is
 //                asked of the loader (`plugins.loader`, which the scene lists, or the frame throws
 //                naming the vehicle) once, and taken with `model(asset)` the first frame it is ready;
-//                until then the car is drawn with no body. Its own nodes place the lamps, by the
+//                until then the car is drawn with no body. With its own `looks` it is a pro-ng glb
+//                instead, made by the `models` mod (Models, below). Its own nodes place the lamps, by the
 //                start of their names (glTF's `beam.L` reaches three as `beamL`): every node named
 //                `beam…` throws a beam of `lights.beam`, a spot light where the node is, aimed along
 //                the node's +x (its `dip` is the node's own turn), or, with `beam.at`, the two beams
@@ -111,7 +113,8 @@
 //                and no `lights` has no lamps: no beams, and its lamp meshes keep their own
 //                materials. Every other material of the model is dressed by render3d, once, and is the
 //                loader's, never disposed here; every mesh of it takes shadows, and every one that is
-//                not see-through casts them. Every node named starting `steer` (glTF's `steer` reaches
+//                not see-through casts them; a pro-ng model's one mesh (Models, below), its see-through
+//                calls among its solid ones, casts as the `models` mod made it. Every node named starting `steer` (glTF's `steer` reaches
 //                three as `steer`) that is not under another is a steering wheel, which turns with the
 //                steering as the drawn one does (`lock`, below), about its own x: a model's steering
 //                wheel is its own node, its +x down the column into the dash, +y up its face, +z right.
@@ -131,75 +134,45 @@
 //                the wheel straight, for one on it): a hand bent onto it takes that turn. A `part`
 //                that names nothing the look draws throws naming the point: on the frame the car is
 //                made, or, for a model, on the frame it comes and has no `steer…` node.
-//   exhaust      a list of tailpipes, each `{ at, dir, pipe, effect, rev?, rpm? }`: a chrome tailpipe
-//                `pipe` round ending at `at`, along `dir`, and particle3d's `effect` thrown from it, both
-//                in the chassis's frame and turned with it every frame, for as long as the car is drawn;
-//                and `rev` beside it while the car's row holds a throttle, stopped the frame it lets go.
-//                Each pipe throws its own. Each is the page's own (particle3d's `emit`), left where it is
-//                thrown, so a moving car leaves a trail, and stopped with the car. With `rpm`,
-//                `[[rpm, rate], …]` in rising rpm, both run at the rate the curve gives for the row's
-//                `rpm` each frame (particle3d's `rate`: that many times as many bursts), its points
-//                joined by straight lines and held past its ends (`along`); with none, at 1. A scene
-//                whose look has an exhaust lists particle3d after this plugin.
-//   dust         `{ effect, clear, speed }`: particle3d's `effect` thrown from under each wheel while
-//                it is on the ground, its lowest point within `clear` metres of the land's height there,
-//                and either going faster than `speed` metres a second across it or its tread sliding
-//                over it faster than that, spinning or locked; it is thrown at the ground under the
-//                wheel, along the way the tread pushes the ground back (the tread's speed at the ground
-//                less the wheel's, which rolling is back from the way it goes) and up by half as much,
-//                and stopped the frame either is no longer so. The land is the one a mod hands it,
-//                `world.box3dvehicle.mods: { land: '<a>' }` (terrain3d's, `terrain3d.box3dvehicle.ts`):
-//                `land(plugins)` is an object whose `height(x, z)` is the ground there, and whose
-//                `spray(x, z)`, when it has one, is what the ground there throws instead of `effect`:
-//                an effect's name, false for nothing, undefined for `effect`; a wheel that rolls onto
-//                ground that throws something else stops its effect and starts that one. `land` is
-//                undefined until it has a ground. Until then, or with no mod named, no wheel is on the ground and no
-//                dust is thrown. The plugin the mod is is listed before this one, so the land it asks
-//                in its `afterTick` is this frame's, and a scene with dust or tracks that lists it
-//                after, or does not list it, throws (`ahead`), as does one with dust on any of its
-//                vehicles that does not list particle3d.
-//   sprays       a list, each `{ effect, clear, speed: [from, to], rpm? }`: particle3d's `effect` thrown
-//                from under each wheel beside its dust, from the same point along the same way, while
-//                the wheel is within `clear` metres of the land's height there and its tread goes
-//                faster than `from` metres a second over it (its speed across the land or its slide,
-//                whichever is more, as dust's), until the wheel itself goes `to` metres a second or
-//                faster across the land: a spray that only a car pulling away throws. Ground whose
-//                `spray` is false throws none of them, and ground that throws some other effect
-//                leaves them as they are. With `rpm`, run at the rate its curve gives for the row's
-//                `rpm`, as an exhaust's; with none, at 1. The way it is thrown is its effect's: a
-//                layer with its own `dir` throws along that. The land and the order are dust's, and
-//                a scene with sprays on any of its vehicles that does not list particle3d throws.
-//   skid         `{ effect, clear, speed, rate?, force? }`: particle3d's `effect` thrown from under each wheel
-//                sliding sideways: while the wheel is within `clear` metres of the land's height there
-//                and goes faster than `speed` metres a second along its axle (its velocity across the
-//                land on its own z, turned by its rot, laid flat), at the ground under it, along the
-//                way it slides and up by a tenth as much, stopped the frame either is no longer so. With
-//                `rate`, `[[m/s, rate], …]` in rising speed, run at the rate that curve gives for the
-//                sideways speed each frame (`along`), so a harder slide throws more; with none, at 1.
-//                With `force`, per m/s, each frame it is thrown with particle3d's `force` that times the
-//                sideways speed, every layer's speed multiplied by it, so a harder slide throws harder:
-//                at `force` 0.25 a slide of 4 m/s throws as the effect says and one of 12 m/s three
-//                times as hard; with none, at 1.
-//                It is thrown whatever the ground under the wheel sprays: a tyre slid over asphalt
-//                smokes. The land and the order are dust's, and a scene with a skid on any of its
-//                vehicles that does not list particle3d throws.
-//   tracks       `{ colour, opacity, skid, slide, clear, step, life, max, lift }`: the track each tyre
+//   exhaust      a list of tailpipes, each `{ at, dir, pipe }`: a chrome tailpipe `pipe` round ending at
+//                `at`, along `dir`, both in the chassis's frame. What it blows is particle3d's (Effects,
+//                below).
+//   tracks      `{ colour, opacity, skid, slide, clear, step, life, max, lift }`: the track each tyre
 //                leaves on the land, a ribbon its wheel's width laid `lift` metres over the land's
 //                height under each edge, a piece every `step` metres the wheel goes while its lowest
 //                point is within `clear` metres of the land, broken where it is not. A piece is
-//                `colour` at the opacity the land's `mark(x, z)` gives where it is laid (the land a
-//                mod hands, as dust's; `opacity` where it gives none, or has no `mark`), plus `skid`
+//                `colour` at the opacity the land's `mark(x, z)` gives where it is laid (`opacity`
+//                where it gives none, or has no `mark`), plus `skid`
 //                while the tread slides over the ground faster than `slide` metres a second, a skid's
 //                rubber or a spun wheel's rut, at most 1; a piece of no opacity is not laid, and
 //                breaks the track. Each fades to nothing over `life` seconds from when it was laid,
 //                and a wheel keeps its last `max` pieces, laying each new one over its oldest. A track
-//                is the page's own, and goes with its car. With no land no tyre is on the ground, and
-//                none is laid.
+//                is the page's own, and goes with its car. The land is the one a mod hands it,
+//                `world.box3dvehicle.mods: { land: '<a>' }` (terrain3d's, `terrain3d.box3dvehicle.ts`):
+//                `land(plugins)` is an object whose `height(x, z)` is the ground there, whose
+//                `mark(x, z)` is its mark, and whose `drivers(x, z)` are the drivers its ground hands
+//                what is on it (Effects, below); undefined until it has a ground. With no land no tyre
+//                is on the ground, and none is laid. The plugin the mod is is listed before this one,
+//                so the land it asks in its `afterTick` is this frame's, and a scene with tracks that
+//                lists it after, or does not list it, throws (`ahead`).
 //   the wheels   each on its wheel row: a tyre of its axle's `wheel.radius` and `width`, revolved, its
 //                sidewalls bulging and its shoulders rounding into the tread (with `tread`, `blocks`
 //                chevron lugs round it `depth` deep, each half turned `angle` radians across it), on a
 //                dished steel wheel `look.rim` of the radius with `look.spokes` ribs on its outer face,
-//                as many chrome lug nuts round its hub and a chrome cap, so its turning shows.
+//                as many chrome lug nuts round its hub and a chrome cap, so its turning shows. With
+//                `look.wheel`, `{ left, right }`, the model of the wheel's side in its place instead,
+//                each a model as `model` is (its `at`, `turn` and `scale` in the wheel's frame: +z along
+//                the axle toward the car's right, +x forward with the wheel straight and unrolled), one
+//                made for each wheel, drawn on its row once it has come, rolling and steering as the row
+//                does.
+//   the hubs     with `look.hubs`, one `{ left, right }` an axle in `axles`' order: at each wheel's
+//                middle the model of its axle's and its side's, in the wheel's frame as a wheel model is,
+//                turned as the chassis is and steered about the chassis's up as far as the wheel row is,
+//                and never rolled: what of a corner steers and rides with its wheel and does not turn
+//                with it (a knuckle, a drum, a fender). Placed after the wheels, so on a solid or an
+//                independent axle it stands where its wheel is drawn.
+//   corners      `look.corners: false` draws no spring, damper or arm at any corner and no upper arm on
+//                the body, for a model that has its own.
 //   the corners  between the chassis and each wheel, placed each frame from both rows: a coil spring
 //                of `look.coils` turns, `look.coilRadius` round and `look.wire` thick, from the wheel's
 //                inner face (level with the wheel's middle, along the chassis's side, so it does not
@@ -241,6 +214,25 @@
 //                reservoirs, the pumpkin's cover and the joints in `chrome`, the discs in `damper`,
 //                the calipers and straps in `hook`, the bump stops in `trim`, and everything else in
 //                `arm`. Each part is a mesh of its own on the chassis, named `box3dvehicle.solid.<part>`.
+//   independent  with it, each axle is drawn as independent suspension instead of the corners (no
+//                coil, damper or arm at any corner, and no upper arm on the body), placed each frame
+//                from its two wheel rows by `independentParts` (`box3dvehicle.sim.ts`, which says how
+//                every number is read): a front corner's two wishbones swinging about their pivots on
+//                the frame, a knuckle between their ball joints with its spindle and steering arm, the
+//                tie rod from the rack's end, which moves so the knuckles steer as the wheel rows do;
+//                a rear corner's trailing arm turning about its pivot, held by its two radius rods,
+//                and its carrier; at every corner the hub, the brake disc and caliper, the coilover
+//                (a body, a shaft, a main and a tender spring with a crossover ring between them, and
+//                a piggyback reservoir), the anti-roll bar's lever and end link, and the half-shaft
+//                with a cup and a boot at each end; the anti-roll bar across the frame and the rack's
+//                housing. Every arm is rigid, so each wheel rides the arc its arms give it: the wheel
+//                mesh on a wheel row is drawn at the middle and with the turn its knuckle or carrier
+//                gives it (out or in, camber and toe), spinning as the wheel row spins, while the wheel
+//                row itself slides straight up and down on its spring. The springs are in `spring`,
+//                the coilovers' bodies and reservoirs in `damper`, the shafts, ball joints, hubs and
+//                discs in `chrome`, the calipers, rings and spring seats in `hook`, the bushes and boots
+//                in `trim`, and everything else in `arm`. Each part is a mesh of its own on the chassis,
+//                named `box3dvehicle.independent.<part>`.
 //   sound        `{ engine, stems?, ease?, at?, range? }`: the engine heard. `engine` is the loader
 //                catalogue's `json` entry of its manifest (`Engine`, `box3dvehicle.sim.ts`), which the
 //                library's `sounds/sounds.mjs` writes beside its loops, from a `piston` or `electric`
@@ -268,9 +260,21 @@
 //                with a sound in a scene that lists no loader,
 //                or names no `sound` mod, or whose engine writes no `rpm` (direct drive), throws on the
 //                frame it is drawn, naming the vehicle.
+// Effects. A car throws no effect itself. Its mod for particle3d (`box3dvehicle.particle3d.ts`, named in
+// `world.particle3d.mods.sources`) hands particle3d every car's sources each frame (particle3d's header,
+// Attachments), and the scene's `world.particle3d.attach` says which effect each throws.
+// Models. A model a look names (its body, a wheel, a hub) that names its own `looks` is a pro-ng glb, the loader
+// catalogue's `binary` entry `asset`, drawn through `world.box3dvehicle.mods.models` (supershader3d's,
+// `supershader3d.box3dvehicle.ts`): its bytes asked of the loader once, unpacked by the mod once, and a mesh built
+// of it by the mod for each car and wheel it is drawn on, in the scene's one shader, once the scene's looks file has
+// landed; its own looks file, the `json` entry `looks` (preloaded), names the material each of its vertices counts.
+// Its meshes are the mod's, dressed already, and their geometry goes with the car. A scene that names no `models`
+// throws on the frame such a model is drawn, naming the vehicle, and one that does not list the mod's plugin before
+// this one throws then too (`ahead`). Any other model is the loader's `model`, every material of it dressed by
+// render3d once, a wheel's or a hub's a copy of it for each wheel.
 // Round parts have `look.segments` sides and arms are `look.arm` thick. A car is drawn once its row
 // names its parts and they have come, and goes with its row. When `world.box3dvehicle` changes, as
-// the editor does while a value of it is dragged, every car is made again from it.
+// a dev page's panel does while a value of it is dragged, every car is made again from it.
 // Every part is a physical material in its paint, its finish `look.finish`'s for that paint
 // (`roughness`, `metalness`, a `clearcoat` and its `clearcoatRoughness` for lacquered paint, a
 // `sheen` and its `sheenRoughness` for vinyl, an `opacity` below 1 for glass and lenses, which are
@@ -279,7 +283,9 @@
 // `amber` glow in their own colour. The parts that never move against the chassis or a wheel are
 // merged into one mesh a material, so a car is a few draws however many parts it has; the drawn
 // steering wheel, which turns on the chassis, is merged so on its own.
-// Every mesh takes shadows, and every one that is not see-through casts them.
+// Every mesh takes shadows, and every one that is not see-through casts them, but the one mesh the `models` mod
+// builds of a pro-ng glb, a wheel's, a hub's or a body's, which casts as the mod made it: its see-through calls are
+// among its solid ones, and the whole thing would otherwise cast nothing.
 // The lamps found by name: each beam's spot light is `box3dvehicle.beam`, the brake light
 // `box3dvehicle.brake`, the reverse light `box3dvehicle.reverse`, and the drawn lenses of the tail
 // and reverse lights `box3dvehicle.tail` and `box3dvehicle.backup`; a model's group on the chassis
@@ -294,14 +300,15 @@ import type { Object3D } from 'three'
 import type { Row } from '#engine/engine.ts'
 import type { Plugins } from '#engine/browser.ts'
 import { ahead, mod, provided } from '#addons/scenemanager/scenemanager.addon.ts'
-import type { Effect } from '#plugins/particle3d/particle3d.plugin.ts'
-import { along, cabinPoints, corners, cross, design as designOf, pedals, pointOf, solidParts, turn, wheelAt, type Engine, type Fleet, type Lamp, type Lights, type Paint, type Tracks, type Vehicle, type Wheel } from './box3dvehicle.sim.ts'
+import { json } from '#plugins/loader/loader.sim.ts'
+import { cabinPoints, corners, cross, design as designOf, independentParts, pedals, pointOf, quatOf, solidParts, turn, wheelAt, type Engine, type Fleet, type Lamp, type Lights, type Model, type Paint, type Tracks, type Vehicle, type Wheel } from './box3dvehicle.sim.ts'
 import type { Quat, Vec3 } from '#plugins/box3d/box3d.sim.ts'
 
-// What a `land` mod is: the ground dust is thrown from, or undefined until there is one.
-type Land = (plugins: Plugins) => {
+// What a `land` mod is: the ground the tracks are laid on and the wheels' effects are thrown at, or
+// undefined until there is one: its height, the drivers its ground hands what is on it, and its mark.
+export type Land = (plugins: Plugins) => {
   height(x: number, z: number): number
-  spray?(x: number, z: number): string | false | undefined
+  drivers?(x: number, z: number): Record<string, number> | undefined
   mark?(x: number, z: number): number | undefined
 } | undefined
 // What a `sound` mod is: how this page decodes a file's bytes, and holds a sound going from `buffer`, at
@@ -312,20 +319,23 @@ type Sounding = {
   hold(buffer: AudioBuffer, holding: { rate: number; gain: number; at?: number[]; range?: number }): Held
 }
 type Hold = (plugins: Plugins) => Sounding | undefined
+// What a `models` mod is: how this page reads a pro-ng glb's bytes, once, and builds a mesh of what it read, `own`
+// its own looks file; undefined while the scene's shader is not ready.
+type Made = { unpack(bytes: Uint8Array): Promise<unknown>; build(unpacked: unknown, own: unknown): any | undefined }
+type Makes = (plugins: Plugins) => Made
 // One tyre's track: its mesh, the time each piece was laid and its opacity then, the next piece to
 // lay over, how many are laid, and the edges of the last place laid at, [x, y, z] left and right, or
 // undefined where the track is broken.
 type Track = { mesh: any; born: Float32Array; strength: Float32Array; next: number; laid: number; last?: number[][] }
 type Drawn = {
   chassis: any; wheels: any[]; corners: { coil: any; sleeve: any; rod: any; arm?: any }[]; owned: { dispose(): void }[]
-  // With `look.solid`: each axle's parts, one mesh a part on the chassis, in `solidParts`' order.
+  // With `look.wheel`: whether each wheel's model is on its row yet. With `look.hubs`: each wheel's hub, a
+  // group on the scene, and whether its model is in it yet.
+  fitted: boolean[]; hubs: any[]; hubbed: boolean[]
+  // With `look.solid` or `look.independent`: each axle's parts, one mesh a part on the chassis, in
+  // `solidParts`' or `independentParts`' order.
   solid: any[][]
-  // Each tailpipe's smoke, and its rev while the throttle is held, by the pipe's place in the list.
-  smoke: (Effect | undefined)[]; rev: (Effect | undefined)[]; dust: ({ fx: Effect; effect: string } | undefined)[]; tracks: Track[]
-  // Each wheel's sprays, by the wheel's corner and the spray's place in the look's list.
-  sprays: (Effect | undefined)[][]
-  // Each wheel's skid, by the wheel's corner.
-  skid: (Effect | undefined)[]
+  tracks: Track[]
   // The lamps: the tail lenses' and reverse lenses' materials and their two lights, which change, and
   // the amber lenses' material.
   lamps?: { tail: any; backup: any; amber: any; brake?: any; reverse?: any }
@@ -353,6 +363,18 @@ const layersOf = (e: Heard, stem: string): Layer[] =>
   e.manifest.layers.filter(l => l.stems[stem] !== undefined).map(l => ({ rpm: l.rpm, buffer: e.buffers[l.stems[stem]] })).sort((a, b) => a.rpm - b.rpm)
 
 // Each layer's playback rate and gain at `rpm`, `layers` sorted by rpm, `loud` the gain at this throttle.
+// A wheel row's tread where it meets the ground, `radius` below its middle: `speed`, m/s the wheel goes
+// across the land; `slide`, m/s the tread slides over the ground, its speed and its spin's there summed,
+// spinning or locked; `back`, the way across the land the tread pushes the ground, [x, z] of length 1:
+// back from the way the wheel goes as it rolls, and from the way it spins on the spot, which is back from
+// its way when it goes nowhere.
+export function tread(wheel: Record<string, any>, radius: number): { speed: number; slide: number; back: [number, number] } {
+  const [vx, , vz] = wheel.vel as Vec3
+  const [tx, , tz] = cross(wheel.spin as Vec3, [0, -radius, 0])
+  const back = Math.hypot(tx, tz) > 1e-6 ? [tx, tz] : [-vx, -vz], len = Math.hypot(back[0], back[1]) || 1
+  return { speed: Math.hypot(vx, vz), slide: Math.hypot(vx + tx, vz + tz), back: [back[0] / len, back[1] / len] }
+}
+
 export function mix(layers: { rpm: number }[], rpm: number, loud: number): { rate: number; gain: number }[] {
   const weights = layers.map(() => 0), last = layers.length - 1
   if (rpm <= layers[0].rpm) weights[0] = Math.max(0, rpm) / layers[0].rpm
@@ -365,12 +387,38 @@ export function mix(layers: { rpm: number }[], rpm: number, loud: number): { rat
   return layers.map((l, k) => ({ rate: Math.max(0, rpm) / l.rpm, gain: weights[k] * loud }))
 }
 
+// Whether two values are the same: the same number (NaN the same as NaN), string, boolean or null, or
+// arrays and plain objects of the same, item by item and field by field, a field holding undefined the
+// same as one not there. Read every frame against the copy of world.box3dvehicle, so it walks the two
+// and makes nothing.
+function same(a: unknown, b: unknown): boolean {
+  if (a === b || (a !== a && b !== b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a)) {
+    const c = b as unknown[]
+    if (a.length !== c.length) return false
+    for (let i = 0; i < a.length; i++) if (!same(a[i], c[i])) return false
+    return true
+  }
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>
+  for (const k in x) if (!same(x[k], y[k])) return false
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false
+  return true
+}
+
 export function box3dvehicle() {
   const cars = new Map<number, Drawn>()
-  let design = ''
+  // A copy of world.box3dvehicle as the cars were drawn from it, taken when it changes; a change,
+  // made in place or not, drops every car to be made again.
+  let design: Fleet | undefined
   // The models asked of the loader, each once; and every material of a model dressed, each once.
   const asked = new Set<string>()
   const dressed = new WeakSet<object>()
+  // With the `models` mod: each pro-ng glb as the mod unpacked it, by its catalogue name, undefined while it comes.
+  const glbs = new Map<string, unknown>()
+  // A hub's steer and the up it turns about, made once with three and reused every frame.
+  let steered: any, up: any
   // Each engine asked for, by its manifest's catalogue name, once a page; and each read, once it has come.
   const engines = new Set<string>()
   const read = new Map<string, Heard>()
@@ -966,7 +1014,9 @@ export function box3dvehicle() {
     }
 
     const inboard = look.inboard ?? 0
-    for (const c of look.solid ? [] : cs) {
+    // the corners drawn: none on a solid or independent axle, which draws its own, or with `corners: false`
+    const cornered = look.solid || look.independent || look.corners === false ? [] : cs
+    for (const c of cornered) {
       const out = Math.abs(c.mount[2]) - inboard - W / 2
       if (out > 0) {
         const upper = new THREE.Mesh(geo(new THREE.BoxGeometry(arm, 1, arm).translate(0, 0.5, 0)), mat('arm'))
@@ -994,14 +1044,21 @@ export function box3dvehicle() {
     }
     scene.add(chassis)
 
-    const wheels = cs.map(c => { const g = wheel(c.axle.wheel, c.side); bake(g); scene.add(g); return g })
+    // each wheel drawn, or with `look.wheel` a group its model is put in once it has come
+    const wheels = cs.map(c => {
+      const g = look.wheel ? new THREE.Group() : wheel(c.axle.wheel, c.side)
+      if (!look.wheel) bake(g)
+      scene.add(g)
+      return g
+    })
+    const hubs = look.hubs ? cs.map(() => { const g = new THREE.Group(); scene.add(g); return g }) : []
 
     // A helix of `coils` turns from y 0 to y 1, to be stretched between the wheel and the mount.
     const helix = new THREE.Curve()
     helix.getPoint = (t: number, into = new THREE.Vector3()) => into.set(coilRadius * Math.cos(t * coils * 2 * Math.PI), t, coilRadius * Math.sin(t * coils * 2 * Math.PI))
     const coil = geo(new THREE.TubeGeometry(helix, coils * segments, wire, Math.max(3, segments / 4), false))
     const stick = (thick: number) => geo(new THREE.BoxGeometry(thick, 1, thick).translate(0, 0.5, 0))
-    const drawnCorners = (look.solid ? [] : cs).map(c => {
+    const drawnCorners = cornered.map(c => {
       const spring = new THREE.Mesh(coil, mat('spring'))
       const sleeve = new THREE.Mesh(geo(new THREE.CylinderGeometry(coilRadius / 2, coilRadius / 2, 1, segments).translate(0, -0.5, 0)), mat('damper'))
       sleeve.scale.y = c.axle.spring.length - c.axle.spring.travel
@@ -1011,11 +1068,13 @@ export function box3dvehicle() {
       for (const m of [spring, sleeve, rod, lower]) if (m) scene.add(m)
       return { coil: spring, sleeve, rod, arm: lower }
     })
-    // Each solid axle's parts, made from how they stand at rest: a unit tube, coil or band along y from
-    // 0 to 1 to be stretched from `a` to `b` each frame, or a ball.
-    const solid = look.solid ? v.axles.map((axle, i) => {
+    // Each solid axle's or independent axle's parts, made from how they stand at rest: a unit tube (a
+    // cone with `r2`), coil or band along y from 0 to 1 to be stretched from `a` to `b` each frame, or a
+    // ball.
+    const resting = (i: number, l: Vec3, r: Vec3) => look.solid ? solidParts(v, i, l, r, 0, 0) : independentParts(v, i, l, r, 0, 0).parts
+    const solid = look.solid || look.independent ? v.axles.map((axle, i) => {
       const [l, r] = cs.filter(c => c.axle === axle)
-      return solidParts(v, i, wheelAt(l, axle.spring.sag), wheelAt(r, axle.spring.sag), 0, 0).map(p => {
+      return resting(i, wheelAt(l, axle.spring.sag), wheelAt(r, axle.spring.sag)).map(p => {
         let g
         if (p.shape === 'ball') g = new THREE.SphereGeometry(p.r, segments, segments / 2)
         else if (p.shape === 'band') g = new THREE.BoxGeometry(p.r * 2, 1, p.thick!).translate(0, 0.5, 0)
@@ -1023,9 +1082,9 @@ export function box3dvehicle() {
           const turns = p.turns!, spiral = new THREE.Curve()
           spiral.getPoint = (t: number, into = new THREE.Vector3()) => into.set(p.r * Math.cos(t * turns * 2 * Math.PI), t, p.r * Math.sin(t * turns * 2 * Math.PI))
           g = new THREE.TubeGeometry(spiral, Math.ceil(turns * segments), p.wire!, Math.max(3, segments / 4), false)
-        } else g = new THREE.CylinderGeometry(p.r, p.r, 1, segments).translate(0, 0.5, 0)
+        } else g = new THREE.CylinderGeometry(p.r2 ?? p.r, p.r, 1, segments).translate(0, 0.5, 0)
         const m = new THREE.Mesh(geo(g), mat(p.paint))
-        m.name = `box3dvehicle.solid.${p.name}`
+        m.name = `box3dvehicle.${look.solid ? 'solid' : 'independent'}.${p.name}`
         m.castShadow = true
         m.receiveShadow = true
         chassis.add(m)
@@ -1055,7 +1114,7 @@ export function box3dvehicle() {
       scene.add(mesh)
       return { mesh, born: new Float32Array(t.max), strength: new Float32Array(t.max), next: 0, laid: 0 }
     }) : []
-    return { chassis, wheels, corners: drawnCorners, solid, owned, smoke: [], rev: [], dust: [], sprays: [], skid: [], tracks, lamps, headlights, steers, points }
+    return { chassis, wheels, fitted: cs.map(() => false), hubs, hubbed: hubs.map(() => false), corners: drawnCorners, solid, owned, tracks, lamps, headlights, steers, points }
   }
 
   // Lays the next piece of `tr` from its last edges to `edges`, `strength` opaque, laid at `now`.
@@ -1085,9 +1144,8 @@ export function box3dvehicle() {
 
   function drop(scene: any, id: number) {
     const d = cars.get(id)!
-    for (const m of [d.chassis, ...d.wheels, ...d.corners.flatMap(c => [c.coil, c.sleeve, c.rod, c.arm]), ...d.tracks.map(t => t.mesh)]) if (m) scene.remove(m)
+    for (const m of [d.chassis, ...d.wheels, ...d.hubs, ...d.corners.flatMap(c => [c.coil, c.sleeve, c.rod, c.arm]), ...d.tracks.map(t => t.mesh)]) if (m) scene.remove(m)
     for (const o of d.owned) o.dispose()
-    for (const fx of [...d.smoke, ...d.rev, ...d.dust.map(t => t?.fx), ...d.sprays.flat(), ...d.skid]) if (fx) fx.life = fx.age
     for (const s of d.engine ?? []) for (const held of s.held) held.stop()
     cars.delete(id)
   }
@@ -1135,20 +1193,87 @@ export function box3dvehicle() {
     return o
   }
 
+  // Every material of mesh `o` dressed by render3d, each once.
+  function dressOf(render3d: Plugins['render3d'], o: any) {
+    for (const mt of Array.isArray(o.material) ? o.material : [o.material]) {
+      if (dressed.has(mt)) continue
+      dressed.add(mt)
+      render3d.dress(mt)
+    }
+  }
+
+  // `object` in a group of its own, placed as model `m` says: at `at`, turned `turn`, `scale` metres a unit.
+  function placed(THREE: any, m: Model, object: any): any {
+    const root = new THREE.Group()
+    const [x, y, z] = m.at ?? [0, 0, 0]
+    root.position.set(x, y, z)
+    if (m.turn) root.quaternion.fromArray(m.turn)
+    root.scale.setScalar(m.scale ?? 1)
+    root.add(object)
+    return root
+  }
+
+  // Model `m` of the vehicle `name` as this page has it now, or undefined until it has come. One that names its
+  // `looks`, a mesh the `models` mod built of the pro-ng glb, for this car alone, its geometry let go with `owned`; else the loader's
+  // model, the very scene with `whole` (a body, drawn once) or a copy of it. `dress` says whether its materials are
+  // render3d's to dress: the loader's are, the mod's are dressed already.
+  function made(plugins: Plugins, m: Model, name: string, owned: { dispose(): void }[], whole: boolean): { object: any; dress: boolean } | undefined {
+    const loader = plugins.loader
+    if (!loader) throw new Error(`world.box3dvehicle.vehicles.${name}.look has a model, and this scene does not list loader`)
+    if (m.looks) {
+      const makes = mod<Makes>(plugins.wire.scene.world!, 'box3dvehicle', 'models')
+      if (!makes) throw new Error(`world.box3dvehicle.vehicles.${name}.look's model ${m.asset} names its looks, a pro-ng glb, and world.box3dvehicle.mods names no models`)
+      ahead(plugins.wire.scene, 'box3dvehicle', 'models')
+      const maker = makes(plugins)
+      if (!glbs.has(m.asset)) {
+        glbs.set(m.asset, undefined)
+        // The loader writes a failure to the console once itself.
+        loader.load(m.asset).then(async (glb: { bytes: Uint8Array }) => { glbs.set(m.asset, await maker.unpack(glb.bytes)) }).catch(() => {})
+      }
+      const unpacked = glbs.get(m.asset)
+      if (unpacked === undefined) return undefined
+      const object = maker.build(unpacked, json(plugins.wire, m.looks))
+      if (!object) return undefined
+      owned.push({ dispose: () => object.traverse((o: any) => o.geometry?.dispose()) })
+      return { object, dress: false }
+    }
+    if (!loader.ready(m.asset)) {
+      if (!asked.has(m.asset)) {
+        asked.add(m.asset)
+        loader.load(m.asset).catch(() => {})
+      }
+      return undefined
+    }
+    const scene = loader.model(m.asset).scene
+    return { object: whole ? scene : scene.clone(true), dress: true }
+  }
+
+  // A wheel's or a hub's model made, placed in its group as `m` says, its materials dressed where they are
+  // render3d's, every mesh taking shadows. A loader's model casts them from every mesh not see-through; a mesh the
+  // `models` mod built (`dress` false) is a whole glb in one mesh, its see-through calls among its solid ones, and
+  // casts as the mod made it.
+  function fitted(render3d: Plugins['render3d'], m: Model, got: { object: any; dress: boolean }): any {
+    got.object.traverse((o: any) => {
+      if (!o.isMesh) return
+      if (got.dress) {
+        dressOf(render3d, o)
+        o.castShadow = !(Array.isArray(o.material) ? o.material : [o.material]).some((mt: any) => mt.transparent)
+      }
+      o.receiveShadow = true
+    })
+    return placed(render3d.THREE, m, got.object)
+  }
+
   // The model `scene` put on car `d`'s chassis as `v.look.model` says, its lamps found by name: a
   // spot light on each node named `beam…`, aimed along its +x, and the tail, reverse and amber
   // meshes taking the car's lamp materials, the brake and reverse lights moved to the middle of their
   // lenses. Every other material is dressed by render3d, once, and left the loader's. Its `steer…` nodes
   // are the car's steering wheels, and the look's points on the wheel are hung on the first of them,
   // throwing naming the vehicle `name` when it has none. Hands back the model's group.
-  function modelled(render3d: Plugins['render3d'], v: Vehicle, d: Drawn, scene: any, name: string): any {
+  function modelled(render3d: Plugins['render3d'], v: Vehicle, d: Drawn, scene: any, name: string, dress: boolean): any {
     const THREE = render3d.THREE as any, m = v.look.model!, l = v.look.lights
-    const root = new THREE.Group()
+    const root = placed(THREE, m, scene)
     root.name = 'box3dvehicle.model'
-    const [x, y, z] = m.at ?? [0, 0, 0]
-    root.position.set(x, y, z)
-    root.scale.setScalar(m.scale ?? 1)
-    root.add(scene)
     d.chassis.add(root)
     // Whether `o`, or a node above it in the model, is named starting `prefix`.
     const under = (o: any, prefix: string) => { for (let p = o; p && p !== root; p = p.parent) if (p.name.startsWith(prefix)) return true; return false }
@@ -1161,14 +1286,10 @@ export function box3dvehicle() {
       if (lamp) {
         o.material = lamp === 'tail' ? d.lamps!.tail : lamp === 'reverse' ? d.lamps!.backup : d.lamps!.amber
         if (lamp !== 'amber') lenses[lamp].push(o)
-      } else {
-        for (const mt of Array.isArray(o.material) ? o.material : [o.material]) {
-          if (dressed.has(mt)) continue
-          dressed.add(mt)
-          render3d.dress(mt)
-        }
-      }
-      o.castShadow = !(Array.isArray(o.material) ? o.material : [o.material]).some((mt: any) => mt.transparent)
+      } else if (dress) dressOf(render3d, o)
+      // a loader's mesh casts unless it is see-through; a mesh the `models` mod built is a whole glb, its
+      // see-through calls among its solid ones, and casts as the mod made it
+      if (dress) o.castShadow = !(Array.isArray(o.material) ? o.material : [o.material]).some((mt: any) => mt.transparent)
       o.receiveShadow = true
     })
     const at = l?.beam.at
@@ -1206,37 +1327,45 @@ export function box3dvehicle() {
   return {
     afterTick(plugins: Plugins) {
       const { THREE, scene } = plugins.render3d
+      steered ??= new THREE.Quaternion()
+      up ??= new THREE.Vector3(0, 1, 0)
       const world = plugins.wire.scene.world
       const fleet: Fleet | undefined = world?.box3dvehicle
       if (!fleet) return
-      const now = JSON.stringify(fleet)
-      if (now !== design) { for (const id of [...cars.keys()]) drop(scene, id); design = now }
+      if (!same(fleet, design)) { for (const id of [...cars.keys()]) drop(scene, id); design = structuredClone(fleet) }
       const rows = new Map<number, Row>(plugins.wire.rows.map(r => [r.id, r]))
       const seen = new Set<number>()
-      const dusty = Object.values(fleet.vehicles).some(v => v.look.dust || v.look.sprays?.length || v.look.skid)
       const tracked = Object.values(fleet.vehicles).some(v => v.look.tracks)
-      if (dusty || tracked) ahead(plugins.wire.scene, 'box3dvehicle', 'land')
-      if (dusty && !plugins.particle3d) throw new Error('world.box3dvehicle has a vehicle whose look has dust, sprays or a skid, and this scene does not list particle3d')
-      const ground = dusty || tracked ? mod<Land>(world!, 'box3dvehicle', 'land')?.(plugins) : undefined
+      if (tracked) ahead(plugins.wire.scene, 'box3dvehicle', 'land')
+      const ground = tracked ? mod<Land>(world!, 'box3dvehicle', 'land')?.(plugins) : undefined
       const seconds = performance.now() / 1000
       for (const car of plugins.wire.rows) {
         if (car.kind !== 'box3dvehicle' || car.data.chassis === undefined) continue
         const chassis = rows.get(car.data.chassis), wheels = (car.data.wheels as number[]).map(id => rows.get(id))
         if (!chassis || wheels.some(w => !w)) continue
         seen.add(car.id)
-        const v = designOf(world!, car), cs = corners(v), dust = v.look.dust, tracks = v.look.tracks
+        const v = designOf(world!, car), cs = corners(v), tracks = v.look.tracks
         if (!cars.has(car.id)) cars.set(car.id, make(plugins.render3d, v, car.data.vehicle, fleet.lightsOff === true))
         const d = cars.get(car.id)!
         if (v.look.model && !d.model) {
-          const loader = plugins.loader, { asset } = v.look.model
-          if (!loader) throw new Error(`world.box3dvehicle.vehicles.${car.data.vehicle}.look has a model, and this scene does not list loader`)
-          if (loader.ready(asset)) d.model = modelled(plugins.render3d, v, d, loader.model(asset).scene, car.data.vehicle)
-          else if (!asked.has(asset)) {
-            asked.add(asset)
-            // The loader writes a failure to the console once itself.
-            loader.load(asset).catch(() => {})
-          }
+          const got = made(plugins, v.look.model, car.data.vehicle, d.owned, true)
+          if (got) d.model = modelled(plugins.render3d, v, d, got.object, car.data.vehicle, got.dress)
         }
+        // each wheel's model and each hub's, of its side and its axle, put in its group once it has come
+        const { wheel: wheelModels, hubs: hubModels } = v.look
+        if (hubModels && hubModels.length !== v.axles.length) throw new Error(`world.box3dvehicle.vehicles.${car.data.vehicle}.look has ${hubModels.length} hubs, and the vehicle ${v.axles.length} axles`)
+        cs.forEach((c, i) => {
+          const side = c.side < 0 ? 'left' : 'right'
+          if (wheelModels && !d.fitted[i]) {
+            const got = made(plugins, wheelModels[side], car.data.vehicle, d.owned, false)
+            if (got) { d.wheels[i].add(fitted(plugins.render3d, wheelModels[side], got)); d.fitted[i] = true }
+          }
+          if (hubModels && !d.hubbed[i]) {
+            const m = hubModels[v.axles.indexOf(c.axle)][side]
+            const got = made(plugins, m, car.data.vehicle, d.owned, false)
+            if (got) { d.hubs[i].add(fitted(plugins.render3d, m, got)); d.hubbed[i] = true }
+          }
+        })
         const at: Vec3 = chassis.data.pos, rot: Quat = chassis.data.rot
         d.chassis.position.fromArray(at)
         d.chassis.quaternion.fromArray(rot)
@@ -1271,9 +1400,7 @@ export function box3dvehicle() {
             if (k.arm) span(THREE, k.arm, place([c.mount[0], -v.body.height / 2, (c.side * v.body.width) / 2]), hub)
           }
           const [x, y, z] = wd.pos as Vec3, [vx, , vz] = wd.vel as Vec3, r = c.axle.wheel.radius
-          // The tread at the ground: the wheel's speed and its spin about its middle, at r below it.
-          const [tx, , tz] = cross(wd.spin as Vec3, [0, -r, 0])
-          const slide = Math.hypot(vx + tx, vz + tz), speed = Math.hypot(vx, vz)
+          const { slide } = tread(wd, r)
           const floor = ground ? ground.height(x, z) : undefined
           if (tracks) {
             const tr = d.tracks[i]
@@ -1294,86 +1421,49 @@ export function box3dvehicle() {
             }
             fade(tr, tracks, seconds)
           }
-          // What the ground under the wheel throws, and where and along what a wheel's throw leaves: the
-          // ground under it, along the way the tread pushes the ground back and up by half as much.
-          const sprays = floor === undefined ? undefined : ground!.spray?.(x, z)
-          const thrown = () => {
-            const back = Math.hypot(tx, tz) > 1e-6 ? [tx, tz] : [-vx, -vz], len = Math.hypot(back[0], back[1]) || 1
-            return { at: [x, floor!, z], dir: [back[0] / len, 0.5, back[1] / len] }
-          }
-          if (dust) {
-            const effect = sprays === false ? undefined : sprays ?? dust.effect
-            const on = floor !== undefined && effect !== undefined && y - r - floor <= dust.clear && Math.max(speed, slide) > dust.speed
-            const was = d.dust[i]
-            if (was && (!on || was.effect !== effect)) { was.fx.life = was.fx.age; d.dust[i] = undefined }
-            if (on) {
-              const { at, dir } = thrown()
-              const now = d.dust[i]
-              if (now) { now.fx.at = at; now.fx.dir = dir; now.fx.floor = floor } else d.dust[i] = { fx: plugins.particle3d.emit(effect, at, { dir, floor, life: Infinity }), effect }
-            }
-          }
-          ;(v.look.sprays ?? []).forEach((s, k) => {
-            const own = (d.sprays[i] ??= [])
-            const on = floor !== undefined && sprays !== false && y - r - floor <= s.clear && Math.max(speed, slide) > s.speed[0] && speed < s.speed[1]
-            const was = own[k]
-            if (was && !on) { was.life = was.age; own[k] = undefined }
-            if (!on) return
-            const { at, dir } = thrown()
-            const fx = (own[k] ??= plugins.particle3d.emit(s.effect, at, { dir, floor, life: Infinity }))
-            fx.at = at
-            fx.dir = dir
-            fx.floor = floor
-            fx.rate = s.rpm ? along(s.rpm, car.data.rpm ?? s.rpm[0][0]) : 1
-          })
-          const skid = v.look.skid
-          if (skid) {
-            // The wheel's axle across the land (its own z turned by its rot), and its speed along it.
-            const [ax, , az] = turn(wd.rot as Quat, [0, 0, 1]), across = Math.hypot(ax, az)
-            const sideways = across > 1e-6 ? (vx * ax + vz * az) / across : 0
-            const on = floor !== undefined && y - r - floor <= skid.clear && Math.abs(sideways) > skid.speed
-            const was = d.skid[i]
-            if (was && !on) { was.life = was.age; d.skid[i] = undefined }
-            if (on) {
-              const s = Math.sign(sideways) / across
-              const at = [x, floor!, z], dir = [ax * s, 0.1, az * s]
-              const fx = (d.skid[i] ??= plugins.particle3d.emit(skid.effect, at, { dir, floor, life: Infinity }))
-              fx.at = at
-              fx.dir = dir
-              fx.floor = floor
-              fx.rate = skid.rate ? along(skid.rate, Math.abs(sideways)) : 1
-              fx.force = skid.force !== undefined ? skid.force * Math.abs(sideways) : 1
-            }
-          }
         })
         // Each solid axle from its two wheels: their middles in the chassis's frame and how far each is
         // steered, its spin axis turned about the chassis's y from the chassis's z.
-        if (v.look.solid) {
+        if (v.look.solid || v.look.independent) {
           const back: Quat = [-rot[0], -rot[1], -rot[2], rot[3]]
           const local = (i: number) => {
             const wd = wheels[i]!.data, p = turn(back, [wd.pos[0] - at[0], wd.pos[1] - at[1], wd.pos[2] - at[2]]), spin = turn(back, turn(wd.rot, [0, 0, 1]))
             return { p, steer: Math.atan2(spin[0], spin[2]) }
           }
+          const place = (i: number, parts: { shape: string; a: Vec3; b: Vec3 }[]) => parts.forEach((p, k) => {
+            const m = d.solid[i][k]
+            if (p.shape === 'ball') m.position.fromArray(p.a)
+            else span(THREE, m, p.a, p.b)
+          })
           v.axles.forEach((axle, i) => {
-            const [l, r] = [cs.findIndex(c => c.axle === axle && c.side < 0), cs.findIndex(c => c.axle === axle && c.side > 0)].map(local)
-            solidParts(v, i, l.p, r.p, l.steer, r.steer).forEach((p, k) => {
-              const m = d.solid[i][k]
-              if (p.shape === 'ball') m.position.fromArray(p.a)
-              else span(THREE, m, p.a, p.b)
+            const ks = [cs.findIndex(c => c.axle === axle && c.side < 0), cs.findIndex(c => c.axle === axle && c.side > 0)]
+            const [l, r] = ks.map(local)
+            if (v.look.solid) return place(i, solidParts(v, i, l.p, r.p, l.steer, r.steer))
+            // the independent suspension, and each wheel drawn where its arms hold it: at the drawn
+            // middle, turned by its knuckle's turn from rest (camber, toe and the knuckle's steer) over
+            // its own spin, which is the physics wheel's turn in the chassis's frame unsteered
+            const made = independentParts(v, i, l.p, r.p, l.steer, r.steer)
+            place(i, made.parts)
+            ks.forEach((w, k) => {
+              const { centre, turn: knuckle } = made.wheels[k], steer = [l, r][k].steer
+              const own = new THREE.Quaternion().fromArray(back).multiply(new THREE.Quaternion().fromArray(wheels[w]!.data.rot))
+              const spin = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -steer).multiply(own)
+              const t = turn(rot, centre)
+              d.wheels[w].position.set(at[0] + t[0], at[1] + t[1], at[2] + t[2])
+              d.wheels[w].quaternion.fromArray(rot).multiply(new THREE.Quaternion().fromArray(quatOf(knuckle))).multiply(spin)
             })
           })
         }
-        const pipes = v.look.exhaust ?? []
-        if (pipes.length && !plugins.particle3d) throw new Error(`world.box3dvehicle.vehicles.${car.data.vehicle}.look has an exhaust, and this scene does not list particle3d`)
-        pipes.forEach((ex, i) => {
-          const particles = plugins.particle3d
-          const t = turn(rot, ex.at), exhaust = [at[0] + t[0], at[1] + t[1], at[2] + t[2]], dir = turn(rot, ex.dir)
-          d.smoke[i] ??= particles.emit(ex.effect, exhaust, { dir, life: Infinity })
-          if (ex.rev && car.data.throttle && !d.rev[i]) d.rev[i] = particles.emit(ex.rev, exhaust, { dir, life: Infinity })
-          const rev = d.rev[i]
-          if (rev && !car.data.throttle) { rev.life = rev.age; d.rev[i] = undefined }
-          const rate = ex.rpm ? along(ex.rpm, car.data.rpm ?? ex.rpm[0][0]) : 1
-          for (const fx of [d.smoke[i], d.rev[i]]) if (fx) { fx.at = exhaust; fx.dir = dir; fx.rate = rate }
-        })
+        // Each hub where its wheel is drawn, turned as the chassis is and steered about its up as far as the
+        // wheel row is (its spin axis in the chassis's frame, turned about the chassis's y from the chassis's z)
+        if (d.hubs.length) {
+          const back: Quat = [-rot[0], -rot[1], -rot[2], rot[3]]
+          cs.forEach((_, i) => {
+            const spin = turn(back, turn(wheels[i]!.data.rot as Quat, [0, 0, 1]))
+            d.hubs[i].position.copy(d.wheels[i].position)
+            d.hubs[i].quaternion.fromArray(rot).multiply(steered.setFromAxisAngle(up, Math.atan2(spin[0], spin[2])))
+          })
+        }
         const sound = v.look.sound
         if (sound) {
           const name = car.data.vehicle, loader = plugins.loader
@@ -1406,8 +1496,9 @@ export function box3dvehicle() {
     },
     close(plugins: Plugins) {
       for (const id of [...cars.keys()]) drop(plugins.render3d.scene, id)
-      design = ''
+      design = undefined
       asked.clear()
+      glbs.clear()
       engines.clear()
       read.clear()
     },

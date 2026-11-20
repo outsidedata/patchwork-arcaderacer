@@ -103,6 +103,34 @@ test('a scene whose world.flight3d.kinds lists player draws its player rows as p
   }
 })
 
+test('the planes are made again when world.flight3d changes, in place deep inside it too, and not while it stays the same, a fresh copy of it included', () => {
+  try {
+    world.flight3d = structuredClone(f)
+    const { scene, frame } = page([plane(1)])
+    frame()
+    const first = drawn(scene)[0].uuid
+    frame()
+    expect(drawn(scene)[0].uuid).toBe(first)
+    // Edited in place, as a dev page's panel does: the same object, a number deep inside it changed.
+    world.flight3d.planes.monoplane.look.spin = 41
+    frame()
+    const second = drawn(scene)[0].uuid
+    expect(drawn(scene)).toHaveLength(1)
+    expect(second).not.toBe(first)
+    frame()
+    expect(drawn(scene)[0].uuid).toBe(second)
+    // A fresh copy of the same numbers makes nothing again; an edit of it in place does.
+    world.flight3d = structuredClone(world.flight3d)
+    frame()
+    expect(drawn(scene)[0].uuid).toBe(second)
+    world.flight3d.planes.monoplane.look.airbrake = 0.5
+    frame()
+    expect(drawn(scene)[0].uuid).not.toBe(second)
+  } finally {
+    world.flight3d = f
+  }
+})
+
 test('a plane is asked of the loader once, and drawn from the frame its model has landed', () => {
   let landed = false
   const { scene, frame, loads } = page([plane(1, { type: 'biplane' }), plane(2, { type: 'biplane' })], () => landed)

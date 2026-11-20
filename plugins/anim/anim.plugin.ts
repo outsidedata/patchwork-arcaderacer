@@ -9,7 +9,9 @@
 // row's position and turned to its facing, the fields its kind's `reads` names `pos` and `yaw`, and
 // added to render3d's scene. The model is asked of the
 // loader once, and the row is drawn once it has landed. Every material is handed to
-// `render3d.dress` once, and every mesh casts and takes shadows. The model is taken off the scene
+// `render3d.dress` once, and every mesh casts and takes shadows and is marked moving
+// (`userData.moving`), so lights3d draws its shadow each frame apart from the still scene's, which it
+// draws once. The model is taken off the scene
 // when its row ends, and `close` takes every one off.
 //
 // The clips. Every clip the rig lists is read out of the model's animations once per model and rig
@@ -19,8 +21,8 @@
 // than a frame (its own closest two keys) from its table `dur` throws, naming it. A mirrored clip is
 // built from its source here: the tracks of Left and Right bones swapped, x positions negated and
 // the quaternions' y and z negated, which is the source's pose reflected across the body's x. They
-// are built again when the rig's `clips`, `mask` or `meshes` change, compared by content, since the
-// editor writes a file in place.
+// are built again when the rig's `clips`, `mask` or `meshes` change, compared by content, since a
+// file written while the game runs is refilled in place.
 //
 // The mixer is scrubbed, never run. Every action is always playing; each frame writes each action's
 // `time` and weight from the row, then calls `mixer.update(0)`, which evaluates every action at
@@ -80,11 +82,20 @@
 // Props. `kinds.<kind>.props: [{ model, bone, at, turn }]` hangs loader models on the body. Each row
 // gets its own `plugins.loader.model(model)` clone per prop, each asked of the loader once, made
 // once every one has landed and added to render3d's scene, not under the bone; every material is
-// dressed and every mesh casts and takes shadows, as the body's. Each is placed at the world frame of
+// dressed and every mesh casts and takes shadows and is marked moving, as the body's. Each is placed at the world frame of
 // `bone` (the first bone whose name ends with it) with that frame's scale taken off, since a Mixamo
 // armature is scaled to centimetres and a prop is modelled in metres, then moved by `at` (metres)
 // and turned by `turn` (degrees, an XYZ Euler), both in the bone's scale-free frame. A row's props
 // are made again when its kind's `props` change, and go with its model.
+//   A prop that names an `item` in place of a `model`, `{ item, bone, at, turn }`, is not the loader's:
+// the `props` mod hands it (`world.anim.mods: { props: 'item3d' }`, `plugins/item3d/item3d.anim.ts`),
+// `props(plugins)` handing back `{ ready(item), make(item) }`, `make` a new object of the item already
+// wearing its materials and casting its shadows. It is hung, placed and dropped as a model is, and never
+// dressed: its materials are its maker's. The mod's plugin is listed before anim (`ahead`). A prop that
+// names an item in a scene whose `world.anim.mods` names no `props` throws, naming the item.
+//   The `props` mod hangs props of its own on a kind too: `held(kind)` is a list as `kinds.<kind>.props` is,
+// models and items both, hung after the kind's own (item3d's are the `holds` of its bodies sheet's body of
+// that name). A kind's props are the two together (`anim.sim.ts`'s `propsOf`).
 //   A prop is placed after everything that poses the bones in the frame and before render3d draws
 // it. The client runs every plugin's `tick` in the scene's order, then every actor's, then every
 // plugin's `afterTick`, and render3d draws in its `afterTick`. anim poses a standing body in its
@@ -113,7 +124,11 @@
 import type * as THREE from 'three'
 import type { Plugins } from '#engine/browser.ts'
 import type { Row } from '#engine/engine.ts'
-import { animKind, at, carries, clipOf, momentOf, numbersOf, readsOf, rigOf, stanceOf, type Numbers, type Prop, type Reads, type Rig } from './anim.sim.ts'
+import { ahead, mod } from '#addons/scenemanager/scenemanager.addon.ts'
+import { animKind, at, carries, clipOf, momentOf, numbersOf, propsOf, readsOf, rigOf, stanceOf, type Numbers, type Prop, type Reads, type Rig } from './anim.sim.ts'
+
+// The `props` mod: what hands a prop that names an `item`, and the props it hangs on a kind (Props, the header).
+export type Props = (plugins: Plugins) => { ready(item: string): boolean; make(item: string): THREE.Object3D; held(kind: string): Prop[] }
 
 type Three = typeof import('three')
 type Kind = Numbers['kinds'][string]
@@ -146,11 +161,30 @@ type Body = {
   bones: Map<string, THREE.Object3D> // by the suffix `aim` and `props` name them by
   aimed: [THREE.Object3D, THREE.Quaternion][] // each bone the aim turned last frame, as the mixer left it
   props: { root: THREE.Object3D; bone: THREE.Object3D; offset: THREE.Matrix4 }[] | undefined
-  hung: string | undefined // the kind's `props` the body's props were hung by, as text
+  hung: Prop[] | undefined // a copy of the kind's `props` the body's props were hung by
   row: Row
   limp: boolean
 }
 type Part = { slot: Slot; clip: string; t: number; w: number }
+
+// Whether two values are the same: the same number (NaN the same as NaN), string, boolean or null, or
+// arrays and plain objects of the same, item by item and field by field, a field holding undefined the
+// same as one not there. Read for every body every frame, so it walks the two and makes nothing.
+function same(a: unknown, b: unknown): boolean {
+  if (a === b || (a !== a && b !== b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a)) {
+    const c = b as unknown[]
+    if (a.length !== c.length) return false
+    for (let i = 0; i < a.length; i++) if (!same(a[i], c[i])) return false
+    return true
+  }
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>
+  for (const k in x) if (!same(x[k], y[k])) return false
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false
+  return true
+}
 
 const swap = (name: string) => name.replace(/Left|Right/g, s => (s === 'Left' ? 'Right' : 'Left'))
 
@@ -162,7 +196,7 @@ export function anim() {
   let three: Three | undefined
   let scene: THREE.Scene | undefined
   let numbers: Numbers | undefined
-  let rigs = new Map<string, { rig: Rig; text: string; reads: Reads; props: string }>() // each listed kind's rig, this frame, what its kit is built from, the fields it reads, and its props as text
+  let rigs = new Map<string, { rig: Rig; text: string; reads: Reads }>() // each listed kind's rig, this frame, what its kit is built from, and the fields it reads
   const texts = new WeakMap<object, string>() // what a kit is built from, per parse of a rig file: the loader refills a file's parse in place with new top-level values
 
   // The model's clips as the rig lists them, moved to start at 0, checked against the table, and
@@ -258,6 +292,15 @@ export function anim() {
     b.aimed = []
   }
 
+  // What the `props` mod hands, for a prop that names the item `item`.
+  function items(plugins: Plugins, item: string) {
+    const scene = plugins.wire.scene
+    const from = mod<Props>(scene.world!, 'anim', 'props')
+    if (!from) throw new Error(`anim: the prop ${item} is an item, and world.anim.mods names no props to hand it`)
+    ahead(scene, 'anim', 'props')
+    return from(plugins)
+  }
+
   // Whether the loader's model has landed, asking for it once.
   function ready(plugins: Plugins, model: string) {
     const loader = plugins.loader
@@ -270,13 +313,16 @@ export function anim() {
     return false
   }
 
-  // Every material handed to render3d once, and every mesh casting and taking shadows.
+  // Every material handed to render3d once, and every mesh casting and taking shadows, marked moving
+  // (a body posed every frame and the props it holds go where its row goes), so lights3d draws its
+  // shadow into its moving atlas each frame.
   function dress(root: THREE.Object3D, plugins: Plugins, each: (mesh: THREE.Mesh) => void = () => {}) {
     root.traverse(o => {
       const mesh = o as THREE.Mesh
       if (!mesh.isMesh) return
       mesh.castShadow = true
       mesh.receiveShadow = true
+      mesh.userData.moving = true
       for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
         if (dressed.has(m)) continue
         dressed.add(m)
@@ -339,18 +385,23 @@ export function anim() {
   }
 
   // The kind's props, each its own clone of its model, made once every one has landed, and made
-  // again when the kind's `props` change.
-  function props(b: Body, plugins: Plugins, k: Kind, text: string) {
-    if (b.hung !== text) {
+  // again when the kind's `props` change, in place or not: they are walked against the copy taken
+  // when they were last hung, and copied again only when they differ.
+  function props(b: Body, plugins: Plugins, k: Kind, kind: string) {
+    const list: Prop[] = propsOf(plugins, kind)
+    if (!b.hung || !same(b.hung, list)) {
       unhang(b)
-      b.hung = text
+      b.hung = structuredClone(list)
     }
-    const list: Prop[] = k.props ?? []
-    if (b.props || !list.length || !list.every(p => ready(plugins, p.model))) return
+    if (b.props || !list.length || !list.every(p => ('item' in p ? items(plugins, p.item).ready(p.item) : ready(plugins, p.model)))) return
     const T = three!
     b.props = list.map(p => {
-      const root = (plugins.loader.model(p.model) as { scene: THREE.Object3D }).scene
-      dress(root, plugins)
+      let root: THREE.Object3D
+      if ('item' in p) root = items(plugins, p.item).make(p.item)
+      else {
+        root = (plugins.loader.model(p.model) as { scene: THREE.Object3D }).scene
+        dress(root, plugins)
+      }
       scene!.add(root)
       const turn = new T.Quaternion().setFromEuler(new T.Euler(p.turn[0] * DEG, p.turn[1] * DEG, p.turn[2] * DEG, 'XYZ'))
       return { root, bone: boneOf(b, p.bone, k.model), offset: new T.Matrix4().compose(new T.Vector3().fromArray(p.at), turn, new T.Vector3(1, 1, 1)) }
@@ -503,11 +554,11 @@ export function anim() {
           const rig = rigOf(plugins.wire, kind)
           let text = texts.get(rig.clips)
           if (text === undefined) texts.set(rig.clips, (text = JSON.stringify([rig.clips, rig.mask ?? null, rig.meshes ?? null, rig.table])))
-          got = { rig, text, reads: readsOf(plugins.wire, kind), props: JSON.stringify(k.props ?? []) }
+          got = { rig, text, reads: readsOf(plugins.wire, kind) }
           rigs.set(kind, got)
           if (kits.get(key)?.text !== got.text) kits.delete(key)
         }
-        const { rig, text, reads, props: hung } = got
+        const { rig, text, reads } = got
         let b = bodies.get(r.id)
         if (b && (b.key !== key || kits.get(key) !== b.kit)) {
           drop(r.id)
@@ -519,7 +570,7 @@ export function anim() {
           bodies.set(r.id, b)
         }
         b.row = r
-        props(b, plugins, k, hung)
+        props(b, plugins, k, kind)
         if (r.data[reads.limp]) {
           b.limp = true
           hang(b)

@@ -1,12 +1,14 @@
 // The browser half of box3dvehicle on a page of a scene of the test's own, booted, loaded and viewed
-// over a loopback as a game's page is: its dust, thrown from the land a mod hands it. The car's rows
+// over a loopback as a game's page is: its wheels and tailpipes handed to particle3d as sources
+// (`box3dvehicle.particle3d.ts`), each scene attaching dust, mud and smoke to them, and its tracks laid on
+// the land a mod hands it. The car's rows
 // are written by the test, a chassis and four wheels with no rule to move them, and the car's row
 // naming them, as box3dvehicle's server half names its parts; each wheel stands where the test puts
 // it and goes and spins as fast as the test says. The land is `field`'s, a game's own plugin of the
 // test's, shipped beside the scene with its land for box3dvehicle (`field.box3dvehicle.ts`): `at`
 // metres high at the origin, rising `slope` [x, z] a metre, so it is nowhere the rows' own height;
-// and, where the scene's field is `muddy`, spraying mud ahead of x 0, nothing behind it on the +z
-// side, and the car's own dust behind it on the -z side, and marking 0.9 ahead of x 0, 0 behind it
+// and, where the scene's field is `muddy`, handing what is on it a mud's tint and wet ahead of x 0 and
+// nothing behind it, and marking 0.9 ahead of x 0, 0 behind it
 // on the +z side, and nothing of its own behind it on the -z side. Beside them, a car whose look names
 // a model, `machine`, a glb this file builds and writes to a folder of its own, which the page's real
 // loader reads and decodes; a closed car with no cabin; and an open one with none.
@@ -32,10 +34,22 @@ let clock = 0
 vi.spyOn(performance, 'now').mockImplementation(() => clock)
 
 const EFFECTS_URL = '/box3dvehicle-plugin-test/effects.json'
+// Every driver a car's sources hand (`box3dvehicle.particle3d.ts`), and the two the field's mud hands, as
+// every effects file it plays has them; and the effects the scenes attach to them.
 written(EFFECTS_URL, JSON.stringify({
   cap: 50,
-  effects: Object.fromEntries(['dust', 'mud', 'kick', 'smoke', 'roar', 'plume', 'skid'].map(name => [name, [{ every: 0.05, life: [0.2, 0.2] }]])),
+  drivers: {
+    rpm: 0, throttle: 0, speed: 0, slide: 0, slip: 0, load: 0, compression: 0, grounded: 0, height: 0,
+    backX: 0, backZ: 0, sideX: 0, sideZ: 0, tint: 0, wet: 0,
+  },
+  effects: Object.fromEntries(['dust', 'mud', 'smoke'].map(name => [name, [{ every: 0.05, life: [0.2, 0.2] }]])),
 }))
+// Dust on every wheel within 0.1 m of the land, mud on every wheel on wet ground, smoke from every tailpipe.
+const ATTACH = [
+  { on: 'wheel', effect: 'dust', when: 'height < 0.1' },
+  { on: 'wheel', effect: 'mud', when: 'wet' },
+  { on: 'exhaust', effect: 'smoke' },
+]
 
 const axle = (at: number, steered: boolean): Axle => ({
   at, track: 1.7, mount: 0.2,
@@ -64,7 +78,7 @@ const POINTS: Record<string, Point> = {
   footL: { at: [0.1, -0.18, -0.4] },
   gripL: { at: [0.05, 0.45, -0.45], part: 'steer', turn: GRIP },
 }
-// Dust thrown from a wheel within 0.1 m of the land going faster than 1.5 m/s across it, and tracks.
+// Dust thrown from a wheel within 0.1 m of the land, and tracks.
 const vehicle: Vehicle = {
   body: { length: 3.6, width: 1.3, height: 0.5, mass: 600, center: [0.1, -0.1, 0], friction: 0.9, cabin: { at: -0.2, length: 1.9, width: 1.2, top: 1.2, topWidth: 1, height: 0.5 } },
   bodies: {},
@@ -75,7 +89,6 @@ const vehicle: Vehicle = {
     paint: { body: 0, cabin: 0, trim: 0, glass: 0, light: 0, tail: 0, amber: 0, tyre: 0, rim: 0, chrome: 0, seat: 0, hook: 0, spring: 0, damper: 0, arm: 0 },
     segments: 16, spokes: 5, rim: 0.6, coils: 6, coilRadius: 0.07, wire: 0.01, arm: 0.03,
     lock: LOCK, points: POINTS,
-    dust: { effect: 'dust', clear: 0.1, speed: 1.5 },
     tracks: TRACKS,
     lights: LIGHTS,
     finish: { glass: { roughness: 0.02, metalness: 0, opacity: 0.25 }, body: { roughness: 0.4, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.05 } },
@@ -177,43 +190,48 @@ const PAINT: Paint = {
 // The model drawn half size, its origin 0.2 m ahead of the chassis's and 0.25 m down.
 const MODEL = { asset: 'machine', at: [0.2, -0.25, 0] as [number, number, number], scale: 0.5 }
 // The jeep with the model in place of its body: every drawn part of the body still in its look.
-const modelCar: Vehicle = { ...vehicle, look: { ...vehicle.look, paint: PAINT, dust: undefined, tracks: undefined, model: MODEL } }
+const modelCar: Vehicle = { ...vehicle, look: { ...vehicle.look, paint: PAINT, tracks: undefined, model: MODEL } }
 // The same with a model that has no steering wheel, its points on the chassis alone, and with them the
 // grip on the steering wheel too.
 const plainCar: Vehicle = { ...modelCar, look: { ...modelCar.look, model: { ...MODEL, asset: 'plain' }, points: { seat: POINTS.seat } } }
 const plainGripped: Vehicle = { ...plainCar, look: { ...plainCar.look, points: POINTS } }
+// The model car with its wheels and hubs models too, and no corners drawn: each right wheel the machine, each left
+// one the plain machine, both a fifth size and turned a quarter about up; each hub the plain machine a tenth size,
+// 0.1 m up from the wheel's middle.
+const QUARTER = [0, Math.SQRT1_2, 0, Math.SQRT1_2] as [number, number, number, number]
+const HUB = { asset: 'plain', at: [0, 0.1, 0] as [number, number, number], scale: 0.1 }
+const wheeledCar: Vehicle = {
+  ...modelCar,
+  look: {
+    ...modelCar.look, corners: false,
+    wheel: { left: { asset: 'plain', turn: QUARTER, scale: 0.2 }, right: { asset: 'machine', turn: QUARTER, scale: 0.2 } },
+    hubs: [{ left: HUB, right: HUB }, { left: HUB, right: HUB }],
+  },
+}
 // A closed car with no cabin, and nothing else in the body's paint: its body's box alone; its points on
 // the chassis alone, as it draws no steering wheel.
 const { cabin: _, ...boxBody } = vehicle.body
-const boxCar: Vehicle = { ...vehicle, body: boxBody, look: { ...vehicle.look, paint: PAINT, open: undefined, fenders: undefined, grille: undefined, dust: undefined, tracks: undefined, points: { seat: POINTS.seat } } }
+const boxCar: Vehicle = { ...vehicle, body: boxBody, look: { ...vehicle.look, paint: PAINT, open: undefined, fenders: undefined, grille: undefined, tracks: undefined, points: { seat: POINTS.seat } } }
 // The same with the grip on the steering wheel it does not draw; and the open car with a point riding
 // a part no look draws, as a scene file can write one.
 const boxGripped: Vehicle = { ...boxCar, look: { ...boxCar.look, points: POINTS } }
-const doored: Vehicle = { ...vehicle, look: { ...vehicle.look, dust: undefined, tracks: undefined, points: JSON.parse('{ "handle": { "at": [0, 0, 0], "part": "door" } }') } }
+const doored: Vehicle = { ...vehicle, look: { ...vehicle.look, tracks: undefined, points: JSON.parse('{ "handle": { "at": [0, 0, 0], "part": "door" } }') } }
 // The open jeep with no cabin to build round.
-const roofless: Vehicle = { ...vehicle, body: boxBody, look: { ...vehicle.look, dust: undefined, tracks: undefined } }
+const roofless: Vehicle = { ...vehicle, body: boxBody, look: { ...vehicle.look, tracks: undefined } }
 // The beams raised onto a bar over the car, `RAISED`, 0.6 m either side of its middle, splayed `TOE` out:
 // the open car, its lamps drawn on the nose; and the model, its beam nodes on the nose.
 const RAISED: [number, number, number] = [0.4, 1.3, 0.6]
 const TOE = 0.2
 const raisedBeam = { ...LIGHTS.beam, at: RAISED, toe: TOE }
-const raised: Vehicle = { ...vehicle, look: { ...vehicle.look, dust: undefined, tracks: undefined, lights: { ...LIGHTS, beam: raisedBeam } } }
+const raised: Vehicle = { ...vehicle, look: { ...vehicle.look, tracks: undefined, lights: { ...LIGHTS, beam: raisedBeam } } }
 const raisedModel: Vehicle = { ...modelCar, look: { ...modelCar.look, lights: { ...LIGHTS, beam: raisedBeam } } }
-const quiet: Vehicle = { ...vehicle, look: { ...vehicle.look, dust: undefined, tracks: undefined } }
-// Thrown more often as the engine revs: 1× at 1000 rpm, 3× at 6000, joined by a straight line.
-const REVS: [number, number][] = [[1000, 1], [6000, 3]]
-// The car with its dust and a kick beside it, thrown from a tread over 1.5 m/s until the wheel goes 8 m/s.
-const kicking: Vehicle = { ...vehicle, look: { ...vehicle.look, tracks: undefined, sprays: [{ effect: 'kick', clear: 0.1, speed: [1.5, 8], rpm: REVS }] } }
-// The car with a skid thrown past 2 m/s sideways, 1× at 2 m/s and 4× at 10, and no dust.
-const skidding: Vehicle = { ...vehicle, look: { ...vehicle.look, dust: undefined, tracks: undefined, skid: { effect: 'skid', clear: 0.1, speed: 2, rate: [[2, 1], [10, 4]] } } }
-// The same, thrown a quarter as hard per m/s it slides.
-const forced: Vehicle = { ...skidding, look: { ...skidding.look, skid: { ...skidding.look.skid!, force: 0.25 } } }
-// The car with two tailpipes: smoke and its roar on the rpm curve, and a plume on none.
+const quiet: Vehicle = { ...vehicle, look: { ...vehicle.look, tracks: undefined } }
+// The car with two tailpipes.
 const smoky: Vehicle = {
   ...vehicle,
   look: {
-    ...vehicle.look, dust: undefined, tracks: undefined,
-    exhaust: [{ at: [-1, 0, 0.3], dir: [-1, 0, 0], pipe: 0.04, effect: 'smoke', rev: 'roar', rpm: REVS }, { at: [-1, 0, -0.3], dir: [-1, 0, 0], pipe: 0.04, effect: 'plume' }],
+    ...vehicle.look, tracks: undefined,
+    exhaust: [{ at: [-1, 0, 0.3], dir: [-1, 0, 0], pipe: 0.04 }, { at: [-1, 0, -0.3], dir: [-1, 0, 0], pipe: 0.04 }],
   },
 }
 
@@ -248,7 +266,7 @@ const still = { pos: [0, 1, 0], rot: [0, 0, 0, 1], vel: [0, 0, 0], spin: [0, 0, 
 // A car heard, in a scene that lists audio and the loader, its catalogue the manifests, naming audio's
 // `sound` mod or not; a car whose engine names a file that is not there; the heard car with its
 // throttle heard following the row's by e every 0.1 s; and with the overrun's gain its own.
-const heardCar: Vehicle = { ...vehicle, body: { ...vehicle.body }, look: { ...vehicle.look, dust: undefined, tracks: undefined, sound: SOUND } }
+const heardCar: Vehicle = { ...vehicle, body: { ...vehicle.body }, look: { ...vehicle.look, tracks: undefined, sound: SOUND } }
 const lostCar: Vehicle = { ...heardCar, look: { ...heardCar.look, sound: { ...SOUND, engine: 'lost' } } }
 const easedCar: Vehicle = { ...heardCar, look: { ...heardCar.look, sound: { ...SOUND, ease: 0.1 } } }
 const ownCar: Vehicle = { ...heardCar, look: { ...heardCar.look, sound: { ...SOUND, stems: { off: [0.5, 0.1] } } } }
@@ -266,7 +284,7 @@ const heardOf = (car: Vehicle, named: boolean, plugins = ['scenemanager', 'loade
 const yardOf = (plugins: string[], shipped: string[], land?: string, muddy = false, car: Vehicle = vehicle, lightsOff = false): Scene => ({
   world: {
     loader: { assets: { effects: { type: 'json', url: EFFECTS_URL, preload: true }, machine: { type: 'model', url: MACHINE_URL }, plain: { type: 'model', url: PLAIN_URL } } },
-    particle3d: { effects: 'effects' },
+    particle3d: { effects: 'effects', attach: ATTACH, mods: { sources: ['box3dvehicle'] } },
     shipped: { plugins: shipped },
     field: { ...FIELD, muddy },
     box3dvehicle: { chassis: 'body', wheel: 'tyre', joint: 'axle', vehicles: { car }, ...(land && { mods: { land } }), ...(lightsOff && { lightsOff }) },
@@ -285,12 +303,6 @@ const scenes: Record<string, Scene> = {
   dusty: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], 'field'),
   // The same, its field muddy.
   muddy: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], 'field', true),
-  // The kicking car on the muddy field.
-  kicked: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], 'field', true, kicking),
-  // The skidding car on the muddy field.
-  skidded: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], 'field', true, skidding),
-  // The skidding car with a force.
-  forced: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], 'field', true, forced),
   // The car with two tailpipes.
   smoked: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, smoky),
   // No land named.
@@ -314,6 +326,8 @@ const scenes: Record<string, Scene> = {
   // A model with no steering wheel, its points on the chassis; and with the grip on the wheel too.
   plain: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, plainCar),
   plainGripped: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, plainGripped),
+  // The model car with wheel and hub models and no corners.
+  wheeled: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, wheeledCar),
   // A closed car with the grip on the wheel it does not draw; the open car with a point on a door.
   boxGripped: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, boxGripped),
   doored: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, doored),
@@ -347,7 +361,7 @@ export const land = (plugins: any) => {
   return {
     height: (x: number, z: number) => at + slope[0] * x + slope[1] * z,
     ...(muddy && {
-      spray: (x: number, z: number) => (x > 0 ? 'mud' : z > 0 ? false : undefined),
+      drivers: (x: number) => (x > 0 ? { tint: 5583650, wet: 1 } : undefined),
       mark: (x: number, z: number) => (x > 0 ? 0.9 : z > 0 ? 0 : undefined),
     }),
   }
@@ -387,195 +401,207 @@ function stand(wheels: Row[], vel: number[], lift = 0, spin = [0, 0, 0], shift =
   })
 }
 const thrown = (page: { client?: any }, name: string): Effect[] => page.client!.plugins.particle3d.effects.filter((fx: Effect) => fx.name === name)
-const dusts = (page: { client?: any }): Effect[] => thrown(page, 'dust')
 const live = (fxs: Effect[]) => fxs.filter(fx => fx.life === Infinity)
+const dusts = (page: { client?: any }): Effect[] => live(thrown(page, 'dust'))
+// The corner a wheel's effect stands under, by its point.
+const cornerOf = (fx: Effect) => corners(vehicle).findIndex(c => Math.abs(c.mount[0] - fx.at[0]) < 1e-9 && Math.abs((c.side * c.axle.track) / 2 - fx.at[2]) < 1e-9)
 const back = (fx: Effect) => [-1, 0.5, 0].forEach((n, k) => expect(fx.dir![k]).toBeCloseTo(n, 9))
 
-test('with a land mod named, a wheel on the land going faster than `speed` throws dust at the land under it, back from its way and up by half as much, until it slows or leaves the land', async () => {
+test('a wheel on the land is a source at the land under it, thrown back from its way and up by half as much, its floor the land, its height over the land a driver, and the attachment holds while its when does', async () => {
   const { page, frames, wheels } = await open('dusty')
-  // Each wheel 0.05 m off the land, within `clear`.
+  // Each wheel 0.05 m off the land: dust, whose when is a height under 0.1.
   stand(wheels, [3, 0, -4], 0.05)
   await frames(3)
-  const thrown = dusts(page)
-  expect(thrown).toHaveLength(4)
+  const dust = dusts(page)
+  expect(dust).toHaveLength(4)
   corners(vehicle).forEach((c, i) => {
-    const x = c.mount[0], z = (c.side * c.axle.track) / 2
+    const x = c.mount[0], z = (c.side * c.axle.track) / 2, fx = dust[i]
     // The field's height there, not the wheel's bottom: the land the mod hands.
-    expect(thrown[i].at[1]).toBeCloseTo(fieldHeight(x, z), 9)
-    expect(thrown[i].at[0]).toBeCloseTo(x, 9)
-    expect(thrown[i].at[2]).toBeCloseTo(z, 9)
-    expect(thrown[i].dir).toEqual([-3 / 5, 0.5, 4 / 5])
-    expect(thrown[i].life).toBe(Infinity)
+    expect(fx.at[0]).toBeCloseTo(x, 9)
+    expect(fx.at[1]).toBeCloseTo(fieldHeight(x, z), 9)
+    expect(fx.at[2]).toBeCloseTo(z, 9)
+    expect(fx.floor).toBeCloseTo(fieldHeight(x, z), 9)
+    expect(fx.dir).toEqual([-3 / 5, 0.5, 4 / 5])
+    expect(fx.drivers.speed).toBeCloseTo(5, 9)
+    expect(fx.drivers.height).toBeCloseTo(0.05, 9)
+    expect(fx.drivers.backX).toBeCloseTo(-3 / 5, 9)
+    expect(fx.drivers.backZ).toBeCloseTo(4 / 5, 9)
   })
-  // The first wheel lifted 0.2 m off the land, more than `clear`, and the rest slowed under `speed`.
-  stand(wheels, [1, 0, 0])
-  wheels[0].data.pos[1] += 0.2
-  wheels[0].data.vel = [3, 0, -4]
+  // Standing still on the land: the same dust, its speed 0.
+  stand(wheels, [0, 0, 0], 0.05)
   await frames(2)
-  // Each stopped: its life cut to the age it had then, which particle3d has aged past since.
-  for (const fx of thrown) {
+  expect(dusts(page)).toEqual(dust)
+  for (const fx of dust) expect(fx.drivers.speed).toBe(0)
+  // Lifted 0.2 m off the land, its height past the when: each stopped, its life cut to the age it had then,
+  // which particle3d has aged past since.
+  stand(wheels, [3, 0, -4], 0.2)
+  await frames(2)
+  for (const fx of dust) {
     expect(fx.life).not.toBe(Infinity)
     expect(fx.life).toBeLessThanOrEqual(fx.age)
   }
-  expect(dusts(page).filter(fx => fx.life === Infinity)).toHaveLength(0)
+  expect(dusts(page)).toHaveLength(0)
+  // Back on the land: new dust.
+  stand(wheels, [3, 0, -4], 0.05)
+  await frames(2)
+  expect(dusts(page)).toHaveLength(4)
+  for (const fx of dusts(page)) expect(dust).not.toContain(fx)
 })
 
-test('a wheel spinning on the spot faster than `speed` at its tread throws dust the way its tread pushes the ground, as one rolling throws it back from its way', async () => {
+test('a wheel spinning on the spot is thrown the way its tread pushes the ground, driven by how fast its tread slides, as one rolling is thrown back from its way', async () => {
   const { page, frames, wheels } = await open('dusty')
   // Standing still, each spinning forward (about -z) at 10 rad/s: its tread goes back at 3.6 m/s.
   stand(wheels, [0, 0, 0], 0.05, [0, 0, -10])
   await frames(3)
-  const spun = dusts(page)
-  expect(spun).toHaveLength(4)
-  for (const fx of spun) back(fx)
-  // Rolling at 3.6 m/s and spinning so, its tread still on the ground: thrown back from its way, as before.
+  expect(dusts(page)).toHaveLength(4)
+  for (const fx of dusts(page)) {
+    back(fx)
+    expect(fx.drivers.slide).toBeCloseTo(10 * R, 9)
+    near([fx.drivers.backX, fx.drivers.backZ], [-1, 0])
+  }
+  // Rolling at 3.6 m/s and spinning so, its tread gripping the ground: thrown back from its way, as before.
   stand(wheels, [3.6, 0, 0], 0.05, [0, 0, -10])
   await frames(2)
-  expect(live(dusts(page))).toHaveLength(4)
-  for (const fx of live(dusts(page))) back(fx)
-  // Spinning slower than `speed` at its tread, and still: nothing.
-  stand(wheels, [0, 0, 0], 0.05, [0, 0, -2])
-  await frames(2)
-  expect(live(dusts(page))).toHaveLength(0)
+  expect(dusts(page)).toHaveLength(4)
+  for (const fx of dusts(page)) {
+    back(fx)
+    expect(fx.drivers.slide).toBeCloseTo(0, 9)
+  }
 })
 
-test('a wheel throws what the land sprays under it, nothing where it sprays false, and its own dust where it sprays nothing of its own, and changes as it rolls from one to the other', async () => {
+test('a wheel is driven by the drivers the ground under it hands, and by none of them off it, its effect then playing at the file\'s', async () => {
   const { page, frames, wheels } = await open('muddy')
-  // The front wheels ahead of x 0 on mud; behind, the left (-z) on its own dust and the right on nothing.
+  // The front wheels ahead of x 0, on the mud: its tint and wet, so mud beside their dust; the rear ones off it.
   stand(wheels, [3, 0, 0], 0.05)
   await frames(3)
-  const mud = live(thrown(page, 'mud')), dust = live(dusts(page))
+  const mud = live(thrown(page, 'mud'))
   expect(mud.map(fx => fx.at[0])).toEqual([1.25, 1.25])
-  expect(dust).toHaveLength(1)
-  expect(dust[0].at[2]).toBeCloseTo(-0.85, 9)
-  // Every wheel moved 3 m back, all behind x 0: the mud stops, the left front throws dust, the right front nothing.
+  for (const fx of mud) expect(fx.drivers).toMatchObject({ tint: 5583650, wet: 1 })
+  const dust = dusts(page)
+  expect(dust).toHaveLength(4)
+  for (const fx of dust) {
+    if (fx.at[0] > 0) expect(fx.drivers).toMatchObject({ tint: 5583650, wet: 1 })
+    else expect(['tint', 'wet'].filter(n => n in fx.drivers)).toEqual([])
+  }
+  // Every wheel moved 3 m back, all off the mud: the mud stops, and the front wheels' dust has the ground's
+  // drivers no more.
   stand(wheels, [3, 0, 0], 0.05, [0, 0, 0], -3)
   await frames(2)
   for (const fx of mud) expect(fx.life).toBeLessThanOrEqual(fx.age)
   expect(live(thrown(page, 'mud'))).toHaveLength(0)
-  expect(live(dusts(page)).map(fx => fx.at[2]).sort()).toEqual([-0.85, -0.85])
+  expect(dusts(page)).toEqual(dust)
+  for (const fx of dust) expect(['tint', 'wet'].filter(n => n in fx.drivers)).toEqual([])
 })
 
-const kicks = (page: { client?: any }) => live(thrown(page, 'kick'))
-
-test('a spray is thrown from under each wheel beside its dust, from the same point along the same way, where the ground throws anything, and stops once the wheel goes its top speed', async () => {
-  const { page, frames, wheels, car } = await open('kicked')
-  car.data.rpm = 1000
-  // At 3 m/s: the front wheels on mud and the rear left on unpainted ground throw it; the rear right,
-  // on ground that throws nothing, does not.
-  stand(wheels, [3, 0, 0], 0.05)
-  await frames(3)
-  const kicked = kicks(page)
-  expect(kicked.map(fx => [fx.at[0], fx.at[2]])).toEqual([[1.25, -0.85], [1.25, 0.85], [-1.25, -0.85]])
-  // Beside the dust, at its point and along its way.
-  const dust = live(dusts(page))[0]
-  expect(kicked[2].at).toEqual(dust.at)
-  expect(kicked[2].dir).toEqual(dust.dir)
-  // At 8 m/s, its top speed, every one stops; the dust goes on.
-  stand(wheels, [8, 0, 0], 0.05)
+test('every wheel\'s source is driven by its car\'s rpm and throttle and its own corner\'s speed, slide, slip, load, compression and touching, each frame', async () => {
+  const { page, frames, wheels, car } = await open('dusty')
+  // Rolling 3 m/s ahead and sliding 4 m/s along the axle, spinning back so its tread slides too.
+  stand(wheels, [3, 0, -4], 0.05, [0, 0, 5])
+  // Before the car row carries what the server half writes, every wheel's load, compression and touching are 0.
   await frames(2)
-  expect(kicks(page)).toHaveLength(0)
-  for (const fx of kicked) expect(fx.life).toBeLessThanOrEqual(fx.age)
-  expect(live(dusts(page))).toHaveLength(1)
-  // Spinning on the spot, its tread past 1.5 m/s while the wheel itself stands: thrown again.
-  stand(wheels, [0, 0, 0], 0.05, [0, 0, -10])
-  await frames(2)
-  expect(kicks(page)).toHaveLength(3)
-  // Lifted off the land, past `clear`: none.
-  stand(wheels, [3, 0, 0], 0.5)
-  await frames(2)
-  expect(kicks(page)).toHaveLength(0)
-})
-
-test('a spray with an rpm curve runs at the rate the curve gives for the car\'s rpm each frame, held at its ends', async () => {
-  const { page, frames, wheels, car } = await open('kicked')
-  stand(wheels, [3, 0, 0], 0.05)
-  for (const [rpm, rate] of [[1000, 1], [6000, 3], [3500, 2], [500, 1], [7000, 3]]) {
-    car.data.rpm = rpm
+  for (const fx of dusts(page)) expect([fx.drivers.load, fx.drivers.compression, fx.drivers.grounded]).toEqual([0, 0, 0])
+  const rows = [
+    { rpm: 1000, throttle: 0, load: [1500, 1600, 1700, 1800], compression: [0.1, 0.11, 0.12, 0.13], grounded: [true, true, true, true] },
+    { rpm: 6000, throttle: 1, load: [9000, 200, 0, 4000], compression: [0.28, 0.02, 0, 0.2], grounded: [true, true, false, true] },
+  ]
+  for (const r of rows) {
+    Object.assign(car.data, structuredClone(r))
     await frames(2)
-    for (const fx of kicks(page)) expect(fx.rate).toBeCloseTo(rate, 12)
+    expect(dusts(page)).toHaveLength(4)
+    for (const fx of dusts(page)) {
+      const i = cornerOf(fx)
+      expect(fx.drivers).toMatchObject({ rpm: r.rpm, throttle: r.throttle, load: r.load[i], compression: r.compression[i], grounded: r.grounded[i] ? 1 : 0 })
+      expect(fx.drivers.speed).toBeCloseTo(5, 9)
+      expect(fx.drivers.slip).toBeCloseTo(4, 9)
+      // the tread's speed over the ground: the wheel's, and its spin's at the ground, 5 × R back the other way
+      expect(fx.drivers.slide).toBeCloseTo(Math.hypot(3 + 5 * R, -4), 9)
+    }
   }
-  // The dust beside it, with no curve, at 1 throughout.
-  for (const fx of live(dusts(page))) expect(fx.rate).toBe(1)
 })
 
-test('a wheel sliding along its axle faster than `speed` throws its skid at the land under it, the way it slides and up by a tenth as much, more often the harder it slides, on any ground, until it rolls straight or leaves the land', async () => {
-  const { page, frames, wheels } = await open('skidded')
-  const skids = () => live(thrown(page, 'skid'))
-  // Rolling straight along x at 6 m/s, across its axle (its z): no skid.
-  stand(wheels, [6, 0, 0], 0.05)
-  await frames(2)
-  expect(skids()).toHaveLength(0)
-  // Sliding 4 m/s toward -z along its axle, and 3 m/s ahead: every wheel throws, on the mud, on
-  // its own ground and on the ground that sprays nothing alike, toward -z and up by a tenth.
+test('a wheel\'s sideways is the way it goes along its axle, of length 1, 0 rolling straight, and its own axle, not the chassis\'s, on its steering', async () => {
+  const { page, frames, wheels } = await open('dusty')
+  // Sliding 4 m/s toward -z along its axle, and 3 m/s ahead.
   stand(wheels, [3, 0, -4], 0.05)
   await frames(2)
-  const slid = skids()
-  expect(slid).toHaveLength(4)
-  corners(vehicle).forEach((c, i) => {
-    const x = c.mount[0], z = (c.side * c.axle.track) / 2
-    expect(slid[i].at[0]).toBeCloseTo(x, 9)
-    expect(slid[i].at[1]).toBeCloseTo(fieldHeight(x, z), 9)
-    expect(slid[i].at[2]).toBeCloseTo(z, 9)
-    ;[0, 0.1, -1].forEach((n, k) => expect(slid[i].dir![k]).toBeCloseTo(n, 9))
-  })
-  // Its rate the curve's for the sideways speed: 4 m/s is 1.75, 10 m/s 4, and past 10 held at 4.
-  for (const [sideways, rate] of [[4, 1.75], [10, 4], [14, 4]]) {
-    stand(wheels, [3, 0, sideways], 0.05)
-    await frames(2)
-    const now = skids()
-    expect(now).toHaveLength(4)
-    for (const fx of now) {
-      expect(fx.rate).toBeCloseTo(rate, 12)
-      ;[0, 0.1, 1].forEach((n, k) => expect(fx.dir![k]).toBeCloseTo(n, 9))
-    }
-  }
-  // Slowed to 1.5 m/s sideways, under `speed`, and lifted off the land: none.
-  stand(wheels, [3, 0, 1.5], 0.05)
+  for (const fx of dusts(page)) near([fx.drivers.sideX, fx.drivers.sideZ], [0, -1])
+  // Toward +z.
+  stand(wheels, [3, 0, 10], 0.05)
   await frames(2)
-  expect(skids()).toHaveLength(0)
-  stand(wheels, [3, 0, 6], 0.5)
-  await frames(2)
-  expect(skids()).toHaveLength(0)
-})
-
-test('a skid with a force is thrown with that times the sideways speed each frame; one without at 1', async () => {
-  for (const [scene, per] of [['forced', 0.25], ['skidded', undefined]] as const) {
-    const { page, frames, wheels } = await open(scene)
-    for (const sideways of [4, 12, -8]) {
-      stand(wheels, [3, 0, sideways], 0.05)
-      await frames(2)
-      const now = live(thrown(page, 'skid'))
-      expect(now).toHaveLength(4)
-      for (const fx of now) expect(fx.force).toBeCloseTo(per === undefined ? 1 : per * Math.abs(sideways), 12)
-    }
+  for (const fx of dusts(page)) {
+    near([fx.drivers.sideX, fx.drivers.sideZ], [0, 1])
+    expect(fx.drivers.slip).toBeCloseTo(10, 9)
   }
-})
-
-test('a wheel turned on its steering slides along its own axle, not the chassis\'s', async () => {
-  const { page, frames, wheels } = await open('skidded')
-  // Each wheel turned a quarter about up, its axle along x: going 6 m/s along x is all sideways.
+  // Rolling straight: none, its slip 0.
   stand(wheels, [6, 0, 0], 0.05)
+  await frames(2)
+  for (const fx of dusts(page)) {
+    expect(fx.drivers.sideX).toBeCloseTo(0, 9)
+    expect(fx.drivers.sideZ).toBeCloseTo(0, 9)
+    expect(fx.drivers.slip).toBe(0)
+  }
+  // Each wheel turned a quarter about up, its axle along x: going 6 m/s along x is all sideways.
   for (const w of wheels) w.data.rot = [0, Math.SQRT1_2, 0, Math.SQRT1_2]
   await frames(2)
-  const slid = live(thrown(page, 'skid'))
-  expect(slid).toHaveLength(4)
-  for (const fx of slid) {
-    expect(Math.abs(fx.dir![0])).toBeCloseTo(1, 9)
-    expect(fx.dir![2]).toBeCloseTo(0, 9)
+  for (const fx of dusts(page)) {
+    expect(Math.abs(fx.drivers.sideX)).toBeCloseTo(1, 9)
+    expect(fx.drivers.sideZ).toBeCloseTo(0, 9)
+    expect(fx.drivers.slip).toBeCloseTo(6, 9)
   }
 })
 
-test('a tailpipe with an rpm curve runs its smoke and its rev at the rate the curve gives for the car\'s rpm; one with none at 1', async () => {
-  const { page, frames, car } = await open('smoked')
-  for (const [rpm, rate] of [[1000, 1], [6000, 3], [3500, 2]]) {
-    Object.assign(car.data, { rpm, throttle: 1 })
+test('each tailpipe is a source at its tip along the way it points, turned with the chassis, driven by its car\'s rpm and throttle, the chassis\'s speed across the land, and the most any of its wheels slides, slips and is loaded', async () => {
+  const { page, frames, car, chassis, wheels } = await open('smoked')
+  // The chassis a quarter turned about up, so the car's forward (+x) is -z, its back +z.
+  chassis.data.rot = [0, Math.SQRT1_2, 0, Math.SQRT1_2]
+  chassis.data.vel = [6, -1, 8]
+  stand(wheels, [3, 0, 0], 0.05)
+  // the first wheel sliding 2 m/s along its axle, the second 5; the third loaded most
+  wheels[0].data.vel = [3, 0, -2]
+  wheels[1].data.vel = [3, 0, 5]
+  car.data.load = [1200, 800, 5200, 300]
+  for (const [rpm, throttle] of [[1000, 0], [6000, 1]]) {
+    Object.assign(car.data, { rpm, throttle })
     await frames(2)
-    const [smoke] = live(thrown(page, 'smoke')), [roar] = live(thrown(page, 'roar')), [plume] = live(thrown(page, 'plume'))
-    expect(smoke.rate).toBeCloseTo(rate, 12)
-    expect(roar.rate).toBeCloseTo(rate, 12)
-    expect(plume.rate).toBe(1)
+    const pipes = live(thrown(page, 'smoke'))
+    expect(pipes).toHaveLength(2)
+    // each pipe's tip [-1, 0, ±0.3] turned a quarter about up: [±0.3, 0, 1], from the chassis at [0, 1, 0]
+    expect(pipes.map(fx => fx.at.map(n => +n.toFixed(9)))).toEqual([[0.3, 1, 1], [-0.3, 1, 1]])
+    for (const fx of pipes) {
+      ;[0, 0, 1].forEach((n, k) => expect(fx.dir![k]).toBeCloseTo(n, 9))
+      expect(fx.drivers).toMatchObject({ rpm, throttle, load: 5200 })
+      expect(fx.drivers.speed).toBeCloseTo(10, 9)
+      expect(fx.drivers.slip).toBeCloseTo(5, 9)
+      expect(fx.drivers.slide).toBeCloseTo(Math.hypot(3, 5), 9)
+      // a wheel's alone
+      expect(['compression', 'grounded', 'height', 'backX', 'sideX'].filter(n => n in fx.drivers)).toEqual([])
+    }
   }
+})
+
+test('with no land mod named, a wheel is a source at its lowest point, that its floor, with no height over the land', async () => {
+  const { page, frames, wheels } = await open('bare')
+  stand(wheels, [3, 0, -4], 0.05)
+  await frames(3)
+  // its when, a height under 0.1, at the file's 0
+  expect(dusts(page)).toHaveLength(4)
+  for (const fx of dusts(page)) {
+    const c = corners(vehicle)[cornerOf(fx)], x = c.mount[0], z = (c.side * c.axle.track) / 2
+    expect(fx.at[1]).toBeCloseTo(fieldHeight(x, z) + 0.05, 9)
+    expect(fx.floor).toBeCloseTo(fieldHeight(x, z) + 0.05, 9)
+    expect('height' in fx.drivers).toBe(false)
+  }
+})
+
+test('a car that goes stops the effects of its sources', async () => {
+  const { page, frames, wheels, car } = await open('smoked')
+  stand(wheels, [3, 0, 0], 0.05)
+  await frames(2)
+  const all = [...dusts(page), ...live(thrown(page, 'smoke'))]
+  expect(all).toHaveLength(6)
+  car.data.chassis = undefined
+  await frames(2)
+  for (const fx of all) expect(fx.life).toBeLessThanOrEqual(fx.age)
 })
 
 // Each tyre's track, in corner order.
@@ -663,13 +689,6 @@ test('a car\'s tracks go with it', async () => {
   expect(tracksOf(page)).toHaveLength(4)
   page.client!.plugins.box3dvehicle.close(page.client!.plugins)
   expect(tracksOf(page)).toHaveLength(0)
-})
-
-test('with no land mod named, no wheel throws dust, as on no ground', async () => {
-  const { page, frames, wheels } = await open('bare')
-  stand(wheels, [3, 0, -4])
-  await frames(3)
-  expect(dusts(page)).toHaveLength(0)
 })
 
 // The car's chassis as the page draws it: the scene's child holding its beams.
@@ -824,7 +843,7 @@ test('an open car\'s body is drawn as one mesh a material beside its named lense
   expect(wheel.children).toHaveLength(3)
 })
 
-test('a scene with dust whose land is a plugin listed after box3dvehicle, or one it does not list, throws on the first frame', async () => {
+test('a scene with tracks whose land is a plugin listed after box3dvehicle, or one it does not list, throws on the first frame', async () => {
   await expect((await open('late')).frames(3)).rejects.toThrow('box3dvehicle is listed before field, whose land it reads that frame')
   await expect((await open('unlisted')).frames(3)).rejects.toThrow('box3dvehicle\'s land is terrain3d\'s, which this scene does not list')
 })
@@ -872,6 +891,41 @@ test('a car whose look names a model draws it on the chassis in place of its bod
   }
   // Each corner's spring, damper and rod.
   expect(scene.children.filter((o: any) => o.isMesh && o.material.color.getHex() === PAINT.spring)).toHaveLength(4)
+})
+
+test('a car whose look names wheel and hub models draws its side\'s wheel model on each wheel row, rolling and steering with it, and its axle\'s hub at each wheel\'s middle, steered with it and never rolled, and no corner', async () => {
+  const { page, frames, wheels } = await open('wheeled')
+  stand(wheels, [0, 0, 0], 0.05)
+  // every wheel rolled a radian about its axle; the front ones steered 0.3 rad left first
+  const cs = corners(wheeledCar)
+  const steer = (c: (typeof cs)[number]) => (c.axle.steered ? 0.3 : 0)
+  cs.forEach((c, i) => {
+    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), steer(c)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 1))
+    wheels[i].data.rot = q.toArray()
+  })
+  await frames(1)
+  const scene = page.client!.plugins.render3d.scene
+  const hulls = () => named(page, 'hull')
+  // body, four wheels and four hubs, each its own model
+  for (let i = 0; i < 200 && hulls().length < 9; i++) { await new Promise(r => setTimeout(r, 5)); await frames(1) }
+  expect(hulls()).toHaveLength(9)
+  scene.updateMatrixWorld(true)
+  cs.forEach((c, i) => {
+    const at = new THREE.Vector3(...wheels[i].data.pos), rolled = new THREE.Quaternion().fromArray(wheels[i].data.rot)
+    // the wheel's model on its row: the machine on the right, the plain one on the left, turned and scaled as its look says
+    const group = scene.children.find((o: any) => o.isGroup && o.position.distanceTo(at) < 1e-9 && o.quaternion.angleTo(rolled) < 1e-9)
+    expect(!!group.getObjectByName('steer')).toBe(c.side > 0)
+    const hull = group.getObjectByName('hull')
+    const want = new THREE.Vector3(...HULL).multiplyScalar(0.2).applyQuaternion(new THREE.Quaternion(...QUARTER)).applyQuaternion(rolled).add(at)
+    near(hull.getWorldPosition(new THREE.Vector3()).toArray(), want.toArray())
+    // the hub at the wheel's middle, steered as the wheel is and not rolled
+    const hub = scene.children.find((o: any) => o.isGroup && o !== group && o.position.distanceTo(at) < 1e-9)
+    near(hub.quaternion.toArray(), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), steer(c)).toArray())
+    const hubHull = new THREE.Vector3(...HULL).multiplyScalar(HUB.scale).add(new THREE.Vector3(...HUB.at)).applyAxisAngle(new THREE.Vector3(0, 1, 0), steer(c)).add(at)
+    near(hub.getObjectByName('hull').getWorldPosition(new THREE.Vector3()).toArray(), hubHull.toArray())
+  })
+  // no spring, damper or arm drawn
+  expect(scene.children.filter((o: any) => o.isMesh && [PAINT.spring, PAINT.damper, PAINT.arm].includes(o.material.color?.getHex()))).toHaveLength(0)
 })
 
 test('every mesh of a model takes shadows and all but the see-through cast them; each beam node throws a beam where it is, along its +x; its tail lenses glow brighter as the car brakes, the brake light at their middle', async () => {
@@ -936,6 +990,32 @@ test('a closed car with no cabin draws its body\'s box alone', async () => {
   const { min, max } = body.geometry.boundingBox, { length, height, width } = boxBody
   near(min.toArray(), [-length / 2, -height / 2, -width / 2])
   near(max.toArray(), [length / 2, height / 2, width / 2])
+})
+
+test('every car is made again when world.box3dvehicle changes, in place deep inside it too, and none while it stays the same, a fresh copy of it included', async () => {
+  const { page, frames } = await open('boxed')
+  await frames(2)
+  const drawnCar = () => page.client!.plugins.render3d.scene.children.filter((o: any) => o.isGroup && meshesOf(o).some(m => colourOf(m) === PAINT.body))
+  const world = page.client!.plugins.wire.scene.world
+  const first = drawnCar()[0].uuid
+  await frames(2)
+  expect(drawnCar().map((o: any) => o.uuid)).toEqual([first])
+  // Edited in place, as a dev page's panel does: the same object, a number deep inside it changed.
+  world.box3dvehicle.vehicles.car.look.lock = LOCK + 1
+  await frames(1)
+  const second = drawnCar()[0].uuid
+  expect(drawnCar()).toHaveLength(1)
+  expect(second).not.toBe(first)
+  await frames(2)
+  expect(drawnCar().map((o: any) => o.uuid)).toEqual([second])
+  // A fresh copy of the same numbers makes nothing again; an edit of it in place does.
+  world.box3dvehicle = structuredClone(world.box3dvehicle)
+  await frames(2)
+  expect(drawnCar().map((o: any) => o.uuid)).toEqual([second])
+  world.box3dvehicle.vehicles.car.body.length += 0.5
+  await frames(1)
+  expect(drawnCar()).toHaveLength(1)
+  expect(drawnCar()[0].uuid).not.toBe(second)
 })
 
 test('an open car with no cabin throws on the frame it is drawn, naming the vehicle', async () => {

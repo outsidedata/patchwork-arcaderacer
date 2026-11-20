@@ -1,0 +1,62 @@
+{
+  "cap": 12000,
+  "drivers": {
+    "amplitude": 1,
+    "spin": 2,
+    "storm": 1,
+    "churn": 1,
+    "rate": "max(amplitude, 0.05)",
+    "bolts": "max(storm, 0.05)",
+    "turn": "6.283 / spin"
+  },
+  "forceGenerators": {
+    "orbit": [
+      { "swirl": "spin", "axis": [0, 0, 1], "noiseFrequency": 1.2, "noiseAmplitude": 0.6, "noiseScroll": [0, 0, 0.4] }
+    ],
+    "widen": [
+      { "pull": -0.15 }
+    ],
+    "churn": [
+      { "turbulence": "0.8 * churn", "drag": 2, "noiseFrequency": 1.6, "noiseScroll": [0.3, 0.5, 0.2] }
+    ],
+    "inward": [
+      { "pull": 1 }
+    ]
+  },
+  "effects": {
+    "wake": [
+      { "n": [1, 1], "every": "0.05 / rate", "life": [3.5, 4.5], "shape": "puff2", "size": [0.5, 0.8], "grows": [[0, 0.6], [0.3, 1.8], [1, 3]], "dir": [0, 0, -1], "spread": 0.15, "speed": [0.4, 1.4], "drag": 0.15, "forces": { "orbit": 0.6, "widen": 1, "churn": 1.2 }, "tints": [[0, 9412273], [0.5, 5267320], [1, 2766160]], "alphas": [[0, 0], [0.12, 0.7], [0.55, 0.45], [1, 0]], "spin": 0.3 },
+      { "n": [1, 1], "every": "0.25 / rate", "life": [1.5, 2.5], "shape": "glow", "size": [0.3, 0.55], "dir": [0, 0, -1], "spread": 0.15, "speed": [0.4, 1.4], "drag": 0.15, "forces": { "orbit": 0.6, "widen": 1, "churn": 0.8 }, "tint": 1624319, "gain": 2.5, "alphas": [[0, 0], [0.15, 0.7], [1, 0]], "add": true }
+    ],
+    "arc": [
+      { "n": [1, 1], "every": 0.06, "life": [0.04, 0.07], "shape": "bolt", "beam": true, "size": [0.12, 0.22], "tint": 13625855, "gain": 3, "a1": 0.3, "add": true },
+      { "n": [1, 1], "after": 0.03, "every": 0.06, "life": [0.04, 0.07], "shape": "bolt2", "beam": true, "size": [0.12, 0.22], "tint": 13625855, "gain": 3, "a1": 0.3, "add": true },
+      { "n": [1, 1], "life": [0.12, 0.2], "shape": "glow", "size": [0.6, 0.9], "tint": 5213439, "gain": 2, "a0": 0.4, "a1": 0, "add": true }
+    ],
+    "stormcell": [
+      { "n": [1, 1], "every": "0.8 / bolts", "after": 0.3, "life": [0.15, 0.3], "size": [0, 0], "box": [-0.35, -0.35, -0.15, 0.35, 0.35, 0.15], "carry": "arc" },
+      { "n": [1, 1], "every": "0.5 / bolts", "after": 0.2, "life": [0.5, 0.9], "shape": "glow", "size": [0.3, 0.5], "box": [-0.15, -0.15, -0.1, 0.15, 0.15, 0.1], "tint": 3191039, "gain": 1.8, "alphas": [[0, 0], [0.1, 0.25], [1, 0]], "add": true }
+    ],
+    "sparkribbon": [
+      { "n": [1, 1], "every": 0.016, "life": [0.1, 0.16], "shape": "streak", "stretch": true, "size": [0.12, 0.18], "speed": [0.3, 0.3], "tint": 12577535, "tint1": 2776319, "gain": 1.5, "a1": 0, "add": true }
+    ],
+    "portal2": [
+      { "n": [1, 1], "every": "0.09 / rate", "life": ["turn", "turn"], "shape": "puff2", "size": [0.6, 0.85], "grows": [[0, 0.5], [0.25, 1], [1, 1.25]], "box": [1, 0, -0.2, 1, 0, -0.2], "jitter": [0.14, 0.14, 0.16], "forces": { "orbit": 1, "churn": 0.6 }, "tints": [[0, 2829878], [0.6, 2238252], [1, 1712934]], "alphas": [[0, 0], [0.15, 1], [0.7, 0.85], [1, 0]], "spin": 0.2 },
+      { "n": [1, 1], "every": "0.06 / rate", "life": ["turn", "turn"], "shape": "puff", "size": [0.55, 0.8], "grows": [[0, 0.5], [0.2, 1], [1, 1.3]], "box": [0.95, 0, 0, 0.95, 0, 0], "jitter": [0.15, 0.15, 0.2], "forces": { "orbit": 1, "churn": 0.8 }, "tints": [[0, 10133417], [0.4, 9080729], [1, 5198442]], "alphas": [[0, 0], [0.12, 1], [0.7, 0.8], [1, 0]], "spin": 0.3 },
+      { "n": [1, 1], "every": "0.1 / rate", "life": ["turn", "turn"], "shape": "puff", "size": [0.3, 0.5], "grows": [[0, 0.4], [0.2, 1], [1, 1.2]], "box": [0.68, 0, -0.12, 0.68, 0, -0.12], "jitter": [0.1, 0.1, 0.12], "forces": { "orbit": 1, "churn": 0.5 }, "tints": [[0, 12579839], [0.5, 10474751], [1, 5213439]], "alphas": [[0, 0], [0.15, 0.8], [0.7, 0.6], [1, 0]], "spin": 0.3 },
+      { "n": [1, 1], "every": "0.7 / rate", "life": ["turn", "turn"], "size": [0, 0], "box": [0.95, 0, 0, 0.95, 0, 0], "jitter": [0.1, 0.1, 0.1], "forces": { "orbit": 1 }, "carry": "stormcell" },
+      { "effect": "wake", "at": [0.9, 0, -0.25] },
+      { "effect": "wake", "at": [-0.45, 0.78, -0.25] },
+      { "effect": "wake", "at": [-0.45, -0.78, -0.25] },
+      { "n": [1, 1], "every": "0.15 / rate", "life": [2, 3], "shape": "glow", "size": [1.2, 1.8], "box": [-0.6, -0.6, -2.6, 0.6, 0.6, -0.5], "forces": { "orbit": -0.3 }, "tint": 735887, "gain": 0.8, "alphas": [[0, 0], [0.3, 0.3], [1, 0]], "add": true },
+      { "n": [1, 1], "every": "0.05 / rate", "life": [0.7, 1.3], "shape": "glow", "size": [0.2, 0.45], "box": [-0.7, -0.7, -3, 0.7, 0.7, -0.3], "forces": { "orbit": -0.5, "churn": 0.5 }, "tint": 1624319, "gain": 2.5, "alphas": [[0, 0], [0.2, 0.8], [1, 0]], "add": true },
+      { "n": [1, 1], "every": "0.2 / rate", "life": [0.6, 1], "shape": "glow", "size": [0.6, 0.9], "box": [0, 0, -0.6, 0, 0, -0.6], "jitter": [0.1, 0.1, 0.1], "tint": 12579839, "gain": 3, "alphas": [[0, 0], [0.25, 0.7], [1, 0]], "add": true },
+      { "n": [1, 1], "every": "0.2 / rate", "life": [1.4, 1.8], "shape": "halo", "size": [1.5, 1.7], "grow": 0.25, "dir": [0, 0, -1], "spread": 0, "speed": [0.4, 0.55], "tint": 2776319, "gain": 1.4, "alphas": [[0, 0], [0.15, 0.3], [1, 0]], "add": true },
+      { "n": [1, 1], "every": "0.03 / rate", "life": [2, 3], "shape": "spark", "size": [0.03, 0.06], "box": [-0.55, -0.55, -0.9, 0.55, 0.55, -0.15], "forces": { "orbit": 0.4 }, "tint": 12574975, "gain": 2.5, "alphas": [[0, 0], [0.2, 1], [0.7, 1], [1, 0]], "add": true },
+      { "n": [1, 1], "every": "0.04 / rate", "life": [1.2, 1.8], "shape": "streak", "stretch": true, "size": [0.15, 0.3], "box": [0.8, 0, 0, 0.8, 0, 0], "jitter": [0.1, 0.1, 0.2], "dir": [0, 1, 0], "spread": 0.1, "speed": [2.2, 2.8], "drag": 0.6, "forces": { "inward": 8 }, "tint": 10479871, "tint1": 2246655, "gain": 2.5, "alphas": [[0, 0], [0.1, 1], [1, 0]], "add": true },
+      { "n": [1, 1], "every": "0.04 / rate", "life": [1.2, 1.8], "shape": "streak", "stretch": true, "size": [0.15, 0.3], "box": [-0.8, 0, 0, -0.8, 0, 0], "jitter": [0.1, 0.1, 0.2], "dir": [0, -1, 0], "spread": 0.1, "speed": [2.2, 2.8], "drag": 0.6, "forces": { "inward": 8 }, "tint": 10479871, "tint1": 2246655, "gain": 2.5, "alphas": [[0, 0], [0.1, 1], [1, 0]], "add": true },
+      { "n": [1, 1], "every": "0.25 / rate", "life": [0.8, 1.3], "shape": "spark", "size": [0.04, 0.06], "box": [-0.9, -0.9, 0, 0.9, 0.9, 0.1], "dir": [0, 0, 1], "spread": 0.9, "speed": [2, 4], "g": 9.8, "bounce": 0.5, "tint": 14219007, "tint1": 2776319, "gain": 3, "alphas": [[0, 1], [0.7, 1], [1, 0]], "add": true, "carry": "sparkribbon" },
+      { "lamp": { "intensity": "40 * amplitude", "distance": 10, "decay": 2, "at": [0, 0, -0.6], "tint": 1624319, "flicker": 0.3 } }
+    ]
+  }
+}

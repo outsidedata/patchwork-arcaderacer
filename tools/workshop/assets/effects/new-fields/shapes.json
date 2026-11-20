@@ -1,0 +1,42 @@
+{
+  "forceGenerators": {
+    "to-point": [{ "pull": 6, "drag": 2.5 }],
+    "to-shell": [{ "pull": 6, "drag": 2.5, "shell": 1.2 }],
+    "to-axis": [{ "pull": 6, "drag": 2.5, "toAxis": true, "axis": [0, 1, 0] }],
+    "to-tube": [{ "pull": 6, "drag": 2.5, "toAxis": true, "axis": [0, 1, 0], "shell": 1 }]
+  },
+  "effects": {
+    "shell": [
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [-3, 1.6, 0, -3, 1.6, 0], "carry": "shell-off" },
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [3, 1.6, 0, 3, 1.6, 0], "carry": "shell-on" }
+    ],
+    "shell-off": [
+      { "n": [4, 5], "every": 0.03, "life": [3, 3], "shape": "glow", "size": [0.1, 0.14], "box": [-1.8, -1.5, -1.8, 1.8, 1.8, 1.8], "forces": { "to-point": 1 }, "tint": 5232895, "gain": 2, "alphas": [[0, 0], [0.15, 1], [0.85, 1], [1, 0]], "add": true }
+    ],
+    "shell-on": [
+      { "n": [4, 5], "every": 0.03, "life": [3, 3], "shape": "glow", "size": [0.1, 0.14], "box": [-1.8, -1.5, -1.8, 1.8, 1.8, 1.8], "forces": { "to-shell": 1 }, "tint": 5232895, "gain": 2, "alphas": [[0, 0], [0.15, 1], [0.85, 1], [1, 0]], "add": true }
+    ],
+
+    "toAxis": [
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [-3, 1.6, 0, -3, 1.6, 0], "carry": "toAxis-off" },
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [3, 1.6, 0, 3, 1.6, 0], "carry": "toAxis-on" }
+    ],
+    "toAxis-off": [
+      { "n": [4, 5], "every": 0.03, "life": [3, 3], "shape": "glow", "size": [0.1, 0.14], "box": [-1.8, -1.5, -1.8, 1.8, 1.8, 1.8], "forces": { "to-point": 1 }, "tint": 16760896, "gain": 2, "alphas": [[0, 0], [0.15, 1], [0.85, 1], [1, 0]], "add": true }
+    ],
+    "toAxis-on": [
+      { "n": [4, 5], "every": 0.03, "life": [3, 3], "shape": "glow", "size": [0.1, 0.14], "box": [-1.8, -1.5, -1.8, 1.8, 1.8, 1.8], "forces": { "to-axis": 1 }, "tint": 16760896, "gain": 2, "alphas": [[0, 0], [0.15, 1], [0.85, 1], [1, 0]], "add": true }
+    ],
+
+    "tube": [
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [-3, 1.6, 0, -3, 1.6, 0], "carry": "tube-off" },
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [3, 1.6, 0, 3, 1.6, 0], "carry": "tube-on" }
+    ],
+    "tube-off": [
+      { "n": [4, 5], "every": 0.03, "life": [3, 3], "shape": "glow", "size": [0.1, 0.14], "box": [-1.8, -1.5, -1.8, 1.8, 1.8, 1.8], "forces": { "to-axis": 1 }, "tint": 10514687, "gain": 2, "alphas": [[0, 0], [0.15, 1], [0.85, 1], [1, 0]], "add": true }
+    ],
+    "tube-on": [
+      { "n": [4, 5], "every": 0.03, "life": [3, 3], "shape": "glow", "size": [0.1, 0.14], "box": [-1.8, -1.5, -1.8, 1.8, 1.8, 1.8], "forces": { "to-tube": 1 }, "tint": 10514687, "gain": 2, "alphas": [[0, 0], [0.15, 1], [0.85, 1], [1, 0]], "add": true }
+    ]
+  }
+}

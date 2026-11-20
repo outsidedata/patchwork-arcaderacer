@@ -1,0 +1,45 @@
+{
+  "forceGenerators": {
+    "kick": [{ "pull": -8, "range": 1.2 }]
+  },
+  "effects": {
+    "outward": [
+      { "n": [1, 1], "every": 2.5, "life": [2.5, 2.5], "size": [0, 0], "box": [-3, 0.3, 0, -3, 0.3, 0], "carry": "outward-off" },
+      { "n": [1, 1], "every": 2.5, "life": [2.5, 2.5], "size": [0, 0], "box": [3, 0.3, 0, 3, 0.3, 0], "carry": "outward-on" }
+    ],
+    "outward-off": [
+      { "n": [160, 160], "life": [1.2, 1.6], "shape": "spark", "size": [0.08, 0.12], "jitter": [0.6, 0, 0.6], "speed": [3, 4], "drag": 1, "tint": 5232895, "gain": 3, "a1": 0, "add": true }
+    ],
+    "outward-on": [
+      { "n": [160, 160], "life": [1.2, 1.6], "shape": "spark", "size": [0.08, 0.12], "jitter": [0.6, 0, 0.6], "outward": [3, 4], "drag": 1, "tint": 5232895, "gain": 3, "a1": 0, "add": true }
+    ],
+
+    "inherit": [
+      { "n": [1, 1], "every": 2, "life": [2, 2], "size": [0, 0], "box": [-3, 0, 0, -3, 0, 0], "carry": "inherit-off" },
+      { "n": [1, 1], "every": 2, "life": [2, 2], "size": [0, 0], "box": [3, 0, 0, 3, 0, 0], "carry": "inherit-on" }
+    ],
+    "inherit-off": [
+      { "n": [1, 1], "life": [1.7, 1.7], "shape": "glow", "size": [0.3, 0.3], "dir": [0.25, 1, 0], "spread": 0, "speed": [7, 7], "g": 8, "tint": 16760896, "gain": 2, "add": true, "carry": "inherit-trail-off" }
+    ],
+    "inherit-on": [
+      { "n": [1, 1], "life": [1.7, 1.7], "shape": "glow", "size": [0.3, 0.3], "dir": [0.25, 1, 0], "spread": 0, "speed": [7, 7], "g": 8, "tint": 16760896, "gain": 2, "add": true, "carry": "inherit-trail-on" }
+    ],
+    "inherit-trail-off": [
+      { "n": [2, 2], "every": 0.02, "life": [0.5, 0.8], "shape": "spark", "size": [0.06, 0.1], "speed": [0.2, 0.5], "tint": 16747038, "gain": 3, "a1": 0, "add": true }
+    ],
+    "inherit-trail-on": [
+      { "n": [2, 2], "every": 0.02, "life": [0.5, 0.8], "shape": "spark", "size": [0.06, 0.1], "speed": [0.2, 0.5], "inherit": 1, "tint": 16747038, "gain": 3, "a1": 0, "add": true }
+    ],
+
+    "strength-range": [
+      { "n": [1, 1], "every": 2.5, "life": [2.5, 2.5], "size": [0, 0], "box": [-3, 1.5, 0, -3, 1.5, 0], "carry": "strength-range-off" },
+      { "n": [1, 1], "every": 2.5, "life": [2.5, 2.5], "size": [0, 0], "box": [3, 1.5, 0, 3, 1.5, 0], "carry": "strength-range-on" }
+    ],
+    "strength-range-off": [
+      { "n": [400, 400], "life": [1.4, 1.8], "shape": "spark", "size": [0.06, 0.1], "jitter": [0.05, 0.05, 0.05], "drag": 1.2, "forces": { "kick": 1 }, "tint": 16732112, "gain": 3, "a1": 0, "add": true }
+    ],
+    "strength-range-on": [
+      { "n": [400, 400], "life": [1.4, 1.8], "shape": "spark", "size": [0.06, 0.1], "jitter": [0.05, 0.05, 0.05], "drag": 1.2, "forces": { "kick": [0.1, 1] }, "tint": 16732112, "gain": 3, "a1": 0, "add": true }
+    ]
+  }
+}

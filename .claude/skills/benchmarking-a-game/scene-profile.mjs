@@ -14,7 +14,9 @@
 // Chrome's CPU profiler samples the same seconds, and every sampled millisecond is given to the file that
 // was running (owners.mjs): each kind (its rules and its look), each plugin (its rules and its page half),
 // each addon, the engine, the browser's own; a library's time (three) to whoever of ours called it. That
-// is the whole frame laid out by who owns it, with each one's costliest functions, and nothing left over.
+// is the whole frame laid out by who owns it, with each one's costliest functions, and nothing left over;
+// a mod is its own owner, and the call chains the time went down are printed after the owners, so a kind's
+// tick that spends its time in a plugin that spends it in a mod reads as that one line.
 // It prints the frames counted and their rate, the mean milliseconds of a frame's work, each system's
 // mean milliseconds a frame and share of that work, the owners, and the slowest frames with their biggest
 // systems. It writes all of it to `<out>/<scene>.cpu.json`, with Chrome's profile beside it as
@@ -148,6 +150,9 @@ for (const o of own.owners) {
   const via = Object.entries(o.via).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${(v / report.n).toFixed(2)}`).join(', ')
   if (o.ms / report.n >= 0.001) console.log((o.ms / report.n).toFixed(3).padStart(9), ((100 * o.ms) / own.ms).toFixed(1).padStart(5) + '%', ' ', o.who + (via ? `  (in ${via})` : ''))
 }
+console.log('\nwhere the time went, each call chain by what its last hop spent itself')
+console.log('ms a frame  of which its own  chain')
+for (const c of own.chains) console.log((c.ms / report.n).toFixed(3).padStart(9), (c.self / report.n).toFixed(3).padStart(17), ' ', c.chain)
 console.log('\nthe slowest frames')
 for (const s of report.slow) console.log(s.frame.toFixed(1).padStart(7), 'ms:', s.top.map(t => t.name + ' ' + t.ms.toFixed(2)).join(' | '))
 
@@ -158,6 +163,6 @@ write(testbed.out, `${sceneName}.cpu.json`, {
   game, scene: sceneName, drawn, others, threw: { count: threw.length, first: threw[0]?.split('\n')[0] },
   frames: report.n, seconds: secs, rate, work: report.work, times: report.times,
   systems: report.systems, slow: report.slow,
-  owners: { busy: own.ms / report.n, idle: own.idle / report.n, list: own.owners.map(o => ({ ...o, ms: o.ms / report.n, via: Object.fromEntries(Object.entries(o.via).map(([k, v]) => [k, v / report.n])), functions: o.functions.map(f => ({ ...f, ms: f.ms / report.n })) })) },
+  owners: { busy: own.ms / report.n, idle: own.idle / report.n, list: own.owners.map(o => ({ ...o, ms: o.ms / report.n, via: Object.fromEntries(Object.entries(o.via).map(([k, v]) => [k, v / report.n])), functions: o.functions.map(f => ({ ...f, ms: f.ms / report.n })) })), chains: own.chains.map(c => ({ ...c, ms: c.ms / report.n, self: c.self / report.n })) },
 })
 done(threw.length ? 1 : 0)

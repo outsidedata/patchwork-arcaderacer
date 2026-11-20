@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>supershader3d bench</title>
+    <style>
+      body { margin: 0; background: #0b0b0e; display: grid; place-items: center; height: 100vh }
+      canvas { grid-area: 1 / 1 }
+      #readout { position: fixed; left: 8px; bottom: 8px; color: #e8e8e8; font: 13px monospace; white-space: pre; background: #000a; padding: 6px 8px; pointer-events: none }
+    </style>
+  </head>
+  <body>
+    <div id="readout"></div>
+    <script type="module">
+      // The bench's page (`bench.mjs` drives it): the floor scene, one swatch 400 m square seen from a
+      // camera `height` metres up looking down by `pitch` degrees, drawn at `dpr` pixels a pixel,
+      // wearing one material of a looks file at a time. The file is `?looks=<url>` and its pictures are in `?pictures=<folder url>`
+      // (`<the file's folder>/looks` when left out): the page reads the file first and writes the scene's
+      // catalogue from it, the file as `looks` and each picture by its asset name, before the boot, in
+      // the page's own copy of the scene. The truths are on `window.__scenes` and the page on
+      // `window.__page`, and `window.__bench.frames` counts the frames drawn. The readout shows the
+      // material worn and the last five errors the page threw or wrote.
+      import { boot } from '#engine/engine.ts'
+      import { accept, load, manager, link, view } from '#addons/scenemanager/scenemanager.addon.ts'
+      import { loopback } from '#addons/loopback/loopback.addon.ts'
+      import { sim } from './bench.sim.ts'
+      import file from './bench.scene.json'
+      import floor from './floor.scene.json'
+
+      const errors = []
+      const caught = e => {
+        errors.push(String(e?.message ?? e))
+        if (errors.length > 5) errors.shift()
+      }
+      addEventListener('error', e => caught(e.error ?? e.message))
+      addEventListener('unhandledrejection', e => caught(e.reason))
+      const written = console.error.bind(console)
+      console.error = (...a) => { caught(a.map(x => x?.message ?? x).join(' ')); written(...a) }
+
+      const q = new URLSearchParams(location.search)
+      const looksUrl = q.get('looks')
+      if (!looksUrl) throw new Error('bench.html needs ?looks=<url of a looks file>')
+      const pictures = q.get('pictures') ?? new URL('looks/', new URL(looksUrl, location.href)).href
+      const height = Number(q.get('height') ?? 3), pitch = Number(q.get('pitch') ?? 45), dpr = Number(q.get('dpr') ?? 1)
+      const looks = await (await fetch(looksUrl)).json()
+      floor.world.loader.assets = {
+        looks: { type: 'json', url: looksUrl, preload: true },
+        ...Object.fromEntries(looks.pictures.map(p => [p.asset, { type: 'texture', url: new URL(p.file, pictures).href, wrap: 'repeat', preload: true }])),
+      }
+      const rad = (pitch * Math.PI) / 180
+      floor.prefabs.render3d.camera.at = [0, height, 0]
+      floor.prefabs.render3d.camera.look = [0, height - Math.sin(rad), Math.cos(rad)]
+      floor.prefabs.render3d.pixelRatio = dpr
+
+      const dt = file.prefabs.engine.dt
+      const truth = boot(file, sim)
+      window.__scenes = await load(truth, import.meta.url)
+      const page = view(link(loopback(accept(manager(truth)))), file, import.meta.url, (me, scene) => {
+        const canvas = document.createElement('canvas')
+        canvas.width = scene.prefabs.engine.width
+        canvas.height = scene.prefabs.engine.height
+        document.body.appendChild(canvas)
+        me.plugins.render3d.mount(canvas)
+      })
+      window.__page = page
+      window.__bench = { frames: 0, looks }
+      const readout = document.getElementById('readout')
+      const swatch = () => window.__scenes.get('floor').rows.find(r => r.kind === 'swatch')
+
+      let last = performance.now(), owed = 0
+      const loop = async now => {
+        owed += Math.min((now - last) / 1000, 0.25)
+        last = now
+        try {
+          page.input()
+          while (owed >= dt) { truth.step(dt); owed -= dt }
+          await page.frame(owed / dt)
+        } catch (e) { caught(e) }
+        window.__bench.frames++
+        readout.textContent = [`${swatch()?.data.material ?? ''}  step ${truth.n}`, ...errors].join('\n')
+        requestAnimationFrame(loop)
+      }
+      requestAnimationFrame(loop)
+    </script>
+  </body>
+</html>

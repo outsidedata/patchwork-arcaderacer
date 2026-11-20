@@ -27,12 +27,15 @@
 //             is drawn mixed from the one it had into the one it has over `fade` (The tween, below).
 //   reach     metres: how near one path's end stands to another's for a person to go on from the one
 //             onto the other (`crowd3d.sim.ts`, Paths); a scene whose people walk no paths leaves it out.
-//   mods      `{ paths }`: the plugin that hands crowd3d the paths its people walk, each a line or spline
-//             of a shape whose data says the clip and speed played on it (`crowd3d.sim.ts`, Paths).
+//   mods      `{ paths, items }`: `paths`, the plugin that hands crowd3d the paths its people walk, each a
+//             line or spline of a shape whose data says the clip and speed played on it (`crowd3d.sim.ts`,
+//             Paths); `items`, the plugin that hands it each item that names an `item` (Items, below).
 //   items     `{ <item>: { model, <place>: { at, turn, scale } } }`, left out when nobody holds
 //             anything: each item a loader `model` entry, a glb of plain meshes, and for each place it
-//             is held on how it sits there, in that place's bone's frame (Items, below). A key of an
-//             item other than `model` that is no place throws, naming the places.
+//             is held on how it sits there, in that place's bone's frame (Items, below); or `{ item,
+//             <place>: ... }`, an item the `items` mod hands (item3d's, `world.crowd3d.mods: { items:
+//             'item3d' }`), held on its places the same way. A key of an item other than `model` and
+//             `item` that is no place throws, naming the places, and so does an item with both or neither.
 //
 // The bake. Once every body's model has landed, every clip is played on the first body standing at
 // the origin by three's own AnimationMixer, at `rate` frames a second from 0 to the clip's length,
@@ -103,7 +106,9 @@
 // clone of the glb's, dressed by render3d (`dress`) with a surface that skins each vertex by four
 // bones of the copy's row of the pose, the body's first row plus `gl_InstanceID`; it has no instance
 // matrices, and render3d's between-steps does not move it. The shadow casts through a depth material
-// dressed with the same surface. It is never culled whole, since its people stand anywhere.
+// dressed with the same surface. It is never culled whole, since its people stand anywhere, and it is
+// marked moving (`userData.moving`), so lights3d draws its shadow each frame into its moving atlas, in
+// every face of every shadowed light, since it stands wherever its people do.
 //
 // Items. A place is a name for one bone of the Mixamo skeleton (PLACES): `hips`, `chest` and `back`
 // (Spine2), `neck`, `head`, `leftArm`, `leftForearm`, `leftHand`, `leftThigh`, `leftShin`,
@@ -117,6 +122,20 @@
 // more a light's shadow, posed by a surface that reads the copy's pose row, bone and offset from the
 // item's held texture: the bone's skin × its bind × the armature's scale undone × the place's offset.
 // The held texture is written whole when a person comes, goes, changes body or what it holds.
+// An item that names an `item` is the `items` mod's: `items(plugins)` hands back `{ ready(item),
+// parts(item), material(call, surface) }`, and once every one is ready each of its parts is drawn as a
+// model's group is, its geometry as handed with every attribute it carries, in the material the mod makes
+// for it with the same surface. The mod's plugin is listed before crowd3d (`ahead`). An item that names an
+// `item` in a scene whose `world.crowd3d.mods` names no `items` throws, naming it.
+// The `items` mod holds items of its own on the bodies too: `held(bodies)`, handed the names of
+// `world.crowd3d.bodies`, is a table as `world.crowd3d.items` is, models and items both (item3d's are the `holds`
+// of its bodies sheet's bodies of those names), or undefined while what it reads has not landed, when crowd3d
+// builds nothing until it has. crowd3d's items are the scene's own and then those; a name in
+// both throws. It is read again every frame: a sit's numbers changed are drawn from that frame, and an item or
+// a place come or gone has everything built again, as `close` and a first tick build it.
+// A mod that gives `carries(item)` and `carried(copies)` is told, each `afterTick`, where every held copy of an item
+// it carries is this frame, `{ key, item, matrix }`, worked out on the CPU as the pass poses it (item3d's burns an
+// item's own effects there, `item3d.crowd3d.ts`); a mod that gives neither costs nothing.
 //
 // Memory, B bones, P `poolSize`, every texture RGBA float but the order, a matrix four texels of its
 // columns (README.md, Memory layout, has the whole of it):
@@ -165,22 +184,43 @@
 // its frame whatever `t`; and `pose(body, clip, t, from)`, `from` `{ clip, t, share }`, the same drawn
 // mixed from `from`, its share of every bone, as the pass draws a fade. `holds(body, clip, t,
 // item, place)` is the column-major matrix the item's surface puts it through on such a person, the
-// bone's matrix of `pose` times the place's offset.
+// bone's matrix of `pose` times the place's offset. `worn()` is every body as it is drawn, for whatever
+// grows on its people (`crowd3d.hair3d.ts`), [] before they are built: `{ name, first, count, unit, bones,
+// inverses, pose, groups }`, its people the `count` rows of the pose from `first`, `unit` the metres one
+// unit of its geometry is, `bones` the skeleton's bones' names and `inverses` this body's inverse bind of
+// each, `pose` the pose's texture, and `groups` its mesh groups, each geometry's `position`, `normal`,
+// `crowdBones` and `crowdWeights` as the skin was bound.
 //
 // It reaches the loader and render3d through `plugins` and is listed after the loader, whose models
 // it asks for in its first tick. `close` takes everything it made off the scene and disposes it.
 import type * as THREE from 'three'
 import type { Plugins } from '#engine/browser.ts'
 import type { Row } from '#engine/engine.ts'
-import { listed } from '#addons/scenemanager/scenemanager.addon.ts'
+import { ahead, listed, mod } from '#addons/scenemanager/scenemanager.addon.ts'
 import { json } from '#plugins/loader/loader.sim.ts'
-import { piece, type Piece } from './crowd3d.sim.ts'
+import { frame, piece, standing, type Piece } from './crowd3d.sim.ts'
 
 type Three = typeof import('three')
 // How an item sits on a place: metres from the bone, degrees turned, and its scale.
 export type Sit = { at?: [number, number, number]; turn?: [number, number, number]; scale?: number | [number, number, number] }
-export type Item = { model: string } & { [place: string]: Sit | string }
-export type Numbers = { bodies: Record<string, string>; clips: string[]; rate: number; hold?: string[]; kinds: string[]; poolSize?: number; items?: Record<string, Item>; poses?: string; fade?: number; reach?: number; mods?: { paths?: string } }
+export type Item = ({ model: string } | { item: string }) & { [place: string]: Sit | string }
+export type Numbers = { bodies: Record<string, string>; clips: string[]; rate: number; hold?: string[]; kinds: string[]; poolSize?: number; items?: Record<string, Item>; poses?: string; fade?: number; reach?: number; mods?: { paths?: string; items?: string } }
+// The `items` mod: what hands an item that names an `item` (Items, the header). `parts(item)` is the item as
+// geometries, one for each material that draws it, each named by `call`; `material(call, surface)` is a new
+// material of that name dressed with `surface`, which poses each copy.
+export type Items = (plugins: Plugins) => {
+  held(bodies: string[]): Record<string, Item> | undefined
+  ready(item: string): boolean
+  parts(item: string): { call: string; geometry: THREE.BufferGeometry }[]
+  material(call: string, surface: unknown): THREE.Material
+  // left out by a mod that needs no copy's place: whether the mod is to be told where each held copy of `item`
+  // is, and every such copy this frame, each `{ key, item, matrix }`, `key` the same every frame the copy is held,
+  // `matrix` column-major from the item's own frame to the world as the pass poses it, handed each `afterTick`
+  carries?(item: string): boolean
+  carried?(copies: { key: string; item: string; matrix: number[] }[]): void
+}
+// The keys of an item that say what it is; every other is a place.
+const WHAT = new Set(['model', 'item'])
 // A pose: a frame of a clip, `at` seconds into it.
 export type Pose = { clip: string; frame: number; at: number }
 
@@ -373,15 +413,43 @@ void main() {
 type Clip = { row: number; frames: number; dur: number }
 // One mesh group of a body.
 type Group = { mesh: THREE.Mesh<THREE.InstancedBufferGeometry, THREE.Material> }
-type Body = { index: number; groups: Group[]; start: { value: number }; count: number; scale: number }
+type Body = { index: number; groups: Group[]; start: { value: number }; count: number; scale: number; unit: number }
+// A body as `worn` hands it out.
+export type Worn = { name: string; first: number; count: number; unit: number; bones: string[]; inverses: THREE.Matrix4[]; pose: THREE.Texture; groups: THREE.Mesh<THREE.InstancedBufferGeometry, THREE.Material>[] }
 // An item as drawn: its mesh groups, its held texture and how many copies it holds of the `room` it has.
 type Ware = { groups: Group[]; held: { value: THREE.DataTexture }; count: number; room: number }
-// What a row's slot was written from, the clip time it was written with, and what it holds, as its row
-// has it and as pairs of place and item.
+// What a row's slot was written from, the clip time it was written with, and what it holds: a copy of
+// its row's `holding` as it was when last read (undefined before the first read), and that as pairs of
+// place and item.
 type Slot = {
   index: number; since: number; body: string; clip: string; speed: number; yaw: number; to: number[]; normal: number[]; normalTo: number[]
-  start: number; holding: string; held: [string, string][]
+  start: number; holding: unknown; held: [string, string][]
+  // the clip it fades from, as the slot's last two texels have it: its name, the clip time it was written with and
+  // its then; when the fade began and how long it is
+  was: { clip: string; start: number; since: number } | undefined; began: number; fade: number
 }
+
+// Whether two values are the same: the same number (NaN the same as NaN), string, boolean or null, or
+// arrays and plain objects of the same, item by item and field by field, a field holding undefined the
+// same as one not there. Read for every row every frame, so it walks the two and makes nothing.
+function same(a: unknown, b: unknown): boolean {
+  if (a === b || (a !== a && b !== b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a)) {
+    const c = b as unknown[]
+    if (a.length !== c.length) return false
+    for (let i = 0; i < a.length; i++) if (!same(a[i], c[i])) return false
+    return true
+  }
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>
+  for (const k in x) if (!same(x[k], y[k])) return false
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false
+  return true
+}
+// What a table of items is but for its sits' numbers: each item, what it is and the places it lists.
+const shaped = (items: Record<string, Item>) =>
+  JSON.stringify(Object.entries(items).map(([name, item]) => [name, 'item' in item ? `item ${item.item}` : `model ${item.model}`, Object.keys(item).filter(k => !WHAT.has(k))]))
 // How a slot is held: 0 looped, 1 held on its last frame, 2 a pose.
 const LOOP = 0, HOLD = 1, POSE = 2
 
@@ -422,6 +490,13 @@ export function crowd3d() {
   // skeleton has, and each offset of a body, item and place once worked out.
   const wares = new Map<string, Ware>()
   const stocked = new Map<string, { scene: THREE.Object3D }>()
+  // What the `items` mod hands, when an item names an `item`, and whether everything asked for has landed.
+  let handing: ReturnType<Items> | undefined
+  let waiting: (() => boolean) | undefined
+  // Every item held: the scene's own (`world.crowd3d.items`), then those the `items` mod holds on the bodies,
+  // `given`, a copy of them as they were last read.
+  let holdable: Record<string, Item> = {}
+  let given: Record<string, Item> = {}
   let inverses: THREE.Matrix4[][] = []
   const boneOf = new Map<string, number>()
   const offsets = new Map<string, THREE.Matrix4>()
@@ -476,7 +551,11 @@ export function crowd3d() {
       if (s.clip && fade > 0) {
         d.copyWithin(o + 24, o + 4, o + 8)
         d[o + 28] = d[o + 8]; d[o + 29] = d[o + 10]; d[o + 30] = p.since; d[o + 31] = fade
-      } else d.fill(0, o + 24, o + 32)
+        s.was = { clip: s.clip, start: s.start, since: s.since }; s.began = p.since; s.fade = fade
+      } else {
+        d.fill(0, o + 24, o + 32)
+        s.was = undefined
+      }
     }
     d[o] = p.pos[0]; d[o + 1] = p.pos[1]; d[o + 2] = p.pos[2]; d[o + 3] = p.yaw
     d[o + 4] = c.row; d[o + 5] = c.frames; d[o + 6] = c.dur; d[o + 7] = start
@@ -495,9 +574,9 @@ export function crowd3d() {
     const held = Object.entries((r.data.holding ?? {}) as Record<string, string>)
     for (const [place, item] of held) {
       if (!(place in PLACES)) throw new Error(`crowd3d: ${r.kind} ${r.id} holds ${item} on ${place}, which is no place: ${Object.keys(PLACES).join(', ')}`)
-      const it = numbers!.items?.[item]
-      if (!it) throw new Error(`crowd3d: ${r.kind} ${r.id} holds ${item}, which is none of world.crowd3d.items`)
-      if (!it[place]) throw new Error(`crowd3d: ${r.kind} ${r.id} holds ${item} on ${place}, which world.crowd3d.items.${item} does not list`)
+      const it = holdable[item]
+      if (!it) throw new Error(`crowd3d: ${r.kind} ${r.id} holds ${item}, which is none of crowd3d's items: ${Object.keys(holdable).join(', ')}`)
+      if (!it[place]) throw new Error(`crowd3d: ${r.kind} ${r.id} holds ${item} on ${place}, which the item ${item} does not list`)
     }
     return held
   }
@@ -509,7 +588,7 @@ export function crowd3d() {
     const known = offsets.get(key)
     if (known) return known
     const T = three!
-    const sit = numbers!.items![item][place] as Sit
+    const sit = holdable[item][place] as Sit
     const scale = sit.scale ?? 1
     const deg = (sit.turn ?? [0, 0, 0]).map(a => (a * Math.PI) / 180)
     const offset = new T.Matrix4().compose(
@@ -556,7 +635,7 @@ export function crowd3d() {
     for (const r of mine) {
       let s = slots.get(r.id)
       if (!s) {
-        s = { index: free.pop() ?? next++, since: NaN, body: '', clip: '', speed: NaN, yaw: NaN, to: [], normal: [], normalTo: [], start: 0, holding: '', held: [] }
+        s = { index: free.pop() ?? next++, since: NaN, body: '', clip: '', speed: NaN, yaw: NaN, to: [], normal: [], normalTo: [], start: 0, holding: undefined, held: [], was: undefined, began: 0, fade: 0 }
         slots.set(r.id, s)
         reorder = true
       }
@@ -565,10 +644,10 @@ export function crowd3d() {
       const differs = (a: number[], b: number[]) => a[0] !== b[0] || a[1] !== b[1] || a[2] !== b[2]
       const ends = differs(s.to, p.to) || differs(s.normal, p.normal) || differs(s.normalTo, p.normalTo)
       if (s.since !== p.since || s.body !== r.data.body || s.clip !== r.data.clip || s.speed !== r.data.speed || s.yaw !== p.yaw || ends) write(s, r, p)
-      const holding = JSON.stringify(r.data.holding ?? {})
-      if (s.holding !== holding) {
+      const holding = r.data.holding ?? {}
+      if (!same(s.holding, holding)) {
         s.held = heldBy(r)
-        s.holding = holding
+        s.holding = structuredClone(holding)
         arming = true
       }
     }
@@ -641,6 +720,7 @@ export function crowd3d() {
         p: r.skeleton.bones.map(b => b.position.clone()),
         up: new T.Vector3(0, 1, 0).applyQuaternion(hips.parent!.getWorldQuaternion(new T.Quaternion()).invert()).normalize(),
         scale: hips.parent!.getWorldScale(new T.Vector3()).x,
+        unit: Math.cbrt(Math.abs(new T.Matrix3().setFromMatrix4(new T.Matrix4().multiplyMatrices(hips.matrixWorld, r.skeleton.boneInverses[0])).determinant())),
         armature: hips.parent!.matrixWorld.clone(),
       }
     })
@@ -651,9 +731,10 @@ export function crowd3d() {
       const j = bones.findIndex(b => mixamo(b) === bone)
       if (j >= 0) boneOf.set(place, j)
     }
-    for (const [name, item] of Object.entries(n.items ?? {})) {
+    for (const [name, item] of Object.entries(holdable)) {
+      if (('model' in item) === ('item' in item)) throw new Error(`crowd3d item ${name}: it names ${'model' in item ? 'both a model and an item' : 'neither a model nor an item'}, and an item is one of them`)
       for (const place of Object.keys(item)) {
-        if (place === 'model') continue
+        if (WHAT.has(place)) continue
         if (!(place in PLACES)) throw new Error(`crowd3d item ${name}: ${place} is no place: ${Object.keys(PLACES).join(', ')}`)
         if (!boneOf.has(place)) throw new Error(`crowd3d item ${name}: its place ${place} is the bone ${PLACES[place]}, which ${first.name}'s skeleton has not got`)
       }
@@ -748,14 +829,17 @@ export function crowd3d() {
 
     // A mesh group: one mesh of `geometry`, its material a clone of `material`, it and its shadow's
     // dressed with `surface`, drawn as many times as its geometry's instance count.
-    const group = (name: string, geometry: THREE.InstancedBufferGeometry, material: THREE.Material, surface: () => unknown): Group => {
-      const mesh = new T.Mesh(geometry, render3d.dress(material.clone(), { surface: surface() }))
+    const group = (name: string, geometry: THREE.InstancedBufferGeometry, material: THREE.Material, surface: () => unknown, worn?: THREE.Material): Group => {
+      const mesh = new T.Mesh(geometry, worn ?? render3d.dress(material.clone(), { surface: surface() }))
       mesh.name = name
       mesh.customDepthMaterial = render3d.dress(new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking }), { surface: surface() })
       mesh.customDistanceMaterial = render3d.dress(new T.MeshDistanceMaterial(), { surface: surface() })
       mesh.castShadow = true
       mesh.receiveShadow = true
       mesh.frustumCulled = false
+      // its people walk and are posed on the GPU: lights3d draws its shadow into the moving atlas,
+      // every frame
+      mesh.userData.moving = true
       scene!.add(mesh)
       return { mesh }
     }
@@ -768,7 +852,7 @@ export function crowd3d() {
 
     // The mesh groups: each mesh's vertices through its bind matrix, merged by material and attributes.
     rigs.forEach((r, bi) => {
-      const body: Body = { index: bi, groups: [], start: { value: 0 }, count: 0, scale: rests[bi].scale }
+      const body: Body = { index: bi, groups: [], start: { value: 0 }, count: 0, scale: rests[bi].scale, unit: rests[bi].unit }
       for (const meshes of sorted(r.skinned)) {
         body.groups.push(group(`crowd3d ${r.name} ${meshes[0].name}`, merged(T, meshes), meshes[0].material as THREE.Material, () => skinning(pose, body.start)))
       }
@@ -777,17 +861,27 @@ export function crowd3d() {
 
     // The items: each mesh's vertices through where it stands in its glb, merged by material and
     // attributes, and a held texture with room for every place it lists on every person of the pool.
-    for (const [name, item] of Object.entries(n.items ?? {})) {
-      const root = stocked.get(name)!.scene
-      root.updateMatrixWorld(true)
-      const meshes: THREE.Mesh[] = []
-      root.traverse(o => { if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh) })
-      if (!meshes.length) throw new Error(`crowd3d item ${name}: its model has no mesh`)
-      const room = size * Object.keys(item).filter(k => k !== 'model').length
+    for (const [name, item] of Object.entries(holdable)) {
+      const room = size * Object.keys(item).filter(k => !WHAT.has(k)).length
       const held = { value: data(T, new Float32Array(Math.ceil((room * HELD) / WIDE) * WIDE * 4), WIDE, Math.ceil((room * HELD) / WIDE)) }
       const ware: Ware = { groups: [], held, count: 0, room }
-      for (const set of sorted(meshes)) {
-        ware.groups.push(group(`crowd3d item ${name} ${set[0].name}`, solid(T, root, set), set[0].material as THREE.Material, () => holding(pose, held)))
+      if ('item' in item) {
+        // the mod's: each geometry as it is handed, instanced, in a material of its own posed by the hold
+        for (const part of handing!.parts(item.item as string)) {
+          const geometry = new T.InstancedBufferGeometry().copy(part.geometry as THREE.InstancedBufferGeometry)
+          geometry.instanceCount = 0
+          const worn = handing!.material(part.call, holding(pose, held))
+          ware.groups.push(group(`crowd3d item ${name} ${part.call}`, geometry, worn, () => holding(pose, held), worn))
+        }
+      } else {
+        const root = stocked.get(name)!.scene
+        root.updateMatrixWorld(true)
+        const meshes: THREE.Mesh[] = []
+        root.traverse(o => { if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh) })
+        if (!meshes.length) throw new Error(`crowd3d item ${name}: its model has no mesh`)
+        for (const set of sorted(meshes)) {
+          ware.groups.push(group(`crowd3d item ${name} ${set[0].name}`, solid(T, root, set), set[0].material as THREE.Material, () => holding(pose, held)))
+        }
       }
       wares.set(name, ware)
     }
@@ -800,6 +894,25 @@ export function crowd3d() {
       const world = plugins.wire.scene.world
       numbers = world?.crowd3d as Numbers | undefined
       if (!numbers) throw new Error('the scene names crowd3d but its world has no crowd3d')
+      // What the `items` mod holds on the bodies now. A sit's numbers changed are drawn from this frame; an
+      // item or a place come or gone is everything built again, as a start builds it.
+      const from = mod<Items>(world!, 'crowd3d', 'items')
+      const more = from?.(plugins).held(Object.keys(numbers.bodies))
+      // what the mod reads has not landed: nothing is built before it has, and what is built stands
+      if (from && !more) {
+        if (started && bodies.size) fill(plugins.wire.rows, clock(plugins.wire))
+        return
+      }
+      if (started && more) {
+        if (!same(more, given)) {
+          if (shaped(more) === shaped(given)) {
+            given = structuredClone(more)
+            holdable = { ...numbers.items, ...given }
+            offsets.clear()
+            arming = true
+          } else me.close()
+        }
+      }
       if (!started) {
         const listing = listed(plugins.wire.scene)
         if (listing.indexOf('loader') < 0 || listing.indexOf('loader') > listing.indexOf('crowd3d')) throw new Error('crowd3d is listed before the loader, whose models it asks for in its tick')
@@ -823,26 +936,69 @@ export function crowd3d() {
         const mine = ++starts
         landed.clear()
         stocked.clear()
-        const bodyNames = Object.entries(numbers.bodies), itemNames = Object.entries(numbers.items ?? {})
-        const done = () => landed.size === bodyNames.length && stocked.size === itemNames.length
+        // the scene's own items, then those the `items` mod holds on the bodies
+        handing = undefined
+        given = {}
+        if (from) {
+          ahead(plugins.wire.scene, 'crowd3d', 'items')
+          handing = from(plugins)
+          given = structuredClone(more!)
+        }
+        for (const name of Object.keys(given)) if (numbers.items?.[name]) throw new Error(`crowd3d: the item ${name} is one of world.crowd3d.items and one the items mod holds on a body: it is held one way, in one of them`)
+        holdable = { ...numbers.items, ...given }
+        const bodyNames = Object.entries(numbers.bodies), itemNames = Object.entries(holdable)
+        // the items the loader hands, by their models, and those the `items` mod hands, by their names
+        const models = itemNames.flatMap(([name, item]): [string, string][] => ('model' in item ? [[name, item.model as string]] : []))
+        const handed = itemNames.flatMap(([, item]) => ('item' in item ? [item.item as string] : []))
+        if (handed.length && !handing) throw new Error(`crowd3d: the item ${handed[0]} is an item, and world.crowd3d.mods names no items to hand it`)
+        waiting = () => landed.size === bodyNames.length && stocked.size === models.length && handed.every(item => handing!.ready(item))
+        const done = waiting
         for (const [name, model] of bodyNames) loader.on(model, () => {
           if (mine !== starts || !started) return
           landed.set(name, loader.model(model))
           if (done()) build(render3d)
         })
-        for (const [name, item] of itemNames) loader.on(item.model, () => {
+        for (const [name, model] of models) loader.on(model, () => {
           if (mine !== starts || !started) return
-          stocked.set(name, loader.model(item.model))
+          stocked.set(name, loader.model(model))
           if (done()) build(render3d)
         })
       }
+      // an item the `items` mod hands is made on a tick of its own plugin, after the models have landed
+      if (!bodies.size && handing && waiting?.()) build(plugins.render3d)
       if (bodies.size) fill(plugins.wire.rows, clock(plugins.wire))
     },
     afterTick(plugins: Plugins) {
-      const renderer: THREE.WebGLRenderer | undefined = plugins.render3d.renderer
-      if (!renderer || !bodies.size || !wire) return
-      if (size > renderer.capabilities.maxTextureSize) throw new Error(`crowd3d's pool of ${size} is more rows than this GPU's textures hold, ${renderer.capabilities.maxTextureSize}`)
+      if (!bodies.size || !wire) return
       time.value = clock(wire)
+      // The copies the `items` mod asks the place of, each where the pass poses it this frame: its person's place,
+      // its bone's matrix of its clip at the clock, mixed from the clip it fades from, and its offset.
+      if (handing?.carried) {
+        const T3 = three!, now = time.value
+        const copies: { key: string; item: string; matrix: number[] }[] = []
+        const place = new T3.Matrix4(), turned = new T3.Matrix4(), yawed = new T3.Matrix4()
+        for (const r of wire.rows as Row[]) {
+          const s = slots.get(r.id)
+          if (!s) continue
+          for (const [at, name] of s.held) {
+            const it = holdable[name]
+            if (!('item' in it) || !handing.carries?.(it.item as string)) continue
+            const st = standing(r, now)
+            const f = frame(st.normal)
+            turned.set(f[0][0], f[0][1], f[0][2], 0, f[1][0], f[1][1], f[1][2], 0, f[2][0], f[2][1], f[2][2], 0, 0, 0, 0, 1)
+            place.makeTranslation(st.at[0], st.at[1], st.at[2]).multiply(turned).multiply(yawed.makeRotationY(st.yaw))
+            const b = bodies.get(s.body)!
+            const share = s.was && s.fade > 0 ? Math.min(Math.max((now - s.began) / s.fade, 0), 1) : 1
+            const from = s.was && share < 1 ? { clip: s.was.clip, t: s.was.start + now - s.was.since, share: 1 - share } : undefined
+            const skin = new T3.Matrix4().fromArray(me.pose(s.body, s.clip, s.start + now - s.since, from).matrices[boneOf.get(at)!])
+            copies.push({ key: `${r.id} ${at}`, item: it.item as string, matrix: place.clone().multiply(skin).multiply(offsetOf(b, name, at)).toArray() })
+          }
+        }
+        handing.carried(copies)
+      }
+      const renderer: THREE.WebGLRenderer | undefined = plugins.render3d.renderer
+      if (!renderer) return
+      if (size > renderer.capabilities.maxTextureSize) throw new Error(`crowd3d's pool of ${size} is more rows than this GPU's textures hold, ${renderer.capabilities.maxTextureSize}`)
       // Each slot written since the last frame, sent by itself: WIDE is a whole number of slots, so each
       // sits in one row.
       const T = three!
@@ -863,7 +1019,11 @@ export function crowd3d() {
       renderer.render(pass!.scene, pass!.camera)
       renderer.setRenderTarget(was)
     },
-    ready() { return !!numbers && bodies.size === Object.keys(numbers.bodies).length && wares.size === Object.keys(numbers.items ?? {}).length },
+    ready() { return !!numbers && bodies.size === Object.keys(numbers.bodies).length && wares.size === Object.keys(holdable).length },
+    worn(): Worn[] {
+      if (!target) return []
+      return [...bodies].map(([name, b]) => ({ name, first: b.start.value, count: b.count, unit: b.unit, bones, inverses: inverses[b.index], pose: target!.texture, groups: b.groups.map(g => g.mesh) }))
+    },
     travel(body: string, clip: string) {
       const b = bodies.get(body)
       if (!b) throw new Error(`crowd3d has not baked ${body}`)
@@ -939,7 +1099,7 @@ export function crowd3d() {
     holds(body: string, clip: string, t: number, item: string, place: string) {
       const b = bodies.get(body)
       if (!b) throw new Error(`crowd3d has not baked ${body}`)
-      if (!numbers!.items?.[item]?.[place]) throw new Error(`crowd3d has no item ${item} on ${place}`)
+      if (!holdable[item]?.[place]) throw new Error(`crowd3d has no item ${item} on ${place}`)
       const T = three!
       const skin = new T.Matrix4().fromArray(me.pose(body, clip, t).matrices[boneOf.get(place)!])
       return skin.multiply(offsetOf(b, item, place)).toArray()

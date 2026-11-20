@@ -279,7 +279,7 @@ test('the spectrum is memoised per truth by its inputs; amp, chop and foamRecove
   Object.assign(numbers, { amp: 0.1, chop: 2, foamRecovery: 3, shoalDepth: 4 })
   row().data.t = 17
   expect(spectrumOf(w)).toBe(first)
-  // Read through another `w` over the same truth, as the editor's `reading` makes one a call.
+  // Read through another `w` over the same truth.
   expect(spectrumOf({ ...w })).toBe(first)
   for (const [k, v] of [['windSpeed', 11], ['windDeg', 31], ['fetchKm', 200], ['swellScale', 0.3], ['swellDeg', 60], ['seed', 1], ['repeat', 100], ['patches', [250, 17, 4]]] as const) {
     const again = sea()

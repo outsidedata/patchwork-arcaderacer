@@ -1,0 +1,66 @@
+{
+  "lap": 2000,
+  "ground": { "size": 60, "colour": "#6f737c" },
+  "sky": { "colour": "#dfe6f0", "ground": "#4a4540", "power": 1.1 },
+  "sun": { "colour": "#fff2e0", "power": 2.4, "at": [3, 6, 4], "half": 3, "map": 2048 },
+  "camera": { "fov": 40, "near": 0.02, "far": 400, "reach": 4 },
+  "skin": { "colour": "#8a7f78", "roughness": 0.8 },
+  "subjects": {
+    "head": {
+      "shape": { "sphere": { "radius": 0.11 } },
+      "height": 1.6,
+      "on": { "meshes": ".", "bones": ["anchor"], "weight": 0, "cuts": [], "planes": [], "faces": [{ "toward": [0, 0.75, -0.66], "within": 95 }] },
+      "solids": [{ "bone": "anchor", "at": [0, 0, 0], "radius": 0.11 }]
+    },
+    "ball": {
+      "shape": { "sphere": { "radius": 0.25 } },
+      "height": 1.2,
+      "on": { "meshes": ".", "bones": ["anchor"], "weight": 0, "cuts": [], "planes": [], "faces": [] },
+      "solids": [{ "bone": "anchor", "at": [0, 0, 0], "radius": 0.25 }]
+    },
+    "neck": {
+      "shape": { "capsule": { "radius": 0.16, "length": 0.9, "along": "z" } },
+      "height": 1.4,
+      "on": { "meshes": ".", "bones": ["anchor"], "weight": 0, "cuts": [], "planes": [{ "normal": [1, 0, 0], "offset": -0.035 }, { "normal": [-1, 0, 0], "offset": -0.035 }], "faces": [{ "toward": [0, 1, 0], "within": 60 }] },
+      "solids": [
+        { "bone": "anchor", "at": [0, 0, -0.45], "radius": 0.16 },
+        { "bone": "anchor", "at": [0, 0, -0.225], "radius": 0.16 },
+        { "bone": "anchor", "at": [0, 0, 0], "radius": 0.16 },
+        { "bone": "anchor", "at": [0, 0, 0.225], "radius": 0.16 },
+        { "bone": "anchor", "at": [0, 0, 0.45], "radius": 0.16 }
+      ]
+    },
+    "dock": {
+      "shape": { "capsule": { "radius": 0.035, "length": 0.3, "along": "z" } },
+      "height": 1.3,
+      "on": { "meshes": ".", "bones": ["anchor"], "weight": 0, "cuts": [], "planes": [{ "normal": [0, 0, -1], "offset": 0 }], "faces": [] },
+      "solids": []
+    },
+    "body": {
+      "shape": { "capsule": { "radius": 0.17, "length": 0.5, "along": "y" } },
+      "height": 1.1,
+      "on": { "meshes": ".", "bones": ["anchor"], "weight": 0, "cuts": [], "planes": [], "faces": [] },
+      "solids": [
+        { "bone": "anchor", "at": [0, -0.25, 0], "radius": 0.17 },
+        { "bone": "anchor", "at": [0, 0, 0], "radius": 0.17 },
+        { "bone": "anchor", "at": [0, 0.25, 0], "radius": 0.17 }
+      ]
+    },
+    "pelt": {
+      "shape": { "plane": { "size": [0.6, 0.6] } },
+      "height": 1,
+      "on": { "meshes": ".", "bones": ["anchor"], "weight": 0, "cuts": [], "planes": [], "faces": [] },
+      "solids": []
+    }
+  },
+  "motions": {
+    "still": { "forward": 0, "moves": [{ "amplitude": [0, 0, 0], "rate": 1 }, { "amplitude": [0, 0, 0], "rate": 1 }], "turns": [{ "amplitude": [0, 0, 0], "rate": 1 }, { "amplitude": [0, 0, 0], "rate": 1 }], "spin": [0, 0, 0] },
+    "walk": { "forward": 1.4, "moves": [{ "amplitude": [0.02, 0, 0], "rate": 0.9 }, { "amplitude": [0, 0.025, 0], "rate": 1.8 }], "turns": [{ "amplitude": [0, 4, 0], "rate": 0.9 }, { "amplitude": [0, 0, 0], "rate": 1 }], "spin": [0, 0, 0] },
+    "run": { "forward": 4.5, "moves": [{ "amplitude": [0.03, 0, 0], "rate": 1.4 }, { "amplitude": [0, 0.05, 0], "rate": 2.8 }], "turns": [{ "amplitude": [3, 6, 0], "rate": 1.4 }, { "amplitude": [0, 0, 0], "rate": 1 }], "spin": [0, 0, 0] },
+    "nod": { "forward": 0, "moves": [{ "amplitude": [0, 0, 0], "rate": 1 }, { "amplitude": [0, 0, 0], "rate": 1 }], "turns": [{ "amplitude": [25, 0, 0], "rate": 1 }, { "amplitude": [0, 0, 0], "rate": 1 }], "spin": [0, 0, 0] },
+    "shake": { "forward": 0, "moves": [{ "amplitude": [0, 0, 0], "rate": 1 }, { "amplitude": [0, 0, 0], "rate": 1 }], "turns": [{ "amplitude": [0, 45, 0], "rate": 1.5 }, { "amplitude": [0, 0, 0], "rate": 1 }], "spin": [0, 0, 0] },
+    "toss": { "forward": 0, "moves": [{ "amplitude": [0, 0, 0], "rate": 1 }, { "amplitude": [0, 0, 0], "rate": 1 }], "turns": [{ "amplitude": [30, 0, 0], "rate": 0.6 }, { "amplitude": [0, 0, 20], "rate": 0.9 }], "spin": [0, 0, 0] },
+    "shove": { "forward": 0, "moves": [{ "amplitude": [0.3, 0, 0], "rate": 1 }, { "amplitude": [0, 0, 0], "rate": 1 }], "turns": [{ "amplitude": [0, 0, 0], "rate": 1 }, { "amplitude": [0, 0, 0], "rate": 1 }], "spin": [0, 0, 0] },
+    "spin": { "forward": 0, "moves": [{ "amplitude": [0, 0, 0], "rate": 1 }, { "amplitude": [0, 0, 0], "rate": 1 }], "turns": [{ "amplitude": [0, 0, 0], "rate": 1 }, { "amplitude": [0, 0, 0], "rate": 1 }], "spin": [0, 180, 0] }
+  }
+}

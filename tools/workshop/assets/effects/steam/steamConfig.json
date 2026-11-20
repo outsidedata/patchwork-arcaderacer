@@ -1,0 +1,60 @@
+{
+  "cap": 200,
+  "ppm": 256,
+  "forceGenerators": {"breeze":[{"turbulence":0.8,"noiseFrequency":1,"noiseScroll":[0,0.5,0],"drag":0.3,"wind":[0.25,0,0]}]},
+  "flipbooks": [
+    {
+      "name": "steam",
+      "clip": "rise",
+      "frames": 32,
+      "loop": 8,
+      "across": 8,
+      "cell": [256,256],
+      "plane": 2,
+      "samples": 8,
+      "fps": 30,
+      "pivot": [0.5,0.95],
+      "nodes": [
+        {"id":"coord","type":"ShaderNodeTexCoord"},
+        {"id":"xyz","type":"ShaderNodeSeparateXYZ","inputs":{"Vector":{"link":"coord.Object"}}},
+        {"id":"h","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"xyz.Y"},"1":0.5,"2":0.5}},
+        {"id":"up","type":"ShaderNodeVectorMath","props":{"operation":"ADD"},"inputs":{"0":{"link":"coord.Object"},"1":{"keys":[[0,[0,0,0]],[1,[0,-1.6,0]]]}}},
+        {"id":"curl","type":"ShaderNodeTexNoise","props":{"noise_dimensions":"4D","noise_type":"FBM"},"inputs":{"Vector":{"link":"up.Vector"},"W":{"keys":[[0,0],[1,0.8]]},"Scale":1.4,"Detail":3,"Roughness":0.5,"Lacunarity":2,"Distortion":0}},
+        {"id":"curlC","type":"ShaderNodeVectorMath","props":{"operation":"SUBTRACT"},"inputs":{"0":{"link":"curl.Color"},"1":[0.5,0.5,0.5]}},
+        {"id":"spread","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"h.Value"},"1":1.4,"2":0.2}},
+        {"id":"curlS","type":"ShaderNodeVectorMath","props":{"operation":"SCALE"},"inputs":{"0":{"link":"curlC.Vector"},"Scale":{"link":"spread.Value"}}},
+        {"id":"bent","type":"ShaderNodeVectorMath","props":{"operation":"ADD"},"inputs":{"0":{"link":"up.Vector"},"1":{"link":"curlS.Vector"}}},
+        {"id":"squash","type":"ShaderNodeVectorMath","props":{"operation":"MULTIPLY"},"inputs":{"0":{"link":"bent.Vector"},"1":[6,0.7,1]}},
+        {"id":"strands","type":"ShaderNodeTexNoise","props":{"noise_dimensions":"4D","noise_type":"FBM"},"inputs":{"Vector":{"link":"squash.Vector"},"W":{"keys":[[0,10],[1,10.6]]},"Scale":1.2,"Detail":5,"Roughness":0.55,"Lacunarity":2.2,"Distortion":0}},
+        {"id":"st","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD","use_clamp":true},"inputs":{"0":{"link":"strands.Fac"},"1":3.2,"2":-1.5}},
+        {"id":"bx","type":"ShaderNodeMath","props":{"operation":"ABSOLUTE"},"inputs":{"0":{"link":"xyz.X"}}},
+        {"id":"width","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"h.Value"},"1":0.55,"2":0.25}},
+        {"id":"ratio","type":"ShaderNodeMath","props":{"operation":"DIVIDE"},"inputs":{"0":{"link":"bx.Value"},"1":{"link":"width.Value"}}},
+        {"id":"column","type":"ShaderNodeMath","props":{"operation":"SUBTRACT","use_clamp":true},"inputs":{"0":1,"1":{"link":"ratio.Value"}}},
+        {"id":"top","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD","use_clamp":true},"inputs":{"0":{"link":"h.Value"},"1":-1.3,"2":1.3}},
+        {"id":"foot","type":"ShaderNodeMath","props":{"operation":"MULTIPLY","use_clamp":true},"inputs":{"0":{"link":"h.Value"},"1":6}},
+        {"id":"env","type":"ShaderNodeMath","props":{"operation":"MULTIPLY"},"inputs":{"0":{"link":"top.Value"},"1":{"link":"foot.Value"}}},
+        {"id":"envC","type":"ShaderNodeMath","props":{"operation":"MULTIPLY"},"inputs":{"0":{"link":"env.Value"},"1":{"link":"column.Value"}}},
+        {"id":"density","type":"ShaderNodeMath","props":{"operation":"MULTIPLY","use_clamp":true},"inputs":{"0":{"link":"st.Value"},"1":{"link":"envC.Value"}}}
+      ],
+      "images": [
+        {
+          "file": "steam.png",
+          "channels": [
+            {"field":"density.Value","op":"glow","radius":1,"gain":1,"keep":true},
+            {"field":"density.Value","op":"glow","radius":5,"gain":1.2,"keep":false},
+            {"field":"density.Value","op":"const","value":0},
+            {"field":"density.Value","op":"glow","radius":2,"gain":1,"keep":true}
+          ]
+        }
+      ]
+    }
+  ],
+  "effects": {
+    "steam": [
+      {"n":[1,1],"every":0.3,"life":[1.5,2],"shape":"puff","size":[0.35,0.5],"box":[-0.08,0,-0.08,0.08,0.05,0.08],"outward":[0.2,0.4],"drag":0.6,"grows":[[0,0.6],[1,1.6]],"tints":[[0,9080982],[1,11054772]],"alphas":[[0,0],[0.2,0.5],[1,0]]},
+      {"n":[1,1],"every":0.2,"life":[1.6,2],"sheet":"steam","clip":"rise","size":[1.6,1.9],"start":[0,1],"blend":true,"channels":{"value":[0.8,0.3,0,0],"alpha":[0.4,0,0,1],"hot":[0,0,0,0]},"tints":[[0,16054008],[1,14212320]],"alphas":[[0,0],[0.15,0.85],[0.8,0.7],[1,0]]},
+      {"n":[1,1],"every":0.15,"life":[2,3],"shape":"puff2","size":[0.4,0.6],"box":[-0.1,0.6,-0.1,0.1,0.9,0.1],"dir":[0,1,0],"spread":0.3,"speed":[0.4,0.7],"drag":0.4,"forces":{"breeze":[0.7,1.3]},"grows":[[0,0.4],[1,2.2]],"tints":[[0,15265008],[1,13159632]],"alphas":[[0,0],[0.2,0.35],[1,0]]}
+    ]
+  }
+}

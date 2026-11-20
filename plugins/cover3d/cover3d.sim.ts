@@ -4,7 +4,7 @@
 // The solids are asked of other plugins through mods (`addons/scenemanager`), the ones
 // `world.cover3d.mods.solids` names, one plugin or a list, each one's solids taken: `(w, x, z, r) →
 // Shape[]`, every solid that may reach within r of (x, z), as shapes (Shapes, below)
-// (`scatter3d.cover3d.ts`, `shapes3d.cover3d.ts`). cover3d has no row and no numbers of its own: a rule
+// (`lod3d.cover3d.ts`, `shapes3d.cover3d.ts`). cover3d has no row and no numbers of its own: a rule
 // hands every number with the question.
 //
 // Shapes. cover3d never knows what a solid is: it asks each for a spot by its behavior, a table from a

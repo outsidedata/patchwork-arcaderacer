@@ -62,9 +62,9 @@ hands on `gripL`/`gripR`, feet on `footL`/`footR`).
 ## Running it
 
 ```
-node --experimental-strip-types tools/workshop/workshop.server.ts
+yarn workshop <game>
 ```
-then `http://localhost:5180/?game=<game>` (also `&model=<key>&body=<kind>`). One background process;
+which starts the server and opens `http://127.0.0.1:5180/?game=<game>` (also `&model=<key>&body=<kind>`). One background process;
 restart it after changing the server. A page change needs only a reload. Its tests:
 `yarn vitest run tools/workshop` and `yarn vitest run plugins/solids` and `yarn vitest run plugins/ik3d plugins/anim/anim.ik3d.test.ts plugins/interact`
 and `yarn vitest run plugins/box3dvehicle/box3dvehicle.plugin.test.ts plugins/box3dvehicle/box3dvehicle.interact.test.ts`.
@@ -286,6 +286,18 @@ still loading is waited for. Every Mixamo skeleton copy gets the solved turns.
   with its `<name>.poses.json` beside it.
 - `/ui`, the UI workshop (`building-the-hud`), and `/particles`, the particle workshop
   (`tuning-particles`).
+- `/hair3d`, the hair workshop (`yarn workshop hair3d <game>`): each hair of a game's hairs file grown
+  by hair3d on a test subject that is moved, turned and run forward, every number tuned live and saved
+  (`tools/workshop/README.md`, The hair workshop; `using-hair3d`).
+- `/grass3d`, the grass workshop (`yarn workshop grass3d <game>`): each grass of a game's grasses file
+  grown by grass3d on a test ground, trodden by a body or a car going round it, every number tuned live
+  and saved (`tools/workshop/README.md`, The grass workshop). Its ground and treader are the workshop's
+  own plugin `tools/workshop/plugins/grounds/`; its routes are `GET|POST /api/grass3d/<game>`
+  (`using-grass3d`).
+- `/puppet3d`, the puppet3d workshop (`yarn workshop puppet3d <game>`): a kind of the game moved over
+  flat ground by puppet3d's own code, its motions picked, weighed and laid on from the library's cue
+  sheets, a part turned by hand, and all of it saved (`tools/workshop/README.md`, The puppet3d
+  workshop; `using-puppet3d`).
 
 ## The API, for Claude driving it without the page
 
@@ -347,4 +359,4 @@ exhaust). The points in the file are the starting points; Bill tunes them in the
 Mech's 34 solids models: strider, jimmy and lifter (legs3d, by `<kind>.model`); depot, hq, hangar,
 pad, yard, crate and dropship; 20 modules, the seat among them (`<module>.model`, hung by the page;
 their points are `empties`); and the four `socket-*` models, which nothing names. Shooter, sunrace and paladin have
-none: their `"solids"` mods are scatter3d's collision solids, not this plugin.
+none: their `"solids"` mods are lod3d's collision solids, not this plugin.

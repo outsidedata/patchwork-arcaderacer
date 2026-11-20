@@ -1,0 +1,31 @@
+{
+  "cap": 16000,
+  "forceGenerators": {
+    "billow": [
+      { "swirl": 1.1, "axis": [0, 1, 0] },
+      { "pull": 0.6, "at": [0, 1.2, 0] }
+    ]
+  },
+  "effects": {
+    "mushroom": [
+      { "n": [1, 1], "life": [0.25, 0.25], "shape": "glow", "size": [9, 9], "grow": 1.6, "tint": 16777181, "tint1": 16760576, "gain": 7, "a1": 0, "add": true },
+      { "n": [1, 1], "life": [0.2, 0.2], "shape": "star", "size": [8, 8], "grow": 2, "tint": 16777215, "gain": 6, "a1": 0, "add": true },
+      { "n": [1, 1], "life": [6, 6], "size": [0, 0], "carry": "mushroom-light" },
+      { "n": [1, 1], "life": [0.9, 0.9], "shape": "halo", "size": [2, 2], "grow": 18, "tint": 16771488, "gain": 1.2, "a0": 0.8, "a1": 0, "add": true },
+      { "n": [1, 1], "after": 0.1, "life": [1.4, 1.4], "shape": "ring", "size": [2, 2], "grow": 22, "tint": 16765601, "gain": 1.5, "a0": 0.6, "a1": 0, "add": true },
+      { "n": [1, 1], "life": [7, 7], "size": [0, 0], "dir": [0, 1, 0], "spread": 0, "speed": [7, 7], "drag": 0.45, "carry": "mushroom-head" },
+      { "n": [50, 60], "after": 0.05, "life": [7, 9], "shape": "puff2", "size": [1.2, 2], "grow": 3, "origin": [0.5, 0.85], "box": [-0.6, -1.15, -0.6, 0.6, -1.0, 0.6], "dir": [0, 0.08, 0], "spread": 1.5, "speed": [7, 12], "drag": 1.4, "g": 0.2, "tint": 12101520, "tint1": 7563614, "a0": 0.85, "a1": 0, "fade": 1.5, "spin": 0.4 },
+      { "n": [30, 40], "life": [0.4, 0.9], "shape": "streak", "stretch": true, "size": [0.6, 1.2], "speed": [18, 30], "dir": [0, 1, 0], "spread": 1.4, "g": 9.8, "drag": 1.2, "bounce": 0.3, "tint": 16771210, "tint1": 16735232, "gain": 7, "a1": 0, "add": true }
+    ],
+    "mushroom-light": [
+      { "lamp": { "intensity": 900, "distance": 30, "decay": 2, "tint": 16747546, "flicker": 0.35 } }
+    ],
+    "mushroom-head": [
+      { "n": [2, 2], "every": 0.04, "life": [5, 7], "shape": "puff", "size": [1, 1.6], "grow": 3.2, "jitter": [0.5, 0.3, 0.5], "speed": [0.2, 0.6], "drag": 1, "g": -0.25, "tint": 12884352, "tint1": 6973789, "a0": 0.9, "a1": 0, "fade": 1.5, "spin": 0.5 },
+      { "n": [3, 3], "every": 0.06, "life": [2.5, 3.5], "shape": "puff2", "size": [2, 3], "grow": 2.2, "follow": true, "box": [-3.2, -0.6, -3.2, 3.2, 0.6, 3.2], "speed": [0.5, 1.2], "forces": { "billow": 1 }, "tint": 16753727, "tint1": 3816744, "gain": 2.6, "a0": 0.9, "a1": 0, "fade": 0.8, "spin": 0.7 },
+      { "n": [2, 2], "every": 0.05, "life": [1, 1.6], "shape": "puff", "size": [1.2, 1.8], "grow": 1.6, "follow": true, "box": [-1.1, -0.2, -1.1, 1.1, 0.9, 1.1], "forces": { "billow": 1.5 }, "tint": 16776137, "tint1": 16729344, "gain": 5, "a0": 0.8, "a1": 0, "spin": 1.2, "add": true },
+      { "n": [2, 3], "every": 0.05, "life": [5, 8], "shape": "puff2", "size": [2.6, 3.6], "grow": 2.4, "follow": true, "box": [-4.6, 0, -4.6, 4.6, 1.8, 4.6], "speed": [0.2, 0.6], "forces": { "billow": 0.7 }, "tint": 7234648, "tint1": 4210752, "a0": 0.6, "a1": 0, "fade": 2, "spin": 0.3 },
+      { "n": [1, 2], "every": 0.08, "life": [2, 3.5], "shape": "spark", "size": [0.08, 0.16], "speed": [1, 4], "g": -1, "drag": 0.6, "tint": 16764006, "tint1": 16725760, "gain": 5, "a1": 0, "fade": 0.6, "add": true }
+    ]
+  }
+}

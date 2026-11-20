@@ -1,0 +1,851 @@
+{
+  "frames": [
+    {
+      "filename": "packet 0",
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 1",
+      "frame": {
+        "x": 512,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 2",
+      "frame": {
+        "x": 1024,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 3",
+      "frame": {
+        "x": 1536,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 4",
+      "frame": {
+        "x": 0,
+        "y": 128,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 5",
+      "frame": {
+        "x": 512,
+        "y": 128,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 6",
+      "frame": {
+        "x": 1024,
+        "y": 128,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 7",
+      "frame": {
+        "x": 1536,
+        "y": 128,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 8",
+      "frame": {
+        "x": 0,
+        "y": 256,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 9",
+      "frame": {
+        "x": 512,
+        "y": 256,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 10",
+      "frame": {
+        "x": 1024,
+        "y": 256,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 11",
+      "frame": {
+        "x": 1536,
+        "y": 256,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 12",
+      "frame": {
+        "x": 0,
+        "y": 384,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 13",
+      "frame": {
+        "x": 512,
+        "y": 384,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 14",
+      "frame": {
+        "x": 1024,
+        "y": 384,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 15",
+      "frame": {
+        "x": 1536,
+        "y": 384,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 16",
+      "frame": {
+        "x": 0,
+        "y": 512,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 17",
+      "frame": {
+        "x": 512,
+        "y": 512,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 18",
+      "frame": {
+        "x": 1024,
+        "y": 512,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 19",
+      "frame": {
+        "x": 1536,
+        "y": 512,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 20",
+      "frame": {
+        "x": 0,
+        "y": 640,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 21",
+      "frame": {
+        "x": 512,
+        "y": 640,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 22",
+      "frame": {
+        "x": 1024,
+        "y": 640,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 23",
+      "frame": {
+        "x": 1536,
+        "y": 640,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 24",
+      "frame": {
+        "x": 0,
+        "y": 768,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 25",
+      "frame": {
+        "x": 512,
+        "y": 768,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 26",
+      "frame": {
+        "x": 1024,
+        "y": 768,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 27",
+      "frame": {
+        "x": 1536,
+        "y": 768,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 28",
+      "frame": {
+        "x": 0,
+        "y": 896,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 29",
+      "frame": {
+        "x": 512,
+        "y": 896,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 30",
+      "frame": {
+        "x": 1024,
+        "y": 896,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    },
+    {
+      "filename": "packet 31",
+      "frame": {
+        "x": 1536,
+        "y": 896,
+        "w": 512,
+        "h": 128
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 512,
+        "h": 128
+      },
+      "sourceSize": {
+        "w": 512,
+        "h": 128
+      },
+      "pivot": {
+        "x": 1,
+        "y": 0.5
+      },
+      "duration": 33
+    }
+  ],
+  "meta": {
+    "app": "flipbooks.py",
+    "image": "packet.png",
+    "size": {
+      "w": 2048,
+      "h": 1024
+    },
+    "frameTags": [
+      {
+        "name": "fall",
+        "from": 0,
+        "to": 31
+      }
+    ]
+  }
+}

@@ -3,7 +3,7 @@
 Endless 3D terrain from one field file, the same to the byte on the server, every page and every
 worker: a node graph of noise (value, simplex, worley), warps, folds (ridges, billows, terraces),
 remaps, craters, a clearing at spawn and biomes; a sea that floods below the waterline; painted
-layers of raise, lower, flatten, smooth, road-cutting bench and surface strokes; a land record of
+layers of raise, lower, flatten, smooth, road-cutting bench, surface and erase strokes; a land record of
 slope, aspect, curvature, occlusion, landform, cliffs, wetness, biomes, surfaces and ground layers;
 ground textures laid by rules with noise edges and warps; and on the page, seamless rings round the
 camera built in workers, with baked far rings, near maps, prepared places for camera jumps, and a
@@ -35,16 +35,19 @@ The field file:
 - `ground`: the look's texture layers (`terrain3d.warp.ts`: each `{ name, map, normal, scale,
   strength, tri, sharp, where, noise, edge, warp }`), written once in TS and once as GLSL from the same
   numbers with integer hashing, so `layer:<name>` on the server is what the shader draws.
-- `surfaces`: what a `surface` stroke paints: `colour`, `cover` (scatter's density, 0 on a road),
-  `grip`, `drag`, `spray`, `mark`, `edge`.
+- `surfaces`: what a `surface` stroke paints: `colour`, `cover` (the share of lod3d's tries kept, 0 on a road),
+  `grip`, `drag`, `drivers` (numbers it hands what is on it, each a particle3d driver of the effects
+  thrown there: a mud's `tint`), `mark`, `edge`.
 - `layers`: squares of painted ground, each `{ at, size, px, strokes }`, baked from their strokes
   deterministically. A stroke is `{ verb, radius, hardness, strength, level, surface, path }`, `verb`
   one of `raise`, `lower`, `flatten`, `smooth`, `bench` (flat across the path, following the hill
-  along it: a road) and `surface`.
+  along it: a road), `surface` and `erase`. Erased ground is gone: `heightAt` and `rawAt` answer
+  `ERASED` (−1e9) there, so a shape standing in it (a basement's floor) is always the higher. The
+  finest ring leaves out the cells over it; every other ring draws the ground whole.
 
 The queries take `w`: `heightAt`, `rawAt` (under water too), `depthAt`, `normalAt`, `restsAt` (the
 mean of a span square's corners, so a body stands still over rough ground), `paintAt` (`{ weight,
-surface, cover, grip, drag, spray, mark }`), `occludes(a, b)`, `ray(origin, dir, far)`, `analyse(x, z)`
+surface, cover, grip, drag, drivers, mark }`), `occludes(a, b)`, `ray(origin, dir, far)`, `analyse(x, z)`
 (the land record: `height`, `relief`, `slope`, `aspect`, `profile`, `plan`, `position`, `occlusion`,
 `form` (the geomorphon: peak, ridge, shoulder, spur, slope, hollow, footslope, valley, pit), `cliffAbove`,
 `cliffBelow`, `wet`, `water`, `biome:<n>`, `surface:<n>`, `layer:<n>`), `ramp(rule, x, z)` and
@@ -70,13 +73,13 @@ per pixel and dressed by render3d, so the sky's weather and lights reach them.
 - `task(url, input)` lends the workers to other plugins.
 
 It hands out `land`, `rings`, `building()`, `shown()`, `prepare`, `prepared`, `unprepare`, `task`,
-`bake`, `baked`, `focus`, `carry`, and `ground`: `{ height, raw, depth, at, cover, spray, mark, ramp,
+`bake`, `baked`, `focus`, `carry`, and `ground`: `{ height, raw, depth, at, cover, drivers, mark, ramp,
 rules, edits, ray, mix, layers, shown, prepare, prepared, unprepare, task }` over this client's land.
 
 ## Using it
 
-1. List `terrain3d` before every plugin that stands on its `ground` in its `afterTick` (scatter3d,
-   skydome3d, ocean3d, box3dvehicle's dust), and before `render3d`.
+1. List `terrain3d` before every plugin that stands on its `ground` in its `afterTick` (lod3d,
+   skydome3d, ocean3d, box3dvehicle's tracks), and before `render3d`.
 2. Catalogue the field as a `json` entry with `preload`, and every texture its ground layers name.
 3. Give `world.terrain3d: { field, rings, shadowReach, budget, seabed, static?, preload?, bake?, maps?,
    mods: { ready? } }`.
@@ -91,7 +94,7 @@ terrain3d hands its ground to almost every 3D plugin through a mod of its own:
   lattice as the page draws it, with its water and the solids standing on it
   (`world.kinematics3d.mods.solids`), which a body walks across, stands on and walks round.
 - **box3d** (`terrain3d.box3d.ts`: `ground`): height-field chunks for physics.
-- **box3dvehicle** (`terrain3d.box3dvehicle.ts`: `land`, `grip`, `drag`): dust, tracks and tyre grip.
+- **box3dvehicle** (`terrain3d.box3dvehicle.ts`: `land`, `grip`, `drag`): tracks, the ground under each wheel's effects and its drivers, and tyre grip.
 - **hitscan3d** (`terrain3d.hitscan3d.ts`: `ground`): shots stop at the land.
 - **flight3d** (`terrain3d.flight3d.ts`: `ground`): planes land and crash.
 - **nav3d** (`terrain3d.nav3d.ts`: `height`, `link`, `behaviors`): the bake lays its graph on the land,
@@ -101,8 +104,22 @@ terrain3d hands its ground to almost every 3D plugin through a mod of its own:
   shape where it gives none.
 - **shapes3d** (`terrain3d.shapes3d.ts`: `height`): shapes stand on the land, and a body walking
   shapes3d's ground stands on the land wherever no shape is.
-- **scatter3d** (`terrain3d.scatter3d.ts`: `ground`, `land`): trees and grass stand on it; scatter3d's
-  `scatter3d.terrain3d.ts` is a `ready` for prepared places.
+- **lod3d** (`terrain3d.lod3d.ts`: `surfaces`, `seen`, `behaviors`): the land as lod3d's surface
+  `land`, of the word `land`, so trees, grass and boulders stand on it, kept by its paint's `cover` and
+  by rules over the land record; `seen` hands lod3d the place `prepare` holds, and the land's field for
+  lod3d's workers. lod3d's `lod3d.terrain3d.ts` is a `ready` for prepared places.
+- **grass3d** (`terrain3d.grass3d.ts`: `land`): the land a meadow stands on, its height, its paint's
+  `cover` and rules over the land record, on the finest ring's lattice so each blade stands on the
+  triangle that is drawn; its version moves with every stroke, it hands the place `prepare` holds, and the
+  land's field for grass3d's workers. grass3d's `grass3d.terrain3d.ts` is a `ready` for prepared places.
+- **loader** (`terrain3d.loader.ts`: `ready`): the loading screen stays up until the land where the
+  camera starts is on the scene, `shown()`; with `preload` and `mods.ready: ['lod3d']` that is the land
+  and its trees whole, so the game never starts in an empty world. The scene names it in
+  `world.loader.mods.ready: ['terrain3d']`.
+- **gpgpu3d** (`terrain3d.gpgpu3d.ts`: `things`, `behaviors`): the land round the camera as a thing on
+  the GPU, of the word `land`: a window of heights on the finest ring's lattice, filled in terrain3d's
+  workers when the camera has moved a quarter of it or the land has changed, so what is moved on the GPU
+  (gpuparticle3d's particles) meets the land.
 - **ocean3d** (`terrain3d.ocean3d.ts`: `land`): the seabed the sea shoals over.
 - **skydome3d** (`terrain3d.skydome3d.ts`: `land`): rain splashes and biome weather.
 - **ragdoll3d** (`terrain3d.ragdoll3d.ts`: `land`), **dismember3d** (`terrain3d.dismember3d.ts`:

@@ -21,11 +21,14 @@
 // `.json` files, those the bundle holds too, a string that is a path from the repo's root to a file
 // of the site is written as that file's path on the host: `--base` and its path in the site.
 //
-// The page is written with the loading screen, `scripts/loading.html` beside this script, just inside
-// its `<body>`, so the host's first bytes draw it while the game's code loads; the game's first
-// canvas to show takes it off the page.
+// The page is written with a loading screen just inside its `<body>`, so the host's first bytes draw
+// it while the game's code loads. A game whose entry scene shows a loading screen of its own has it as
+// its cover, which the bundle writes and which fetches the scene's files meanwhile
+// (`plugins/loader/loader.cover.ts`); any other has `scripts/loading.html` beside this script, which
+// the game's first canvas to show takes off the page.
 //
-// Left out: every `.ts` file, which is in the bundle if the page runs it, every `.tsx`, the game's
+// Left out: every `.ts` file, which is in the bundle if the page runs it, the loader's
+// `loader.cover.js`, which the page holds inline, every `.tsx`, the game's
 // `dev.html` and `client.html`, every `.md`, `.py`, `.pyc` and `.mjs`, every file or folder whose name
 // starts with a dot, and what Vite's `server.fs.deny` keeps out. A game whose folder holds a `core`
 // stops the build, and so does a page whose code does not build, with what esbuild said.
@@ -43,7 +46,7 @@ export type Written = { files: string[] }
 const FOLDERS = ['engine', 'addons', 'plugins']
 const CORE = 'core'
 const BUNDLE = 'bundle'
-const LEFT_OUT = [/\.tsx?$/, /\.md$/, /\.py$/, /\.pyc$/, /\.mjs$/, /\.pem$/, /\.key$/, /^\./, /^__pycache__$/]
+const LEFT_OUT = [/\.tsx?$/, /\.md$/, /\.py$/, /\.pyc$/, /\.mjs$/, /\.pem$/, /\.key$/, /^\./, /^__pycache__$/, /^loader\.cover\.js$/]
 const PAGES_LEFT_OUT = ['dev.html', 'client.html']
 
 const posix = (p: string) => p.split(path.sep).join('/')
@@ -107,7 +110,9 @@ export async function produceStaticSite({ root, game, out, base }: Site): Promis
     written.push(at)
   }
 
-  write('index.html', built.html.replace(BODY, body => `${body}\n${loading}`))
+  // A game whose entry scene shows a loading screen has it drawn by its own cover, which the bundle
+  // wrote into the page (`plugins/loader/loader.cover.ts`); any other has the site's.
+  write('index.html', built.html.includes('id="loader-cover"') ? built.html : built.html.replace(BODY, body => `${body}\n${loading}`))
   for (const [f, bytes] of built.files) write(`${BUNDLE}/${f}`, bytes)
   for (const rel of copied) {
     if (rel.endsWith('.json')) {

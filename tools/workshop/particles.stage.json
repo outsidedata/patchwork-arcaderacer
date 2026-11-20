@@ -1,0 +1,43 @@
+{
+  "plugins": ["particle3d", "instances3d", "lights3d", "render3d"],
+  "dt": 0.016666666666666666,
+  "world": {
+    "particle3d": { "mods": { "behaviors": ["instances3d"] } },
+    "instances3d": {},
+    "lights3d": { "grid": [16, 9], "slices": 24 }
+  },
+  "render3d": {
+    "tone": "neutral",
+    "exposure": 1,
+    "background": "#6b7280",
+    "bloom": { "strength": 0.6, "radius": 0.4, "threshold": 1 }
+  },
+  "thrown": {
+    "every": 4,
+    "from": [-5, 1.6, 0],
+    "vel": [5.5, 4.5, 0],
+    "spin": [0, 0, -9],
+    "body": {
+      "type": "dynamic",
+      "shapes": [
+        {
+          "capsule": { "center1": [0, -0.07, 0], "center2": [0, 0.07, 0], "radius": 0.045 },
+          "density": 1500,
+          "baseMaterial": { "friction": 0.6, "restitution": 0.45, "rollingResistance": 0.15 }
+        }
+      ]
+    },
+    "world": {
+      "gravity": [0, -9.81, 0],
+      "subStepCount": 4,
+      "restitutionThreshold": 0.5,
+      "static": [
+        {
+          "pos": [0, -0.5, 0],
+          "rot": [0, 0, 0, 1],
+          "shapes": [{ "box": [20, 0.5, 20], "density": 0, "baseMaterial": { "friction": 0.8, "restitution": 0.3, "rollingResistance": 0.2 } }]
+        }
+      ]
+    }
+  }
+}

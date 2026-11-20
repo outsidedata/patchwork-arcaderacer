@@ -18,6 +18,10 @@
 // field carries as many values as it likes. A grid point on the ring's outer edge, but the outermost
 // ring's, carries the coarser ring's values blended along its edge, as its height is lifted onto its
 // chord, so both rings give the same values along the seam.
+//
+// Erased ground. Every ring draws the ground as if nothing were erased (the land's `whole`), so no
+// vertex stands at ERASED; the finest ring, ring 0, leaves out each cell with a corner on erased
+// ground, so a hole opens wherever the camera is near enough for ring 0 to cover it.
 import { shape, type Field, type Land, type Rule } from './terrain3d.sim.ts'
 import { perPixel, type GroundLayer } from './terrain3d.warp.ts'
 
@@ -96,7 +100,7 @@ export function build(l: Land, layout: Layout, sl: Slots, k: number, C: number[]
   const hx0 = hole ? (hole[0] - inner!.H - x0) / m : 0, hx1 = hole ? hx0 + (2 * inner!.H) / m : 0
   const hz0 = hole ? (hole[1] - inner!.H - z0) / m : 0, hz1 = hole ? hz0 + (2 * inner!.H) / m : 0
   const mf = inner?.m ?? 1, mm = m / mf
-  const drawnAt = seabed ? l.raw : l.height
+  const drawnAt = seabed ? l.whole.raw : l.whole.height
   const drawn = (Lx: number, Lz: number) => drawnAt(Lx * c0, Lz * c0)
   const skirt = Math.max(l.field.program.hscale, 40)
   const b: Build = {
@@ -287,6 +291,9 @@ export function build(l: Land, layout: Layout, sl: Slots, k: number, C: number[]
         if (hole && j >= hz0 && j < hz1 && i === hx1) { fan([i + 1, j], [hx1, j], [hx1, j + 1], [i + 1, j + 1]); continue }
         if (hole && i >= hx0 && i < hx1 && j === hz0 - 1) { fan([i, j], [i, hz0], [i + 1, hz0], [i + 1, j]); continue }
         if (hole && i >= hx0 && i < hx1 && j === hz1) { fan([i, j + 1], [i, hz1], [i + 1, hz1], [i + 1, j + 1]); continue }
+        // The finest ring leaves out a cell with any corner on erased ground.
+        if (k === 0 && (l.erased((x0 + i * m) * c0, (z0 + j * m) * c0) || l.erased((x0 + (i + 1) * m) * c0, (z0 + j * m) * c0)
+          || l.erased((x0 + (i + 1) * m) * c0, (z0 + (j + 1) * m) * c0) || l.erased((x0 + i * m) * c0, (z0 + (j + 1) * m) * c0))) continue
         const a = vid(i, j), c = vid(i + 1, j), d = vid(i + 1, j + 1), e = vid(i, j + 1)
         tri(a, c, d)
         tri(a, d, e)

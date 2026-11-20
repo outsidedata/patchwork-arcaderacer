@@ -423,7 +423,25 @@ const v3 = (a: Vec3): Vec3 => [a[0], a[1], a[2]]
 const q4 = (a: Quat): Quat => [a[0], a[1], a[2], a[3]]
 const copy = (d: Motion): Motion => ({ pos: v3(d.pos), rot: q4(d.rot), vel: v3(d.vel), spin: v3(d.spin), awake: d.awake })
 const same = (a: number[], b: number[]) => a.every((c, i) => c === b[i])
-const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+// Whether a row's field holds what Box3D was last handed of it, a copy taken then: the same number
+// (NaN the same as NaN), string, boolean or null, or arrays and plain objects of the same, item by item
+// and field by field, a field holding undefined the same as one not there. Read every step for every
+// live field of every body, joint and world, so it walks the two and makes nothing.
+function equal(a: unknown, b: unknown): boolean {
+  if (a === b || (a !== a && b !== b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a)) {
+    const c = b as unknown[]
+    if (a.length !== c.length) return false
+    for (let i = 0; i < a.length; i++) if (!equal(a[i], c[i])) return false
+    return true
+  }
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>
+  for (const k in x) if (!equal(x[k], y[k])) return false
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false
+  return true
+}
 const big = (n: number) => BigInt(n)
 const IDENTITY: Frame = { pos: [0, 0, 0], rot: [0, 0, 0, 1] }
 const transform = (f: Frame) => ({ position: v3(f.pos), quaternion: q4(f.rot) })

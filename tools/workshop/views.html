@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Particle views</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "/three/build/three.module.js",
+    "three/addons/": "/three/examples/jsm/",
+    "three/examples/jsm/": "/three/examples/jsm/",
+    "#engine/": "/engine/",
+    "#plugins/": "/plugins/",
+    "#addons/": "/addons/",
+    "fflate": "/npm/fflate/esm/browser.js",
+    "fzstd": "/npm/fzstd/esm/index.mjs",
+    "box3d.js/inline": "/npm/box3d.js/dist/box3d.inline.mjs"
+  }
+}
+</script>
+<style>
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden }
+#view { position: fixed; inset: 0 }
+#view canvas { position: absolute; inset: 0; width: 100%; height: 100% }
+</style>
+</head>
+<body>
+<div id="view"></div>
+<script type="module" src="/views.ts"></script>
+</body>
+</html>

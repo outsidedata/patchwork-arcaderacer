@@ -1,6 +1,6 @@
 ---
 name: people-in-a-scene
-description: Use in core, or any clone of it, whenever a person goes into a 3D scene - the player's body, an NPC, a guard, townspeople, workers, bystanders, a crowd - and before choosing walker (drawn by anim) or crowd3d for it. Covers what each body is, what each costs to draw and to send, props held on bones (crowd3d's instanced items, anim's props), what each stands on (terrain3d, shapes3d's levels, the base of a game's own), routes round what is in the way (nav3d), being shot (hitscan3d), and npc3d driving either body from one definition. Triggers on "walker or crowd3d", "make them crowd3d people", "NPCs", "a crowd", "townspeople", "hold a sword", "prop on a bone", "300 people", "they walk through walls", "their feet slide", "a person floats".
+description: Use in core, or any clone of it, whenever a person goes into a 3D scene - the player's body, an NPC, a guard, townspeople, workers, bystanders, a crowd - and before choosing walker (drawn by anim) or crowd3d for it. Covers what each body is, what each costs to draw and to send, props held on bones (crowd3d's instanced items, anim's props), hair, fabric and grass meeting a body (hair3d, fabric3d, grass3d, gpgpu3d), what each stands on (terrain3d, shapes3d's levels, ceilings and moving floors, the base of a game's own), routes round what is in the way (nav3d), being shot (hitscan3d), and npc3d driving either body from one definition. Triggers on "walker or crowd3d", "make them crowd3d people", "NPCs", "a crowd", "townspeople", "hold a sword", "prop on a bone", "300 people", "they walk through walls", "their feet slide", "a person floats", "jumps through the ceiling", "hair on the crowd", "grass under their feet".
 ---
 
 # People in a scene
@@ -10,7 +10,8 @@ by `anim`, or a **crowd3d person**, a course written on its row and posed by `cr
 Everything else here (the ground, shapes3d's levels, nav3d's routes, hitscan3d's shots, npc3d's
 choosing) joins one of those two. This skill is how they fit together, in one place. A body moved by
 `kinematics3d` and played and drawn by `motion3d`, which does what the shapes round it offer, is
-`using-motion3d`'s.
+`using-motion3d`'s. A body posed by procedure with no clips (an animal on four legs, a rider on it) is
+`using-puppet3d`'s; its walk and idle, written into its glb, make it a crowd3d body too.
 
 ## The two bodies
 
@@ -23,6 +24,13 @@ and lets it fall, wade and slide. `seek` walks it to a goal round what is in the
 `world.walker.kinds.<kind>`: `radius`, `height`, `step`, `maxSlope`, `seekSpeed`, `turnRate` and the
 rest.
 
+- Its move is swept against every solid along it, so it passes through no wall however fast it goes.
+- A push out of a solid is never a speed: its `vel` after a wall is along the wall and no faster than it
+  was going, so nothing flings it.
+- On a ground that gives a `roof` (shapes3d's `ground`), its head stops at the underside of what is over
+  it: a jump under a ceiling bumps its head.
+- On a ground that gives a `footing` (shapes3d's `ground`), it rides a shape that moves under it.
+
 `anim` draws it, from the row's fields as they stand. It has everything a body can have:
 
 - blended clips, crossfading over the kind's `fade`;
@@ -32,7 +40,8 @@ rest.
 - `aim`, its upper body pitched by the row's aim;
 - props, loader models hung on bones (`world.anim.kinds.<kind>.props`);
 - `ragdoll3d` when it goes limp, blown by `blow`;
-- `ik3d` and `interact` (boarding a mech, a hand on a rifle's stock).
+- `ik3d` and `interact` (boarding a mech, a hand on a rifle's stock);
+- hair, a cape, and capsules for them to lie on (Hair, fabric and grass, below).
 
 ### crowd3d person
 
@@ -46,8 +55,7 @@ the end of a walk.
 - It plays the one clip its row names, looped, or held on its last frame when the clip is in
   `world.crowd3d.hold`, or a pose, a frame of a clip held, named in `clip` as a clip is
   (`world.crowd3d.poses`). With `world.crowd3d.fade` a change of clip or pose fades over that many
-  seconds; without it, it snaps. No upper layer, no aim, no ragdoll.
-- It faces its `yaw`; whoever writes the course faces it the way it walks. A turn is a new course.
+  seconds; without it, it snaps. No upper layer, no aim, no ragdoll.- It faces its `yaw`; whoever writes the course faces it the way it walks. A turn is a new course.
 - It walks straight, through everything. Nothing keeps it apart from anything. With `through`, a list
   of [x, y, z], its course is the shapes3d spline through `pos`, each of them and `to` (a curved
   stair), walked a straight piece at a time.
@@ -68,13 +76,16 @@ the end of a walk.
 ### Drawing
 
 - **Walker.** Each row gets its own clone of its kind's model, with its own skeleton and mixer: each
-  mesh of that model is a draw call for that row, and one more for each light whose shadow it casts.
-  Each prop is its own clone per row, as many draw calls again. Every walker adds its model's draw
-  calls.
+  mesh of that model is a draw call for that row. Each prop is its own clone per row, as many draw
+  calls again. Every walker adds its model's draw calls. anim marks every body it poses and every prop
+  it holds moving (`userData.moving`), so lights3d draws its shadow again every frame, into its moving
+  atlas, in each face of a shadowed light whose view holds it.
 - **crowd3d.** A body's meshes are merged by material, and each group is drawn once for all the people
-  of that body: one draw call per material, and one more per light for shadows, however many people.
-  One bake of every clip is shared by every body. The pose is one pass on the GPU over every person.
-  The pool is `poolSize` slots, 512 when left out, and more people than that throws.
+  of that body: one draw call per material, however many people. A group is never culled and is marked
+  moving, so its shadow is one more draw every frame for every face of every shadowed light, wherever
+  its people stand (`using-lights3d`). One bake of every clip is shared by every body. The pose is one
+  pass on the GPU over every person. The pool is `poolSize` slots, 512 when left out, and more people
+  than that throws.
 
 300 people at 60 fps is what crowd3d does in core today.
 
@@ -114,6 +125,21 @@ next frame.
 A walker's props are `world.anim.kinds.<kind>.props: [{ model, bone, at, turn }]`, each its own clone
 per row.
 
+## Hair, fabric and grass
+
+What is moved on the GPU (hair3d's hair, fabric3d's capes, grass3d's grass, gpuparticle3d's particles)
+meets a body only where a mod hands it over. `writing-the-look` has each of those plugins.
+
+| body | hair grown on it | fabric held to it | what the GPU meets of it |
+| ---- | ---------------- | ----------------- | ------------------------ |
+| walker, drawn by anim | `world.hair3d.mods: { skins: ['anim'], behaviors: ['render3d'] }` | `world.fabric3d.mods: { sources: ['anim'] }` | its bones' capsules, `world.anim.kinds.<kind>.capsules`, with `world.gpgpu3d.mods: { things: ['anim'], behaviors: ['anim'] }`; and one upright cylinder of its `radius` and `height`, `things: ['walker'], behaviors: ['shapes3d']`, which presses grass with `world.grass3d.mods: { pressed: 'gpgpu3d', behaviors: ['walker'] }` |
+| crowd3d person | `world.hair3d.mods: { skins: ['crowd3d'], behaviors: ['crowd3d'] }`, every person of a body in one draw | none | nothing: crowd3d hands gpgpu3d no thing, so a person presses no grass and its hair meets no body |
+
+A capsule is `{ from, to, radius }` between two bones, or `{ bone, at, radius }`, a ball a bone
+carries. A limp walker hands no cylinder. Hair and fabric lie on what gpgpu3d holds only once hair3d
+and fabric3d each name `solids: 'gpgpu3d'` in their mods. The whole of each: `using-hair3d`,
+`using-fabric3d`, `using-grass3d`, `using-gpgpu3d`.
+
 ## What they stand on
 
 ### terrain3d
@@ -133,12 +159,15 @@ shapes that rise past that and start below its head. So a walker:
 
 - walks up a stair of boxes and up a tilted `plane`, a ramp;
 - walks under a box raised over its head, and once it has climbed onto that box, stands on it;
+- jumping under that box, stops its head at the box's underside (the ground's `roof`);
+- stands still on a shape a rule moves with shapes3d's `move`, carried by how far it moved (the
+  ground's `footing`);
 - steps down a stair without falling: anim's `falls` are speed bands it falls by, only ever up until it
   lands.
 
 The land under the shapes is `world.shapes3d.mods: { height: 'terrain3d' }`. The scene names shapes3d
 in `world.walker.mods.behaviors`, for the boxes' footprints, and **not** in `fixed`, which would hand
-walker every box as a wall.
+walker every box as a wall. The whole of shapes3d is the `using-shapes3d` skill.
 
 A person goes from one level to another along a course whose ends stand on each: a nav3d route over a
 graph of levels hands each place's height, and npc3d walks a person up the stair one leg at a time.
@@ -159,7 +188,8 @@ goes round things only along a route.
 - A graph is made of shapes3d's shapes, `{ places, ways, blocks? }`: places are points, ways are lines
   and splines between them, each with a `data` block (`data.nav3d.word`, `cost`, `one`, `tags`, and
   any other block carried on the step, such as `data.crowd3d: { clip, speed }`). A level's generator
-  may write one with no bake.
+  may write one with no bake. A place's `data.nav3d.moe`, metres, spreads it over a square that wide
+  across the ground, and each route to it ends on a spot of its own in that square.
 - The bake's `solids` mods hand the footprints: `shapes3d.nav3d.ts` (every shape but a plane), or a
   game's own. Each is grown by `clearance` into a block, a place at each corner, and two places joined
   by a line where the walk between them crosses no block.
@@ -217,8 +247,9 @@ One model serves both: the player's body a walker, and people on the same model 
 ## Setting up a crowd3d person
 
 1. `plugins`: `loader` before `crowd3d`, `crowd3d` before `render3d`.
-2. `world.crowd3d`: `bodies` `{ <body>: <model> }`, Mixamo glbs on one skeleton with the clips baked
-   on (anim's export); `clips`, every clip played; `rate`; `hold`, the clips held on their last frame;
+2. `world.crowd3d`: `bodies` `{ <body>: <model> }`, glbs on one skeleton with the clips baked on:
+   Mixamo characters (anim's export), or bodies puppet3d poses, their `walk` and `idle` written by
+   `puppet3d.clips.ts` (`using-puppet3d`); `clips`, every clip played; `rate`; `hold`, the clips held on their last frame;
    `kinds`, the kinds whose rows are people; `poolSize`; `items`; and where they are used, `poses`
    (a loader `json` entry of poses), `fade`, `reach` and `mods: { paths }`.
 3. The kind's prefab carries `pos`, `to`, `since`, `yaw`, `speed`, `body`, `clip`, `holding`, and
@@ -237,4 +268,11 @@ One model serves both: the player's body a walker, and people on the same model 
   stood at `since`.
 - **A person walks through a building**: it was sent straight; send it along a nav3d route.
 - **A walker cannot climb onto a box**: shapes3d is in `world.walker.mods.fixed`, not `behaviors`.
-- **npc3d throws about routes**: the scene names no nav3d graph, or more than one.
+- **A walker jumps up through a box over it, or is left behind by a floor that moves**: its rule hands
+  `walk` `groundOf(w)`, which has no `roof` and no `footing`; hand it shapes3d's `ground(w, feet, k)`.
+- **Grass stands up under a walker**: the scene names walker in neither `world.gpgpu3d.mods.things` nor
+  `world.grass3d.mods.behaviors`.
+- **hair3d throws naming a wearer `crowd3d <body>` and the word `posed`**: `world.hair3d.mods` names
+  crowd3d under `skins` and not under `behaviors`, which delivers that word.
+- **npc3d throws about routes**: `world.nav3d.graphs` and its `graphs` mods name no graph between them,
+  or more than one.

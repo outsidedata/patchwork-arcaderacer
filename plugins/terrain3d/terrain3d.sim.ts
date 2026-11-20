@@ -30,15 +30,16 @@
 //             warp, and how they are composed (`terrain3d.warp.ts` says what it holds). Its rules'
 //             `q`s and its numbers are checked when a land is made (`looks`). The land record answers
 //             each layer's weight as `layer:<name>`, the weight the ground's shader draws there.
-//   surfaces  `{ name: { colour?, cover, grip?, drag?, spray?, edge? } }`: what a `surface` stroke
+//   surfaces  `{ name: { colour?, cover, grip?, drag?, drivers?, mark?, edge? } }`: what a `surface` stroke
 //             paints. `colour`, when it has one, is drawn over the ground layers by the paint's
 //             weight, through `edge` when it has one (a ground layer can instead lay a texture where
 //             `surface:<name>` is); `cover` multiplies scatter's density, 0 on a road; `grip` (1 if left out, and on
 //             unpainted ground) multiplies the friction of a wheel's contact with it; `drag` (0 if left
 //             out, and on unpainted ground) is its rolling resistance, the newtons a wheel rolling on
-//             it loses per newton of load, as soft ground sinks a tyre; `spray` is what a wheel going
-//             over it throws up, a particle3d effect's name, or false for nothing, as off asphalt; left
-//             out, a wheel throws what it would throw off unpainted ground; `mark`, from 0 to 1, how
+//             it loses per newton of load, as soft ground sinks a tyre; `drivers`, numbers by name it
+//             hands what is on it, each a particle3d driver of the effects thrown there (box3dvehicle's
+//             wheels', `box3dvehicle.particle3d.ts`): `{ "tint": 6045984, "wet": 1 }` throws mud's colour
+//             and holds its wet layers on; left out, it hands none, as unpainted ground; `mark`, from 0 to 1, how
 //             dark a track a tyre rolling over it leaves, deep in mud and none on asphalt; left out, a
 //             tyre marks it as it marks unpainted ground.
 // An edge `{ width, ragged, scale }` turns a weight w into
@@ -116,10 +117,16 @@
 //   bench         the ground under the nearest point of the polyline: it follows the hill along the
 //                 path and is flat across it, which cuts a road;
 //   surface       no height: where the pixel's surface is `surface`, or it has none, SW grows as W
-//                 does; where f outweighs another surface, the pixel becomes `surface` at weight f.
+//                 does; where f outweighs another surface, the pixel becomes `surface` at weight f;
+//   erase         no height: the pixel's erasure E ← 1 − (1 − E)(1 − f). Where any layer's erasure,
+//                 sampled bilinear, is at least a half the ground is gone: heightAt and rawAt answer
+//                 ERASED (−1e9), so a shape standing there, a basement's floor, is always the higher.
+//                 The strokes, the land record and the look read the ground as if nothing were erased
+//                 (`whole`), so the ground round a hole stays as it was; the finest ring alone leaves
+//                 out the cells over it (`terrain3d.rings.ts`). `erased(x, z)` says which.
 // `paintAt` stacks the layers' surfaces the same way, each layer's surface the nearest pixel's and
 // its weight that surface's bilinear weight, and its `cover` is 1 + (surfaces[s].cover − 1)·weight,
-// its `grip` the same of surfaces[s].grip, its `drag` surfaces[s].drag·weight, and its `spray` and
+// its `grip` the same of surfaces[s].grip, its `drag` surfaces[s].drag·weight, and its `drivers` and
 // `mark` surfaces[s]'s where the weight is at least a half, undefined where it is less.
 //
 // The land record, `analyse(x, z)`, is made on first asking and kept, up to `records` of them; each
@@ -204,11 +211,11 @@ export type Analysis = {
   cliffProbe: number; cliffSlope: number; cliffDrop: number; flatAngle: number; records: number
 }
 export type Edge = { width: number; ragged: number; scale: number }
-export type Stroke = { verb: 'raise' | 'lower' | 'flatten' | 'smooth' | 'bench' | 'surface'; radius: number; hardness: number; strength: number; level: number; surface: string; path: number[][] }
+export type Stroke = { verb: 'raise' | 'lower' | 'flatten' | 'smooth' | 'bench' | 'surface' | 'erase'; radius: number; hardness: number; strength: number; level: number; surface: string; path: number[][] }
 export type Layer = { at: number[]; size: number; px: number; strokes: Stroke[] }
-export type Surface = { colour?: string; cover: number; grip?: number; drag?: number; spray?: string | false; mark?: number; edge?: Edge }
+export type Surface = { colour?: string; cover: number; grip?: number; drag?: number; drivers?: Record<string, number>; mark?: number; edge?: Edge }
 export type Field = { program: Program; analysis: Analysis; ground: Look; surfaces: Record<string, Surface>; layers: Layer[] }
-export type Paint = { weight: number; surface: string | undefined; cover: number; grip: number; drag: number; spray: string | false | undefined; mark: number | undefined }
+export type Paint = { weight: number; surface: string | undefined; cover: number; grip: number; drag: number; drivers: Record<string, number> | undefined; mark: number | undefined }
 export type Edits = { land: Land; layers: { version: number; rect: number[] }[] }
 
 // ---------------------------------------------------------------- noise
@@ -660,12 +667,35 @@ export class LandRecord {
 
 // ---------------------------------------------------------------- painted layers
 
-type Pixels = { T: Float64Array; W: Float64Array; S: Int32Array; SW: Float64Array }
+type Pixels = { T: Float64Array; W: Float64Array; S: Int32Array; SW: Float64Array; E: Float64Array }
 type Raster = {
   n: number; d: number; x0: number; z0: number // pixels across, their spacing, pixel 0's centre
   T: Float64Array; W: Float64Array; S: Int32Array; SW: Float64Array
+  E: Float64Array // how erased each pixel is, 0 to 1
   base: Float64Array // the ground under the layer at each pixel's centre
   version: number
+}
+
+// What every height query answers where the ground is erased: so far below everything that a shape
+// standing there (a basement's floor) is always the higher.
+export const ERASED = -1e9
+
+// How erased a raster is at (x, z), its `E` sampled bilinear with zero outside.
+function erasure(r: Raster, x: number, z: number) {
+  const u = (x - r.x0) / r.d, v = (z - r.z0) / r.d
+  if (!(u > -1 && v > -1 && u < r.n && v < r.n)) return 0
+  const i = Math.floor(u), j = Math.floor(v), fu = u - i, fv = v - j
+  let e = 0
+  for (let b = 0; b < 2; b++) {
+    const pj = j + b
+    if (pj < 0 || pj >= r.n) continue
+    for (let a = 0; a < 2; a++) {
+      const pi = i + a
+      if (pi < 0 || pi >= r.n) continue
+      e += (a ? fu : 1 - fu) * (b ? fv : 1 - fv) * r.E[pj * r.n + pi]
+    }
+  }
+  return e
 }
 
 // The ground `h` under a raster at (x, z), with the raster's `T` and `W` over it.
@@ -740,7 +770,7 @@ export function land(field: Field, from?: { unsaved(k: number): Stroke | undefin
     return s && !l.strokes.some(t => JSON.stringify(t) === JSON.stringify(s)) ? s : undefined
   })
   const kept: (Pixels | undefined)[] = layers.map(() => undefined)
-  const copy = (r: Raster): Pixels => ({ T: r.T.slice(), W: r.W.slice(), S: r.S.slice(), SW: r.SW.slice() })
+  const copy = (r: Raster): Pixels => ({ T: r.T.slice(), W: r.W.slice(), S: r.S.slice(), SW: r.SW.slice(), E: r.E.slice() })
 
   const sealevel = hscale * (2 * sea - 1)
   const bare = (x: number, z: number) => program.run(x, z) * hscale - sealevel
@@ -757,7 +787,7 @@ export function land(field: Field, from?: { unsaved(k: number): Stroke | undefin
     const d = size / px, x0 = at[0] - size / 2 + d / 2, z0 = at[1] - size / 2 + d / 2
     const base = new Float64Array(px * px)
     for (let j = 0; j < px; j++) for (let i = 0; i < px; i++) base[j * px + i] = under(k, x0 + i * d, z0 + j * d)
-    return { n: px, d, x0, z0, T: new Float64Array(px * px), W: new Float64Array(px * px), S: new Int32Array(px * px).fill(-1), SW: new Float64Array(px * px), base, version: 0 }
+    return { n: px, d, x0, z0, T: new Float64Array(px * px), W: new Float64Array(px * px), S: new Int32Array(px * px).fill(-1), SW: new Float64Array(px * px), E: new Float64Array(px * px), base, version: 0 }
   }
 
   // Bakes a stroke into raster k.
@@ -766,7 +796,7 @@ export function land(field: Field, from?: { unsaved(k: number): Stroke | undefin
     const before = (x: number, z: number) => over(r, T0, W0, under(k, x, z), x, z)
     const surface = s.verb === 'surface' ? names.indexOf(s.surface) : -1
     if (s.verb === 'surface' && surface < 0) throw new Error(`terrain3d stroke surface ${s.surface} is none of the surfaces: ${names.join(', ')}`)
-    if (!['raise', 'lower', 'flatten', 'smooth', 'bench', 'surface'].includes(s.verb)) throw new Error(`terrain3d stroke verb ${s.verb} is none of raise, lower, flatten, smooth, bench, surface`)
+    if (!['raise', 'lower', 'flatten', 'smooth', 'bench', 'surface', 'erase'].includes(s.verb)) throw new Error(`terrain3d stroke verb ${s.verb} is none of raise, lower, flatten, smooth, bench, surface, erase`)
     const points = pointsOf(s.path)
     if (!points.length) return
     const xs = points.map(p => p[0]), zs = points.map(p => p[1])
@@ -784,6 +814,10 @@ export function land(field: Field, from?: { unsaved(k: number): Stroke | undefin
         if (s.verb === 'surface') {
           if (r.S[p] === surface || r.SW[p] === 0) { r.S[p] = surface; r.SW[p] = 1 - (1 - r.SW[p]) * (1 - f) }
           else if (f > r.SW[p]) { r.S[p] = surface; r.SW[p] = f }
+          continue
+        }
+        if (s.verb === 'erase') {
+          r.E[p] = 1 - (1 - r.E[p]) * (1 - f)
           continue
         }
         const here = r.base[p] * (1 - W0[p]) + T0[p]
@@ -824,7 +858,7 @@ export function land(field: Field, from?: { unsaved(k: number): Stroke | undefin
   // Layer k's pixels put back as they were before its unsaved stroke.
   const restore = (k: number, r: Raster) => {
     const p = kept[k]!
-    r.T.set(p.T); r.W.set(p.W); r.S.set(p.S); r.SW.set(p.SW)
+    r.T.set(p.T); r.W.set(p.W); r.S.set(p.S); r.SW.set(p.SW); r.E.set(p.E)
   }
   // Layer k's pixels changed within `dirty`: its version moves, each later layer whose strokes read
   // the ground there is baked again from its strokes over the new ground, and the records that read
@@ -856,19 +890,28 @@ export function land(field: Field, from?: { unsaved(k: number): Stroke | undefin
   }
   const meets = (a: number[], b: number[]) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3]
 
-  const raw = (x: number, z: number) => {
+  // The ground with nothing erased: what the rings draw, the look and the land record read, and the
+  // normal is taken over.
+  const wholeRaw = (x: number, z: number) => {
     let h = bare(x, z)
     for (let k = 0; k < layers.length; k++) { const r = baked(k); h = over(r, r.T, r.W, h, x, z) }
     return h
   }
-  const height = flood ? (x: number, z: number) => Math.max(raw(x, z), 0) : raw
-  const depth = flood ? (x: number, z: number) => Math.max(0, -raw(x, z)) : () => 0
+  const wholeHeight = flood ? (x: number, z: number) => Math.max(wholeRaw(x, z), 0) : wholeRaw
+  const depth = flood ? (x: number, z: number) => Math.max(0, -wholeRaw(x, z)) : () => 0
+  // Whether the ground at (x, z) is erased: some layer's erasure there is at least a half.
+  const erased = (x: number, z: number) => {
+    for (let k = 0; k < layers.length; k++) if (erasure(baked(k), x, z) >= 0.5) return true
+    return false
+  }
+  const raw = (x: number, z: number) => (erased(x, z) ? ERASED : wholeRaw(x, z))
+  const height = (x: number, z: number) => (erased(x, z) ? ERASED : wholeHeight(x, z))
   const normal = (x: number, z: number, s: number) => {
     const nx = height(x - s, z) - height(x + s, z), ny = 2 * s, nz = height(x, z - s) - height(x, z + s)
     const len = math.hypot(nx, ny, nz)
     return [nx / len, ny / len, nz / len]
   }
-  const ground: Ground = { height, depth, normal, mix: program.mix, biomes: program.biomes, hscale, analysis, look: field.ground, paint: (x, z) => me.paint(x, z) }
+  const ground: Ground = { height: wholeHeight, depth, normal, mix: program.mix, biomes: program.biomes, hscale, analysis, look: field.ground, paint: (x, z) => me.paint(x, z) }
   const layerNames = field.ground.layers.map(l => l.name)
 
   const analyse = (x: number, z: number): LandRecord => {
@@ -893,6 +936,8 @@ export function land(field: Field, from?: { unsaved(k: number): Stroke | undefin
     height,
     depth,
     normal,
+    erased,
+    whole: { raw: wholeRaw, height: wholeHeight },
     rests(x: number, z: number, span: number) {
       const h = span / 2
       return (height(x - h, z - h) + height(x + h, z - h) + height(x - h, z + h) + height(x + h, z + h)) / 4
@@ -917,11 +962,11 @@ export function land(field: Field, from?: { unsaved(k: number): Stroke | undefin
         if (s === surface || weight === 0) { surface = s; weight = 1 - (1 - weight) * (1 - f) }
         else if (f > weight) { surface = s; weight = f }
       }
-      if (surface < 0) return { weight: 0, surface: undefined, cover: 1, grip: 1, drag: 0, spray: undefined, mark: undefined }
+      if (surface < 0) return { weight: 0, surface: undefined, cover: 1, grip: 1, drag: 0, drivers: undefined, mark: undefined }
       const name = names[surface], s = field.surfaces[name], over = weight >= 0.5
       return {
         weight, surface: name, cover: 1 + (s.cover - 1) * weight, grip: 1 + ((s.grip ?? 1) - 1) * weight,
-        drag: (s.drag ?? 0) * weight, spray: over ? s.spray : undefined, mark: over ? s.mark : undefined,
+        drag: (s.drag ?? 0) * weight, drivers: over ? s.drivers : undefined, mark: over ? s.mark : undefined,
       }
     },
     occludes(a: number[], b: number[]) {

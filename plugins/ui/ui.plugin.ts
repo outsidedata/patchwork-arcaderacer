@@ -34,6 +34,22 @@
 // box on the canvas, so art drawn for a smaller screen is laid out in its own pixels and shown as
 // big as the canvas wants. `world.ui` is read off the scene, never sent, since the UI has no row,
 // and a `world.ui` in `<game>.scene.json` is every scene's until a scene gives its own.
+// Behaviors. A panel is drawn by actors, or by a behavior: every field of a panel's entry that is not
+// one of the fields above (`anchor`, `at`, `size`, `clip`, `layer`, `modal`, `backdrop`, `key`,
+// `scale`, `group`, `screen`) is a word, and its value is that word's numbers. The UI keeps a table
+// from word to the function that draws a panel of that word, and has no word of its own: each comes
+// from a mod, `<a>.ui.ts` exporting `behaviors()`, `{ <word>: Behavior }`, which a scene names in
+// `world.ui.mods.behaviors: ['<a>', ...]`; a later one's word takes the place of an earlier one's. A
+// Behavior is `(look, { panel, ui, plugins })`: run every tick for every panel that gives its word,
+// after the UI has read the frame's `plugins` and before any actor ticks, handed the word's numbers,
+// the panel's name, the UI and the frame's plugins, and it draws on the panel with `show` as an actor
+// does, so a panel it shows nothing on that frame is emptied as any other. `behaviors()` is called
+// once per client, so what a word's function keeps between frames is that client's. A panel giving a
+// word no plugin delivers throws on the first tick that reads `world.ui`, naming the panel, the word and
+// `world.ui.mods.behaviors`; each plugin it names is listed in the scene's `plugins` before `ui`, as
+// its behavior reads what that plugin made in its own tick that frame. `area()` is the canvas's size
+// in its own pixels, `{ width, height }`, for a behavior that covers the whole of it.
+//
 // `style(name)` hands back a copy of one of its `styles`, each an options object passed as it is to
 // PixiJS or to `button`. A text style's `stroke` carries `"join": "round"`: the canvas mitres an
 // outline's corners by default, and at a glyph's sharp points it runs out into spikes.
@@ -181,6 +197,7 @@ import * as PIXI from 'pixi.js'
 import 'pixi.js/events'
 import { mixing, steps, type Plugins } from '#engine/browser.ts'
 import { keyOf, type Keys } from '#plugins/player/player.plugin.ts'
+import { ahead, modsOf } from '#addons/scenemanager/scenemanager.addon.ts'
 
 // The point of the canvas, and of the panel, that each anchor names, as fractions of the width and
 // the height.
@@ -206,6 +223,18 @@ export type Spec = {
   group?: string
   screen?: PIXI.ColorSource
 }
+// The fields of a panel's entry that place it; every other field is a word (Behaviors).
+const PLACE = new Set(['anchor', 'at', 'size', 'clip', 'layer', 'modal', 'backdrop', 'key', 'scale', 'group', 'screen'])
+
+// The words a panel's entry gives.
+const wordsOf = (s: Spec): string[] => Object.keys(s).filter(k => !PLACE.has(k))
+
+// What draws a panel of one word, every tick: handed the word's numbers, the panel's name, the UI and
+// the frame's plugins.
+export type Behavior = (look: any, at: { panel: string; ui: Ui; plugins: Plugins }) => void
+export type Behaviors = Record<string, Behavior>
+export type Ui = ReturnType<typeof ui>
+
 export type Table = {
   panels: Record<string, Spec>
   styles: Record<string, Record<string, any>>
@@ -342,6 +371,7 @@ export function ui() {
   let renderer: PIXI.Renderer | undefined
   let surfacer: PIXI.Renderer | undefined // the renderer of the surfaces' canvas
   let plugins: Plugins | undefined
+  let behaviors: Behaviors | undefined // every word's behavior, read on the first tick that has `world.ui`
   let closed = false
   let listening = false
   let focus: PIXI.Container | undefined
@@ -589,6 +619,25 @@ export function ui() {
     r3.overlay.scene.add(m)
     return m
   }
+  // Every panel that gives a word drawn by that word's behavior, the table read from the mods the first
+  // time, and every word of every panel checked against it then.
+  const behave = (p: Plugins) => {
+    const panels = table().panels
+    if (!behaviors) {
+      ahead(p.wire.scene, 'ui', 'behaviors')
+      const delivered: Behaviors = Object.assign({}, ...modsOf<() => Behaviors>(p.wire.scene.world!, 'ui', 'behaviors').map(f => f()))
+      for (const [name, s] of Object.entries(panels)) {
+        for (const word of wordsOf(s)) {
+          if (!delivered[word]) throw new Error(`ui has no behavior for panel ${name}, of the word ${word}: no plugin world.ui.mods.behaviors names delivers it`)
+        }
+      }
+      behaviors = delivered
+    }
+    for (const [name, s] of Object.entries(panels)) {
+      for (const word of wordsOf(s)) behaviors[word]((s as Record<string, unknown>)[word], { panel: name, ui: me, plugins: p })
+    }
+  }
+
   const unshroud = () => {
     if (!cover) return
     cover.removeFromParent()
@@ -622,6 +671,7 @@ export function ui() {
     tick(p: Plugins) {
       plugins = p
       if (me.canvas && !drew && !cover && p.render3d?.overlay) cover = shroud(p.render3d)
+      behave(p)
       if (!me.canvas || listening) return
       listening = true
       addEventListener('keydown', onKey, true)
@@ -630,6 +680,8 @@ export function ui() {
       me.canvas.addEventListener('pointerleave', onLeave)
     },
     panel(name: string): PIXI.Container { return made(name).box },
+    // The canvas's size in its own pixels.
+    area(): { width: number; height: number } { return area() },
     surface(name: string): Surface | undefined {
       const p = made(name)
       if (p.spec.modal) throw new Error(`ui panel ${name} is a modal, which is never drawn on a surface`)

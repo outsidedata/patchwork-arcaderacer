@@ -10,7 +10,7 @@
 // Box2D's events and queries come back in row ids; and that two runs land on the same bytes and the
 // same b2World_GetStateHash. Where a thing Box2D does is only seen in what the bodies do, the test
 // holds it to having changed what they do, and to nothing finer.
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -199,6 +199,37 @@ test('world.box2d\'s fields reach the world, and the box2d row\'s live ones are 
   expect(b2.b2World_IsRestitutionPropagationEnabled(world)).toBe(true)
   expect(b2.b2World_IsSleepingEnabled(world)).toBe(true)
   expect(b2.b2World_GetMaximumLinearSpeed(world)).toBe(9)
+})
+
+test('a live field is handed to Box2D when it changes, a list or an object written into in place too, and never again while it holds', () => {
+  const truth = boot(scene([{ is: 'crate', pos: [0, 3], motionLocks: { angularZ: true } }]), sim)
+  const w = wOf(truth)
+  const row = of(truth, 'box2d')[0], crate = of(truth, 'crate')[0], id = bodyOf(w, crate)
+  const world = b2.b2Body_GetWorld(id)
+  row.data.gravity = [0, -10]
+  run(truth, 1)
+  const gravity = vi.spyOn(b2, 'b2World_SetGravity'), locks = vi.spyOn(b2, 'b2Body_SetMotionLocks')
+  try {
+    // Copies of the fields as they were are not handed again.
+    row.data.gravity = [0, -10]
+    crate.data.motionLocks = { angularZ: true }
+    run(truth, 10)
+    expect([gravity.mock.calls.length, locks.mock.calls.length]).toEqual([0, 0])
+    // One item of the list written into, then one field of the object.
+    row.data.gravity[0] = 2
+    run(truth, 1)
+    expect(b2.b2World_GetGravity([0, 0], world)).toEqual([2, -10])
+    crate.data.motionLocks.linearX = true
+    run(truth, 1)
+    expect(b2.b2Body_GetMotionLocks(id)).toEqual({ linearX: true, linearY: false, angularZ: true })
+    // A field set to undefined is no field: the locks stay as they were.
+    crate.data.motionLocks.linearY = undefined
+    run(truth, 10)
+    expect([gravity.mock.calls.length, locks.mock.calls.length]).toEqual([1, 1])
+  } finally {
+    gravity.mockRestore()
+    locks.mockRestore()
+  }
 })
 
 test('the box2d row\'s subStepCount is the one the world steps with', () => {

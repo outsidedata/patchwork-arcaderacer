@@ -1,4 +1,5 @@
-// The repo's home page, `localhost:5173/`: every game in `games/`, one a line, each with a link to
+// The repo's home page, `localhost:5173/`: every game in `games/` and every one mounted from a folder of its own
+// (`mounts.ts`, `yarn dev <folder>`), one a line, each with a link to
 // every page in its folder, `index`, `client` and `dev` first, each in a column of its own that is
 // left empty for a game without it, and the rest after by name, read off the
 // folder each time it is asked for, so it is never behind it. Beside `dev`, each scene its manager
@@ -8,6 +9,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import type { Plugin } from 'vite'
+import { mounts, where } from './mounts.ts'
 import type { Running } from './servers.ts'
 
 const FIRST = ['index', 'client', 'dev']
@@ -15,30 +17,31 @@ const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').rep
 
 // The scenes the manager of game `name` names, in its order; none for a game whose manager is missing
 // or is not JSON.
-function scenes(dir: string, name: string): string[] {
+function scenes(folder: string, name: string): string[] {
   try {
-    return Object.keys(JSON.parse(readFileSync(path.join(dir, name, `${name}.scene.json`), 'utf8')).prefabs?.scenemanager?.scenes ?? {})
+    return Object.keys(JSON.parse(readFileSync(path.join(folder, `${name}.scene.json`), 'utf8')).prefabs?.scenemanager?.scenes ?? {})
   } catch {
     return []
   }
 }
 
-// Every game under `root` with a page, its pages by name, without `.html`, and its scenes.
+// Every game under `root` with a page, and every mounted one (`mounts.ts`), its pages by name, without `.html`, and
+// its scenes, in the order of their names.
 export function games(root: string): { name: string; pages: string[]; scenes: string[] }[] {
-  const dir = path.join(root, 'games')
   let folders: string[]
   try {
-    folders = readdirSync(dir, { withFileTypes: true }).filter(e => e.isDirectory()).map(e => e.name).sort()
+    folders = readdirSync(path.join(root, 'games'), { withFileTypes: true }).filter(e => e.isDirectory()).map(e => e.name)
   } catch {
-    return []
+    folders = []
   }
+  folders = [...folders, ...mounts().map(([name]) => name)].sort()
   const rank = (p: string) => (FIRST.includes(p) ? FIRST.indexOf(p) : FIRST.length)
   return folders
     .map(name => ({
       name,
-      pages: readdirSync(path.join(dir, name)).filter(f => f.endsWith('.html')).map(f => f.slice(0, -'.html'.length))
+      pages: readdirSync(where(root, `games/${name}`)).filter(f => f.endsWith('.html')).map(f => f.slice(0, -'.html'.length))
         .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b)),
-      scenes: scenes(dir, name),
+      scenes: scenes(where(root, `games/${name}`), name),
     }))
     .filter(g => g.pages.length)
 }

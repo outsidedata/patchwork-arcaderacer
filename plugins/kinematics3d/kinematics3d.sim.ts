@@ -28,11 +28,12 @@
 //                                         way to each number of the place, in its order
 // A behavior may wrap a shape, its own shape another target (`{ move: { line: { ... } } }`): it answers
 // each of the four through that target, by `step`, `at`, `nearest` and `ways` here.
-//   footing?(pos, yaw, me, w)             where a body standing at `pos` [x, y, z] facing `yaw` is now that
+//   footing?(pos, yaw, me, w, grounded)   where a body standing at `pos` [x, y, z] facing `yaw` is now that
 //                                         the floor under it has moved (shapes3d's moved shapes), or
-//                                         undefined where it has not: a body's step puts a grounded body
-//                                         whose place is its `pos` there before it moves it, so a body
-//                                         stands still on a moving floor
+//                                         undefined where it has not: asked every step of a body whose
+//                                         place is its `pos`, `grounded` whether it stands on its target,
+//                                         a body's step puts a grounded body there before it moves it, so
+//                                         a body stands still on a moving floor
 //
 // What stands on the land: `world.kinematics3d.mods.solids`, each `<a>.kinematics3d.ts` exporting
 // `solids(w, x, z, r)`, the things reaching within r of (x, z) under their words (shapes3d's boxes,
@@ -47,7 +48,12 @@
 // is true. Else it is false, and gravity pulls it: its vertical speed less `gravity`·dt, its place's
 // height carried by it through the target's own step, stood on the target where it comes down onto it
 // (`landed` that step). A body in the air is moved by that fall alone, its `vel` across eased toward the
-// want by 1 − exp(−airAccel·dt), not by the behavior. Falling is the body in the air going down; rising,
+// want by 1 − exp(−airAccel·dt), not by the behavior. Its `vel` is read back from where the fall went:
+// across, its part back against the velocity it was going at taken off and no faster than it (`kept`);
+// up and down, between none and the speed it was going at. A wall or a ceiling stops it, and a push out
+// of a solid is never a speed. Only a body whose place is a point in the world, [x, y, z] (the
+// triangles'), falls: a body held to a point, a line, a plane or a curve is held up by it, `grounded`
+// true, whatever it was before. Falling is the body in the air going down; rising,
 // in the air going up. A drop the target follows (terrain3d's stairs, up to its `step`) holds the body up
 // all the way down, so it never falls.
 //
@@ -87,7 +93,7 @@ export type Behavior = {
   at: (shape: unknown, place: Place, me: Row, w: W) => Where
   nearest: (shape: unknown, point: number[], me: Row, w: W) => Place
   ways: (shape: unknown, place: Place, me: Row, w: W) => Way[]
-  footing?: (pos: number[], yaw: number, me: Row, w: W) => { pos: number[]; yaw: number } | undefined
+  footing?: (pos: number[], yaw: number, me: Row, w: W, grounded: boolean) => { pos: number[]; yaw: number } | undefined
 }
 export type Behaviors = () => Record<string, Behavior>
 export type Target = Record<string, unknown>
@@ -105,13 +111,37 @@ function targets(w: W): Record<string, Behavior> {
   return t
 }
 
-// Where the first of the delivered behaviors' footings that answers puts a body at `pos`.
-function footing(w: W, pos: number[], me: Row): { pos: number[]; yaw: number } | undefined {
+// Where the first of the delivered behaviors' footings that answers puts a body at `pos`. Every footing
+// is asked every step of a body whose place is a point, `grounded` whether it stands on its target, so
+// each knows a body that has left its floor.
+function footing(w: W, pos: number[], me: Row, grounded: boolean): { pos: number[]; yaw: number } | undefined {
+  let borne: { pos: number[]; yaw: number } | undefined
   for (const f of new Set(Object.values(targets(w)).map(b => b.footing))) {
-    const borne = f?.(pos, me.data.yaw ?? 0, me, w)
-    if (borne) return borne
+    const at = f?.(pos, me.data.yaw ?? 0, me, w, grounded)
+    borne ??= at
   }
-  return undefined
+  return borne
+}
+
+// Whether a place is a point in the world, [x, y, z], as the triangles' is: the one place gravity
+// carries. A place on a point, a line, a plane or a curve is the body held to it, which never falls.
+const free = (place: Place): place is number[] => Array.isArray(place) && place.length === 3
+
+// `u` kept between 0 and `v`, whichever way `v` goes: a speed up or down read back from a move, kept to
+// what the body was going at, so a ceiling stops a rise and a correction is never a speed.
+const within0 = (u: number, v: number) => (v >= 0 ? Math.max(0, Math.min(v, u)) : Math.min(0, Math.max(v, u)))
+
+// A velocity read back from a move, `u`, as a body that was going at `v` can go: its part back against
+// `v` taken off, and no faster than `v`. So a wall slid along leaves the body going along it at the speed
+// it went, and a correction (a push out of a solid, a move back) is never a speed: no body is flung
+// backwards, sideways or onwards by one. Any number of ways, one number each.
+export function kept(u: number[], v: number[]): number[] {
+  let r = u
+  let uv = 0, vv = 0
+  for (let i = 0; i < u.length; i++) { uv += u[i] * v[i]; vv += v[i] * v[i] }
+  if (uv < 0 && vv > 0) r = u.map((x, i) => x - (v[i] * uv) / vv)
+  const m = Math.sqrt(r.reduce((s, x) => s + x * x, 0)), most = Math.sqrt(vv)
+  return m > most ? (most > 0 ? r.map(x => (x * most) / m) : r.map(() => 0)) : r
 }
 
 // The target's word, its shape, and the behavior delivered for it.
@@ -133,16 +163,21 @@ export function step(w: W, target: Target, place: Place, want: number[], dt: num
   depth++
   try {
     // In the air, kinematics3d's own fall; on the target, the motion's behavior, then gravity where
-    // nothing holds the body up.
-    if (d.grounded === false) return fall(w, target, place, want, dt, me, true)
+    // nothing holds the body up. Only a body whose place is a point in the world falls: one held to a
+    // point, a line, a plane or a curve is held by it, and stands on it.
+    const loose = free(place)
+    if (d.grounded === false && free(place)) {
+      footing(w, place, me, false)
+      return fall(w, target, place, want, dt, me, true)
+    }
     // A body standing on a floor that has moved is first put where the floor took it.
-    const borne = Array.isArray(place) && place.length === 3 ? footing(w, place, me) : undefined
+    const borne = free(place) ? footing(w, place, me, true) : undefined
     if (borne) {
       place = borne.pos
       d.yaw = borne.yaw
     }
     const moved = b.step(shape, place, want, dt, me, w)
-    if (holds(w, target, moved, me)) {
+    if (!loose || holds(w, target, moved, me)) {
       d.grounded = true
       d.landed = false
       return moved
@@ -201,8 +236,11 @@ function fall(w: W, target: Target, place: Place, want: number[], dt: number, me
     d.grounded = true
     d.landed = true
     vy = 0
-  }
-  d.vel = across ? [(moved[0] - px) / dt, vy, (moved[2] - pz) / dt] : [was[0], vy, was[2]]
+  } else vy = within0((moved[1] - py) / dt, vy)
+  // The velocity read back from where the fall went, as the body going at its own can go (`kept`): a
+  // wall or a ceiling stops it, and a push out of a solid never flings it.
+  const [ax, az] = kept([(moved[0] - px) / dt, (moved[2] - pz) / dt], [vx, vz])
+  d.vel = across ? [ax, vy, az] : [was[0], vy, was[2]]
   d.speed = math.hypot(d.vel[0], d.vel[2])
   return moved
 }

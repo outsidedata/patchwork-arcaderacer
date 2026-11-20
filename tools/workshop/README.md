@@ -7,10 +7,18 @@ plugins (so what you see is what the game draws), and writes your changes back i
 ## Start it
 
 ```
-node --experimental-strip-types tools/workshop/workshop.server.ts
+yarn workshop <game>                         # the asset workshop
+yarn workshop ui <game>                      # the UI workshop
+yarn workshop particles <game>               # the particle workshop (--effect <name>, --file <repo path>)
+yarn workshop particles --effects <path>     # the particle workshop on any effects file (--sheet <key>=<path>)
+yarn workshop poses                          # the pose lab
+yarn workshop puppet3d <game>                # the puppet3d workshop
+yarn workshop hair3d <game>                  # the hair workshop
+yarn workshop grass3d <game>                 # the grass workshop
 ```
 
-Then open `http://127.0.0.1:5180/?game=<game>`, for example `?game=mech`. Add `&model=<name>` to open
+Each starts the server and opens its page in the browser. The asset workshop is at
+`http://127.0.0.1:5180/?game=<game>`, for example `?game=mech`. Add `&model=<name>` to open
 one model straight away, `&body=<kind>` to open one character, `&vehicle=<name>` to open one car
 (`?game=vehicles&vehicle=jeep`), or `&move=<name>&step=<n>` to open one move at one of its steps
 (`?game=demo_walker&move=floor&step=12`).
@@ -18,8 +26,10 @@ one model straight away, `&body=<kind>` to open one character, `&vehicle=<name>`
 Use `127.0.0.1`, not `localhost`, if another program on the machine also listens on port 5180.
 `WORKSHOP_PORT` in the shell serves it on another port.
 
-The same server serves three more pages, each described below: the pose lab at `/poses`, the UI
-workshop at `/ui?game=<game>` and the particle workshop at `/particles?game=<game>`.
+The same server serves six more pages, each described below: the pose lab at `/poses`, the UI
+workshop at `/ui?game=<game>`, the particle workshop at `/particles?game=<game>`, the puppet3d
+workshop at `/puppet3d?game=<game>`, the hair workshop at `/hair3d?game=<game>` and the grass workshop
+at `/grass3d?game=<game>`.
 
 It reads `.env` at the repo's root (copied from `.env.example`), under what the shell sets:
 
@@ -216,6 +226,132 @@ Pose one of the library's rigged characters by hand and save the poses as one cl
   `<name>.poses.json` beside it naming each frame's pose. A saved clip opens again from the clip list,
   each frame a pose under its name.
 
+## The puppet3d workshop (`/puppet3d?game=<game>`)
+
+Where a game's animals are made to move, with no game running. Pick an animal, set what it is doing,
+pick one of its motions, and shape it on the animal itself. `&kind=<kind>` opens one animal straight
+away (`?game=demo_puppet3d&kind=lion`).
+
+- **The animal** (top): one button for each kind a scene of the game lists in `world.puppet3d.kinds`.
+  It is a row the page moves over flat ground, a step of the scene's `dt` at a time, stood, stepped,
+  sensed and posed by the plugin's own code (`stand`, `stepped`, `sensed`, `stood`) with the solvers the
+  scene's `world.puppet3d.mods.behaviors` deliver: what the game draws for the same row. The camera
+  follows it; side, front, back and above look at it from there.
+- **What it's doing** (left): standing still, or going at one of the paces the game moves it at (a
+  sheet's `gait.paces` named by its `sheet` and `paces`, or its definition's `speeds`, its `stride` going
+  round once every `stride` metres), each named with its speed; how fast it turns; **on its hind legs**
+  for a kind that senses `rowUpright`; **Leap**, to a height, for a solver that leaps; **Back to the
+  start**.
+- **Its motions** (left): each of its drivers, with when it plays in words. The box leaves one out
+  here (never saved); **✕** takes a motion off the animal. **Give it another** puts a sheet of the
+  library (`$PATCHWORK_LIBRARY/cues/`) on it, offered only the sheets that move one of its parts: copied
+  into the game's `assets/cues/`, listed in the scene's catalogue and played all the time
+  (`POST /api/puppet3d/<game>/layer`). Adding and taking off are written at once, and ask for changes
+  not saved to be saved or reverted first.
+- **The motion picked** (right) is played on the animal in full, whatever its timing, unless **show it
+  as in the game** is ticked. **Plays** is its timing (its `weight`): all the time, every so often (every
+  so many seconds, for so long, easing in and out over so long, starting so far in), while standing
+  (gone by a speed), while moving (full by a speed), or never. A timing none of these says (a walk's
+  crossfade onto its hind legs) is told in words and kept as written.
+- **Body parts it moves**: the parts its cue sheet names, and the animal's other parts folded under
+  them; a finer part (a Mixamo hand's fingers, `Spine1` and `Spine2`) is listed under the part its name
+  starts with and shown once that part is picked. A solver's motion (the walk) lists only the parts its
+  sheet carries, since it stands the rest. The parts it moves are amber dots on the animal, the rest
+  grey; click a dot to pick that part.
+- **Turning a part**: the part picked has three rings on the animal, one for each way it turns: red up
+  and down (`bend`), green side to side (`swing`), blue roll (`twist`), on the axes the plugin turns it
+  about. Drag a ring round and the part turns with the pointer. Beside it, each way it turns has
+  **held at** (degrees), **sways** (degrees each way) and **every** (seconds). A part the motion did not
+  move is given one at its rest turn as soon as it is turned. A part also moved by many keys (a walk
+  written from a clip) keeps them, and what is held here is added on top. **Stop moving** takes the part
+  out of the motion, leaving it to the motions under it.
+- **How it walks**: a solver's motion carries its numbers, its block of the body's sheet, each read on
+  the solver's next step; **Stand again** makes its body anew from them.
+- **Send to the library**: a motion whose sheet the library has too, once saved, is copied over the
+  library's (`POST /api/puppet3d/<game>/library`), so every game can take this one.
+- **The clock** (bottom): play or pause (Space), and drag to any moment.
+- **Save** writes each change in place, layout kept: a timing into the scene's definitions file, a part
+  into the motion's cue sheet (`<name>.cues.json`, the whole sheet when a part was given or taken out),
+  a solver's number into its sheet (`POST /api/puppet3d/<game>`). **Revert** reads the files again.
+
+## The hair workshop (`/hair3d?game=<game>`)
+
+A game's hairs grown by core's own hair3d on test subjects, with no game running: the hair hangs, swings
+and blows as it does in the game, while every number of it is changed and saved into the game's hairs
+file (`world.hair3d.hairs`). Add `&file=<repo path>` for one of several hairs files, and
+`&hair=<name>&subject=<name>&motion=<name>` to open on one hair, subject and motion
+(`?game=demo_puppet3d&hair=horseMane&subject=neck&motion=walk`); the page keeps them in its address.
+
+- **Hair** (left): every hair of the file. The one picked is the one grown and the one the right column
+  shows.
+- **Test subject**: what the hair is grown on here, each a plain shape carried by one bone, its anchor:
+  `head` (a head-sized ball, hair on its crown and back), `ball` (hair all over), `neck` (a neck lying
+  along the way it runs, hair along its top: a mane), `dock` (a tail's root, hair on its back half),
+  `body` (a trunk standing up, hair all over: a coat) and `pelt` (a flat patch facing up). Where a hair
+  grows on a subject is the subject's own; where it grows in the game (its `on`) is not shown or changed.
+- **Motion**: how the anchor moves, so the hair is seen doing what a body does to it. A button for each
+  motion the workshop has (`still`, `walk`, `run`, `nod`, `shake`, `toss`, `shove`, `spin`) sets every
+  field under it, and each field can be typed: `forward`, metres a second it runs ahead, the grid
+  passing under it; `move 1` and `move 2`, each how far it is moved either way along x, y and z and how
+  many times a second; `turn 1` and `turn 2`, the same in degrees about x (a nod), y (a shake) and z
+  (a tilt); `spin`, degrees a second it turns without end. The motion is never saved.
+- **The stage**: the hair on its subject over a ground of 1 m squares, lit by the stage's own sky and
+  sun, drawn through the game's render3d prefab. Drag to orbit, wheel to zoom; side, front, back and
+  above look from there. The top left says how many locks are simulated and strands drawn.
+- **The numbers** (right): every number of the hair, a slider and a field each, and those of the nodes
+  of its `program` where it has one (the ops, the wiring and the `out` are written in the file), then the
+  file's wind and gust, which every hair of the file blows in. Each change is drawn that frame; the first
+  group and a program's numbers root and build the hair again, as they do in the game. A number changed
+  since the file was read is amber.
+- **Save to game** writes each changed number in place into the hairs file, checked by hair3d's own
+  check and, for each hair's program, compiled over the ops the first scene that names the file delivers,
+  so a number an op refuses is not written (`POST /api/hair3d/<game>`). **Revert** reads the file again.
+
+The subjects, their motions and the stage's light are `tools/workshop/hair3d.stage.json`; a subject or a
+motion added there is on the page. The subjects are drawn by the workshop's own plugin,
+`tools/workshop/plugins/subjects/`, which hands hair3d the subject through its `skins` mod as a game's
+plugins hand it their bodies.
+
+## The grass workshop (`/grass3d?game=<game>`)
+
+A game's grasses grown by core's own grass3d on test grounds, with no game running: the grass stands,
+blows and is trodden down as it is in the game, while every number of it is changed and saved into the
+game's grasses file (`world.grass3d.grasses`). Add `&file=<repo path>` for one of several grasses files,
+and `&grass=<name>&ground=<name>&treader=<name>&view=<name>` to open on one grass, test ground, treader
+and view, with `&together=1` to grow the file's other grasses with it
+(`?game=demo_grass3d&grass=meadow&ground=rolling&treader=car&view=treader`); the page keeps them in its
+address.
+
+- **Grass** (left): every grass of the file. The one picked is the one the right column shows, and the
+  one grown; tick **with the file's other grasses** and every grass of the file is grown over the same
+  ground, as a game that names them all grows them.
+- **Test ground**: what the grass is grown on here, a field 240 m a side: `flat`, `rolling` (low hills),
+  `steep` (a 7 m ridge), `patchy` (flat, with bare patches, so the ragged edge of a grass is seen) and
+  `rough` (the hills and the patches). Where a grass grows on a test ground is the ground's own; where it
+  grows in the game (its `rules`) is not shown or changed. The ground is cut as finely as the game's land
+  where the scene's land is terrain3d, so a blade stands, and is trodden, on the same lattice.
+- **Trodden by**: what treads the grass, going round the middle of the field: `nothing`, `standing` (a
+  body standing still), `walker`, `runner` and `car` (a body and four wheels). A body presses the grass
+  as a walking body does in a game, a car's body and wheels as a car's do. Under them, the circle it goes
+  round and how fast, which can be typed. It is never saved.
+- **The stage**: the grass on its ground, a line on the ground every metre, lit by the stage's own sky
+  and sun, drawn through the game's render3d prefab. Drag to orbit, wheel to zoom; `feet`, `across`,
+  `wind` and `above` look from there, and `treader` goes with what treads it. The top left says how many
+  blocks of the ground are filled, and how many chunks are drawn and cast shadows.
+- **The numbers** (right): every number of the grass, a slider and a field each, and those of the nodes
+  of its `program` where it has one (the ops, the wiring and the `out` are written in the file), then the
+  file's wind, gusts, bend and trampling, which every grass of the file shares. Each change is drawn that
+  frame. A number changed since the file was read is amber.
+- **Save to game** writes each changed number in place into the grasses file, checked by grass3d's own
+  check and, for each grass's program, compiled over the ops the first scene that names the file delivers,
+  so a number an op refuses is not written (`POST /api/grass3d/<game>`). **Revert** reads the file again.
+
+The field, the test grounds, the treaders, the views and the stage's light are
+`tools/workshop/grass3d.stage.json`; a ground, a treader or a view added there is on the page. The
+ground and the treader are drawn by the workshop's own plugin, `tools/workshop/plugins/grounds/`, which
+hands grass3d the ground through its `land` mod as terrain3d hands it a game's land, and hands gpgpu3d
+the treader as a game's plugins hand it their cars and bodies.
+
 ## The UI workshop (`/ui?game=<game>`)
 
 A game's title screen, HUD and messages, drawn by the game's own looks on core's ui plugin over a
@@ -240,7 +376,60 @@ A game's particle effects played by core's particle3d on the game's own render3d
 and bloom), with no game running, on a grid of 1 m squares beside a 1.8 m figure. Add
 `&file=<path>` to open one effects file and `&effect=<name>` to open one effect.
 
-- **Left column:** every effect of the file; type a name to make a new one.
+Every control of the page is in its address, and the address changes as each is turned, so a copied
+address opens the page as it was. A value the page cannot take is named on it.
+
+| Key | What it sets |
+| --- | --- |
+| `effect` | the effect shown |
+| `drawer` | `particle3d` or `gpuparticle3d` |
+| `from` | `still` or `thrown` |
+| `scale` | the effect's scale |
+| `dir`, `to` | `x,y,z`: its dir, and where a beam ends |
+| `time` | how fast time runs, 0.05 to 2 |
+| `auto`, `every` | a burst thrown again (`1` or `0`), every so many whole seconds |
+| `grid` | the grid and the stick, `1` or `0` |
+| `dither` | the scene's dither3d, `1` or `0`, when the scene lists it; the stage draws through it as the game does |
+| `background` | `rrggbb` |
+| `sky`, `sun`, `exposure` | the stage's light |
+| `camera`, `look` | `x,y,z`: where the camera stands, and the point it turns round |
+| `mute`, `solo`, `open` | layers by their card's number from 1: muted, played alone, opened |
+| `generator` | the force generator shown |
+| `ui3d` | `<scene>/<look>`: a look of the scene's ui3d looks file shown on the stage (below) |
+| `d.<driver>` | a driver's number or expression, not yet saved |
+
+`/particles?effect=portal2&drawer=particle3d&time=0.25&solo=4&d.storm=3&camera=1.6,2.2,2.4&look=0.6,1.6,0`
+
+Any effects file, in a game or not, is opened by starting the workshop on it:
+
+```
+yarn workshop particles --effects <path> [--sheet <key>=<path>]… [--effect <name>]
+```
+
+which opens `/particles` (`--effect <name>` on one effect). A file a game's scene names is played in
+that scene's light, with its sheets. Any other is played on the workshop's own stage,
+`particles.stage.json` (neutral tone, bloom, lights3d for lamps), and each sheet its layers draw from is
+given with `--sheet`, its key as the layers name it and the path of its sheet json; the page names any
+that is missing. **Save** writes into that file.
+
+**Drawn by**, in the header, picks the plugin that plays the effects: particle3d, every particle on the
+CPU, or gpuparticle3d, every particle on the GPU, from the same file. Switching drops the particles in the
+air and throws the effect again on the other; the browser keeps the choice across reloads.
+
+- **Left column:** every effect of the file; type a name to make a new one. Under them, the file's
+  **Drivers**, each a name and its number or its expression of the others: type one, or drag across its
+  name, and every number of the file that names it moves as it does, in the particles in the air too.
+  Under those, the file's **Force generators**: pick one and the right column shows its entries, each
+  a card of every field an entry has: its gravity, drag, pull, swirl and swirl axis, the offset of the
+  point it pulls toward and turns about and what that is anchored to, its push along a direction, its
+  range and falloff, its noise (amplitude, frequency, turbulence and scroll), its wind and drag by
+  speed, the shell or the axis line its pull draws toward, and its strength over a particle's life and
+  over the effect's age; **Back to** the effect shows the layers again. `assets/effects/portal.json` has
+  both, and `assets/effects/explosions/blast.json` is a burst moved by five generators.
+- **From:** still, from the middle of the grid; or thrown, riding a small bomb box3d throws across the
+  stage, bouncing until it rests, then put back and thrown again (`thrown.ts`; how it is thrown, how it
+  bounces and how often are the `thrown` numbers of `particles.stage.json`). A stream runs on the bomb
+  as it flies, the way an effect on a moving thing does in a game; a burst is thrown with it each time.
 - **Under the stage:** an effect that bursts again and again plays without end; any other is thrown by
   **Throw**, and again every few seconds while its toggle is on. Beside it, the effect's `scale`, `dir`
   and `to`, and how fast time runs, to watch a quick burst slowly.
@@ -248,12 +437,77 @@ and bloom), with no game running, on a grid of 1 m squares beside a 1.8 m figure
   copy it, remove it, or add one. An open layer shows its main fields, then folders for Timing, Colour
   and fade, Picture, Where it starts, Forces and Light. A field left out shows greyed what particle3d
   does without it; × takes a field out. Every particle in the air takes a changed number on the next
-  step.
-- **Save to game** writes each changed effect into the effects file, checked by particle3d first,
-  leaving the rest of the file as it was. **Revert** drops every change.
+  step. Any number field takes an expression of the file's drivers in place of a number
+  (`0.2 / amplitude`), shown blue, and outlined red until it reads as one. Under Forces, **Force
+  generators** lists each of the file's with how hard it acts on this layer: one strength, or with a
+  second after `to`, a range each particle is rolled in; × takes the layer out of it. A field of stops
+  (**Colours over life**, **Opacity over life**, **Size over life**, and an entry's **Strength over
+  life** and **Strength over age**) is a line for each stop, where it is and its value, a colour picked
+  for a colour stop; **Add a stop** puts one after the last and × takes one out. **Shape** draws the layer as one of particle3d's own soft pictures (puff, puff2, glow, halo,
+  spark, streak, ring, star, bolt, bolt2), with no sheet needed, and **Each carries** gives every
+  particle of the layer its own running copy of another effect, which flies along with it: an
+  explosion's chunks each trailing smoke. A carried effect's **Beam to target** layer reaches from its
+  particle back to the point the particle was thrown from, so drawn as `bolt` it is lightning:
+  `assets/effects/portal.json`'s `arc`, carried inside its `ringsmoke`. A layer's words (a field that is none of particle3d's own, such as instances3d's
+  `mesh`) each show as a line of JSON. The stage lists instances3d and names it in
+  `world.particle3d.mods.behaviors`, and lights the stage with a sky and a sun, so a `mesh` layer draws
+  real lit rocks; its ground is y 0, which a layer with `bounce` bounces off. `assets/effects/smokebomb.json`'s
+  `explosion` uses all of these.
+- **Save to game** writes each changed effect, and the drivers and the force generators when they
+  changed, into the effects file, checked by particle3d first, leaving the rest of the file as it was.
+  **Revert** drops every change.
 
-A file of the game written on disk loads the page again on the same effect, unless there are changes
+The file written on disk loads the page again on the same effect, unless there are changes
 not yet saved.
+
+### ui3d mode: a game's title and its particles
+
+A scene that plays the effects file and lists ui3d with a looks file (`world.ui3d.looks`) is found the
+way the effects file is, and the left column's **ui3d** section lists every look of its file under the
+scene's name. Click one: ui3d shows it on the stage in front of the camera, with the scene's own words
+(starfighter's `logo`, its name flying in and burning) and its `particles` played from the effects as
+they are on the page, so a number changed in `title_ember` shows on the title from the next step. The
+effect chosen on the left is not thrown while a look is shown. The pointer over a look that can be
+selected selects it, so an effect driven by its `selected` changes as it would in the game. **Replay**
+shows the look again from its first frame, as does any change that throws the effect again. Click it
+again to put it away.
+
+`/particles?game=starfighter&ui3d=title/title`
+
+### Pictures of effects (`yarn particle-views`)
+
+```
+yarn particle-views <views.json> <out folder>
+```
+
+takes a picture of an effect from any camera, at any moment, with any of its layers off, in a headless
+Chrome, with nothing on the screen. `<views.json>` is a list of views, each one picture written as
+`<out folder>/<name>.png`:
+
+```json
+[
+  { "file": "assets/effects/smokebomb.json", "camera": [6, 3.5, 8], "target": [0, 1.2, 0], "preroll": 0.5 },
+  { "name": "blast-smoke", "file": "assets/effects/smokebomb.json", "effect": "explosion",
+    "camera": [0, 2, 12], "target": [0, 2, 0], "preroll": 1.5,
+    "only": [6, 10, 11], "off": { "chunktrail": [1] }, "stage": false, "size": [800, 800] }
+]
+```
+
+- `file`: the effects file, a path from the views file's folder. Each view names its own, so one views
+  file can go through many.
+- `effect`: the effect thrown. Left out, the view is one picture of every effect of the file.
+- `camera`, `target`: where the camera stands and the point it looks at, in metres, y up, the ground y 0.
+- `preroll`: the seconds the effect has run when the picture is taken. It is stepped by the scene's
+  `dt` from the moment it is thrown and rolled from `seed`, so a view is the same picture every time.
+- `off`, `only`: the layers not played, or the only ones played. A list is layers of `effect`, each its
+  place in the effect's list from 0; `{ "<effect>": [layers] }` reaches any effect of the file, the ones
+  `effect` names and the ones its particles carry.
+- Also `name`, `fov`, `size`, `at`, `dir`, `to`, `scale`, `seed`, `from` (`still` or `thrown`, riding the
+  bomb), `stage` (false leaves out the grid and the stick) and `sheets`; the header of
+  `scripts/particle-views.ts` says what each is when left out.
+
+The stage is the workshop's, `stage.ts`, which the page above plays on too. It prints each picture as it
+is written, with the particles and effects in the air in it.
 
 ## For agents
 

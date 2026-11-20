@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // The cutscene panel's timeline, driven with the pointer and the keys. jsdom lays nothing out, so every box
-// is given, as the editor's timeline test gives them: the ruler and the tracks start at the page's left
+// is given: the ruler and the tracks start at the page's left
 // and are 800 pixels wide, and lane i is the 24 pixels from 24·(i + 1) down. jsdom has no pointer
 // events and observes no size, so a pointer event is a mouse event here and nothing is observed.
 import { afterEach, beforeEach, expect, test } from 'vitest'

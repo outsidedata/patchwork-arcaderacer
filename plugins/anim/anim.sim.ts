@@ -14,7 +14,7 @@
 //             this.
 //   moves     metres: a one-shot carries travel when it ends more than this from its start,
 //   turns     degrees: or when it turns this far or further; turning less, its yaw column is zeroed.
-//   kinds     `{ <kind>: { rig, model, glb, fade, falls, reads, aim, props } }`: the rig file (a loader `json`
+//   kinds     `{ <kind>: { rig, model, glb, fade, falls, reads, aim, props, capsules } }`: the rig file (a loader `json`
 //             entry) and the model (a loader `model` entry) each kind's rows play, `glb`, a loader
 //             `binary` entry of the model's same file, which the server poses the body by (below,
 //             The pose), and which a kind no rule poses may leave out, `fade`, the
@@ -26,8 +26,17 @@
 //             may leave out, is the row's aim pitch in radians, positive up, and may be a dotted path
 //             into the row's fields, `"look.pitch"` its `look`'s `pitch`. `aim` `{ bones: { <bone
 //             suffix>: <share> } }` spreads that pitch over the bones it lists, and `props` `[{ model,
-//             bone, at, turn }]` hangs loader models on bones: the browser half's, which draws both,
-//             and nothing here reads them. `falls`, which a kind may leave out, is the falls it plays
+//             bone, at, turn }]` hangs loader models on bones, and a prop `{ item, bone, at, turn }`
+//             an item the `props` mod hands (`world.anim.mods.props`, item3d's): the browser half's,
+//             which draws both, and nothing here reads them. The `props` mod may hang props on a kind
+//             too, after the kind's own (`held(kind)`: item3d's, off its bodies sheet), and the
+//             `capsules` mod (`world.anim.mods.capsules`, item3d's) give it capsules after its own;
+//             `propsOf` and `capsulesOf` are the whole of each. `capsules` `[{ from, to, radius }]`, which a kind may leave
+//             out, is the body as gpgpu3d holds it for what is moved on the GPU (`anim.gpgpu3d.ts`):
+//             each a capsule `radius` metres round from the bone whose name ends with `from` to the
+//             one whose name ends with `to`, or `{ bone, at, radius }`, a ball `radius` metres round
+//             carried by the bone whose name ends with `bone`, `at` [x, y, z] metres in that bone's
+//             frame, its scale taken off (a head). `falls`, which a kind may leave out, is the falls it plays
 //             by how fast it falls: `[{ above, role }]`, `above` m/s, in rising order, each the role
 //             played once the body falls faster than its `above` (The moments, 1).
 //
@@ -187,7 +196,8 @@
 // imports no other plugin. A resolved clip is kept per rig file's `clips` and `table` objects, which
 // the loader replaces whole when the file is written, so an edit is read on the next step.
 import type { Row, W } from '#engine/engine.ts'
-import type { Wire } from '#engine/browser.ts'
+import type { Plugins, Wire } from '#engine/browser.ts'
+import { ahead, mod, provided } from '#addons/scenemanager/scenemanager.addon.ts'
 import { Matrix4, Quaternion, Vector3 } from 'three'
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import { binary, json } from '#plugins/loader/loader.sim.ts'
@@ -211,11 +221,44 @@ export type Moment = 'still' | 'jump' | 'leap' | 'fall' | 'land'
 // The fields of a row anim reads, each the name the row carries it by; `aim` a dotted path.
 export type Reads = { pos: string; yaw: string; vel: string; grounded: string; limp: string; aim?: string }
 // A loader model hung on a bone of a kind's body (the browser half's).
-export type Prop = { model: string; bone: string; at: number[]; turn: number[] }
+// A prop hung on a bone: a loader model, or an item the `props` mod hands (`anim.plugin.ts`, Props).
+export type Prop = ({ model: string } | { item: string }) & { bone: string; at: number[]; turn: number[] }
+// A prop's name: its model's, or its item's.
+export const propName = (p: Prop) => ('item' in p ? p.item : p.model)
+// A prop's loader model, undefined for a prop that is an item.
+export const propModel = (p: Prop) => ('model' in p ? p.model : undefined)
+export type Capsule = { from: string; to: string; radius: number } | { bone: string; at: number[]; radius: number }
+// What the `props` mod hands of a kind's props (`anim.plugin.ts`, Props): `held(kind)`, the props it hangs on
+// every body of that kind, [] for a kind it hangs none on. The `capsules` mod: `capsules(plugins)` hands back
+// the capsules it gives a kind, [] for a kind it gives none.
+export type Held = (plugins: Plugins) => { held(kind: string): Prop[] }
+export type Capsules = (plugins: Plugins) => (kind: string) => Capsule[]
+// A kind's props on this page: its own (`kinds.<kind>.props`), then those the `props` mod hangs on it, in that
+// order, which is the order of `plugins.anim.props(id)`.
+export function propsOf(plugins: Plugins, kind: string): Prop[] {
+  const scene = plugins.wire.scene
+  const own = numbersOf(plugins.wire).kinds[kind]?.props ?? []
+  const from = mod<Held>(scene.world!, 'anim', 'props')
+  if (!from) return own
+  ahead(scene, 'anim', 'props')
+  const more = from(plugins).held(kind)
+  return !own.length ? more : !more.length ? own : [...own, ...more]
+}
+// A kind's capsules on this page: its own (`kinds.<kind>.capsules`), then those the `capsules` mod gives it.
+export function capsulesOf(plugins: Plugins, kind: string): Capsule[] {
+  const scene = plugins.wire.scene
+  const own = numbersOf(plugins.wire).kinds[kind]?.capsules ?? []
+  const from = mod<Capsules>(scene.world!, 'anim', 'capsules')
+  if (!from) return own
+  provided(scene, 'anim', 'capsules')
+  const more = from(plugins)(kind)
+  return !own.length ? more : !more.length ? own : [...own, ...more]
+}
 export type Rig = {
   bodies?: Record<string, string>
   spread?: Record<string, number>
   size?: number
+  textures?: Partial<Record<'color' | 'normal' | 'roughness' | 'emission', number>>
   clips: Record<string, Entry>
   roles: Partial<Record<Moment, string>>
   stances?: Record<string, Record<string, string>>
@@ -242,7 +285,7 @@ export type Limb = 'handL' | 'handR' | 'footL' | 'footR'
 export type Grip = { bone: string; guard: number[]; tip: number[] }
 export type Numbers = {
   still: number; shift: number; leap: number; landFall: number; moves: number; turns: number
-  kinds: Record<string, { rig: string; model: string; glb?: string; fade: number; falls?: Fall[]; reads: Reads; aim?: { bones: Record<string, number> }; props?: Prop[] }>
+  kinds: Record<string, { rig: string; model: string; glb?: string; fade: number; falls?: Fall[]; reads: Reads; aim?: { bones: Record<string, number> }; props?: Prop[]; capsules?: Capsule[] }>
 }
 // A band of falling: the role played once the body falls faster than `above`, m/s.
 export type Fall = { above: number; role: string }
@@ -575,7 +618,8 @@ export function plantsOf(from: W | Wire, me: Row, clip: string): Record<Limb, nu
 // order, short of a whole weight eased back toward its rest; the masked joints from the upper parts
 // too; the hips pinned as `pin` pins them; and the aim turned on after. A row with no clip yet stands
 // in its stance's `still` role at 0. A row is posed once a step whatever asks: the answer is kept on
-// it until the fields it is posed from change, and nothing may write into it. It throws for a kind
+// it until the fields it is posed from change, or the glb, the rig file, its mask, `world.anim`'s
+// moves and turns, or the aim's bones, and nothing may write into it. It throws for a kind
 // with no `glb`, and for a clip the glb has no animation of.
 
 const swapSide = (name: string) => name.replace(/Left|Right/g, s => (s === 'Left' ? 'Right' : 'Left'))
@@ -682,24 +726,38 @@ function readSkeleton(bytes: Uint8Array, kind: string): Skeleton {
 
 type Part = { slot: 'to' | 'from' | 'upper' | 'was'; clip: string; t: number; w: number }
 
-// The parts the row's fields draw, as the browser half weighs them.
-function partsOf(d: any, rig: Rig): Part[] {
+// The parts the row's fields draw, as the browser half weighs them, written over the first of `into`
+// and counted: a rig with a mask keeps only the parts of some weight. `posed` reads them every call
+// to see whether the row's pose has moved, so they are written into parts it keeps rather than made.
+function partsOf(d: any, rig: Rig, into: Part[]): number {
+  let n = 0
+  const put = (slot: Part['slot'], clip: string, t: number, w: number) => {
+    if (rig.mask !== undefined && !(w > 0)) return
+    const p = into[n++]
+    p.slot = slot
+    p.clip = clip
+    p.t = t
+    p.w = w
+  }
   const clip = d.clip ?? momentOf(rig, stanceOf(rig, d), 'still')
-  if (clip === undefined) return []
+  if (clip === undefined) return 0
   const blend = d.from != null ? d.blend : 1
-  const out: Part[] = [{ slot: 'to', clip, t: d.clip != null ? d.clipT : 0, w: blend }]
-  if (d.from != null && blend < 1) out.push({ slot: 'from', clip: d.from, t: d.fromT, w: 1 - blend })
-  if (rig.mask === undefined) return out
+  put('to', clip, d.clip != null ? d.clipT : 0, blend)
+  if (d.from != null && blend < 1) put('from', d.from, d.fromT, 1 - blend)
+  if (rig.mask === undefined) return n
   const a = d.upper != null ? d.upperW : 0
   const w = d.was != null ? d.wasW : 0
   if (a + w > 0) {
     const s = Math.min(SHARE, a + w)
     const k = s / (a + w) / (1 - s)
-    if (a > 0) out.push({ slot: 'upper', clip: d.upper, t: d.upperT, w: a * k })
-    if (w > 0) out.push({ slot: 'was', clip: d.was, t: d.wasT, w: w * k })
+    if (a > 0) put('upper', d.upper, d.upperT, a * k)
+    if (w > 0) put('was', d.was, d.wasT, w * k)
   }
-  return out.filter(p => p.w > 0)
+  return n
 }
+
+// Four parts to write a row's into: `to`, `from`, `upper` and `was` are the most a row draws.
+const fresh = (): Part[] => Array.from({ length: 4 }, () => ({ slot: 'to', clip: '', t: 0, w: 0 }))
 
 // A joint's rotation or translation in a clip at t, as three's interpolants sample its track:
 // straight between the two keys about t (rotations the short way), held at either end; a mirrored
@@ -733,25 +791,71 @@ function sampled(rig: Rig, sk: Skeleton, clip: string, bone: string, what: 'r' |
   return what === 'r' ? [v[0], -v[1], -v[2], v[3]] : [-v[0], v[1], v[2]]
 }
 
-// Each row's last pose, and what it was posed from.
-const lastPose = new WeakMap<Row, { key: string; sk: Skeleton; bones: Map<string, Matrix4> }>()
+// Each row's last pose, and everything it was posed from: the skeleton, the rig file's parse (the
+// loader parses a changed file into new `clips` and `table`), its mask, `world.anim`'s moves and
+// turns, the aim's share of each bone (copied, as a dev page's panel edits the scene in place), the pitch,
+// and the parts.
+type Kept = {
+  sk: Skeleton
+  clips: Rig['clips']
+  table: Rig['table']
+  mask: string | undefined
+  moves: number
+  turns: number
+  shares: Record<string, number> | null
+  pitch: number | null
+  parts: Part[]
+  bones: Map<string, Matrix4>
+}
+const lastPose = new WeakMap<Row, Kept>()
+
+// The parts a row's fields draw this call, written here first and kept only when the pose is made again.
+const drawn = fresh()
+
+// Whether two lists of the aim's shares give each bone the same share.
+function sameShares(a: Record<string, number> | null, b: Record<string, number> | null): boolean {
+  if (a === null || b === null) return a === b
+  let count = 0
+  for (const bone in a) {
+    if (a[bone] !== b[bone]) return false
+    count++
+  }
+  for (const _ in b) count--
+  return count === 0
+}
+
+// Whether the row is to be posed as it was last posed.
+function unmoved(had: Kept, sk: Skeleton, rig: Rig, a: Numbers, shares: Record<string, number> | null, pitch: number | null, n: number): boolean {
+  if (had.sk !== sk || had.clips !== rig.clips || had.table !== rig.table || had.mask !== rig.mask) return false
+  if (had.moves !== a.moves || had.turns !== a.turns || had.pitch !== pitch || had.parts.length !== n) return false
+  if (!sameShares(had.shares, shares)) return false
+  for (let i = 0; i < n; i++) {
+    const p = drawn[i], q = had.parts[i]
+    if (p.slot !== q.slot || p.clip !== q.clip || p.t !== q.t || p.w !== q.w) return false
+  }
+  return true
+}
 
 export function posed(from: W | Wire, me: Row): Map<string, Matrix4> {
   const kind = animKind(me)
-  const k = kindOf(numbersOf(from), kind)
+  const a = numbersOf(from)
+  const k = kindOf(a, kind)
   const rig = rigOf(from, kind)
   const sk = skeletonOf(from, kind)
   const d = me.data
-  const parts = partsOf(d, rig)
+  const n = partsOf(d, rig, drawn)
   let pitch: any = d
-  const reads = k.aim ? readsIn(numbersOf(from), kind) : undefined
+  const reads = k.aim ? readsIn(a, kind) : undefined
   if (k.aim) {
     if (reads!.aim === undefined) throw new Error(`anim kinds.${kind} has an aim, and its reads name no aim`)
     for (const f of reads!.aim.split('.')) pitch = pitch?.[f]
   }
-  const key = JSON.stringify([parts, k.aim ? pitch : null])
+  // A pitch that is no number turns no joint, so it poses as no pitch.
+  const aimed = k.aim && typeof pitch === 'number' ? pitch : null
+  const shares = k.aim ? k.aim.bones : null
   const had = lastPose.get(me)
-  if (had && had.key === key && had.sk === sk) return had.bones
+  if (had && unmoved(had, sk, rig, a, shares, aimed, n)) return had.bones
+  const parts = drawn.slice(0, n).map(p => ({ ...p }))
   const names = Object.keys(sk.bones)
   // The joints under the mask: the joint whose name ends with it, and every joint below it.
   const masked = (name: string): boolean => {
@@ -786,7 +890,7 @@ export function posed(from: W | Wire, me: Row): Map<string, Matrix4> {
     else if (wp < 1) for (let i = 0; i < 3; i++) p[i] += (rest.t[i] - p[i]) * (1 - wp)
     local.set(name, { t: new Vector3().fromArray(p), q: new Quaternion().fromArray(q), s: new Vector3().fromArray(rest.s) })
   }
-  pin(rig, sk, local.get(sk.hips)!, parts.filter(p => p.slot === 'to' || p.slot === 'from'), numbersOf(from))
+  pin(rig, sk, local.get(sk.hips)!, parts.filter(p => p.slot === 'to' || p.slot === 'from'), a)
   // Each joint's matrix in the model, its parent's first.
   const world = () => {
     const out = new Map<string, Matrix4>()
@@ -817,7 +921,7 @@ export function posed(from: W | Wire, me: Row): Map<string, Matrix4> {
     }
   }
   const bones = world()
-  lastPose.set(me, { key, sk, bones })
+  lastPose.set(me, { sk, clips: rig.clips, table: rig.table, mask: rig.mask, moves: a.moves, turns: a.turns, shares: shares && { ...shares }, pitch: aimed, parts, bones })
   return bones
 }
 

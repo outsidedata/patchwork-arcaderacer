@@ -13,8 +13,11 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { Pass } from 'three/addons/postprocessing/Pass.js'
 import { render3d, type Splice } from './render3d.plugin.ts'
 
-type Draw = { scene: THREE.Object3D; material?: THREE.ShaderMaterial; target: THREE.WebGLRenderTarget | null; override: THREE.Material | null; camera?: THREE.Camera; autoClear?: boolean }
-const gpu = vi.hoisted(() => ({ made: [] as any[], draws: [] as Draw[], depthCleared: [] as { before: number; target: unknown }[] }))
+type Draw = { scene: THREE.Object3D; material?: THREE.ShaderMaterial; target: THREE.WebGLRenderTarget | null; override: THREE.Material | null; camera?: THREE.Camera; autoClear?: boolean; shown: THREE.Object3D[] }
+// `slow` holds the materials whose programs are still compiling; every other material's is ready.
+// `compiled` is each object the renderer was asked to compile, with the camera and scene it was
+// compiled for. `parallel` is whether the GPU has KHR_parallel_shader_compile.
+const gpu = vi.hoisted(() => ({ made: [] as any[], draws: [] as Draw[], depthCleared: [] as { before: number; target: unknown }[], slow: new Set<unknown>(), compiled: [] as any[], parallel: true }))
 
 vi.mock('three', async importOriginal => {
   const three = await importOriginal<typeof import('three')>()
@@ -49,8 +52,22 @@ vi.mock('three', async importOriginal => {
     clear() {}
     clearDepth() { gpu.depthCleared.push({ before: gpu.draws.length, target: this.target }) }
     render(scene: any, camera: any) {
+      // three hands the scene its `onBeforeRender` before it reads anything of it
+      if (scene.isScene) scene.onBeforeRender(this, scene, camera, this.target)
       if (this.autoClear && scene.isScene) this.clear()
-      gpu.draws.push({ scene, material: scene.material, target: this.target, override: scene.overrideMaterial ?? null, camera, autoClear: this.autoClear })
+      gpu.draws.push({ scene, material: scene.material, target: this.target, override: scene.overrideMaterial ?? null, camera, autoClear: this.autoClear, shown: scene.isScene ? scene.children.filter((c: any) => c.visible) : [] })
+    }
+    extensions = { get: (name: string) => (name === 'KHR_parallel_shader_compile' && gpu.parallel ? {} : null) }
+    properties = { get: (m: unknown) => ({ currentProgram: { isReady: () => !gpu.slow.has(m) } }) }
+    compile(o: any, camera: any, target: any) {
+      const walked: unknown[] = []
+      const materials = new Set<unknown>()
+      o.traverse((c: any) => { walked.push(c); for (const m of [c.material ?? []].flat()) materials.add(m) })
+      // the lights three would gather for the program, as compile gathers them off the scene
+      const lit: unknown[] = []
+      target.traverseVisible((c: any) => { if (c.isLight && c.layers.test(camera.layers)) lit.push(c) })
+      gpu.compiled.push({ walked, camera, target, lit })
+      return materials
     }
     dispose() { this.disposed = true }
     forceContextLoss() { this.lost = true }
@@ -60,7 +77,7 @@ vi.mock('three', async importOriginal => {
 
 // A test that sets the screen's pixel ratio puts back what it found.
 const ratio = (globalThis as any).devicePixelRatio
-beforeEach(() => { gpu.made.length = 0; gpu.draws.length = 0; gpu.depthCleared.length = 0 })
+beforeEach(() => { gpu.made.length = 0; gpu.draws.length = 0; gpu.depthCleared.length = 0; gpu.slow.clear(); gpu.compiled.length = 0; gpu.parallel = true })
 afterEach(() => { (globalThis as any).devicePixelRatio = ratio })
 
 const W = 400, H = 300
@@ -156,6 +173,17 @@ test('the renderer is made once, when there is a canvas and a prefab, whichever 
   expect(first.size).toEqual([W, H])
 })
 
+test('a transparent scene is drawn by a renderer with alpha, cleared to nothing; one with a background too throws', () => {
+  const { me } = page({ camera, transparent: true })
+  const r = gpu.made.at(-1)
+  expect(r.params.alpha).toBe(true)
+  expect(r.clearAlpha).toBe(0)
+  expect(me.scene.background).toBeNull()
+  page({ camera })
+  expect(gpu.made.at(-1).params.alpha).toBe(false)
+  expect(() => page({ camera, transparent: true, background: '#ffffff' })).toThrow('render3d: a transparent scene is cleared to nothing, and this one gives a background too')
+})
+
 test('the look comes from the prefab, and a field left out leaves three\'s own setting', () => {
   const plain = page()
   const r = gpu.made[0]
@@ -189,6 +217,97 @@ test('with no ao the scene is drawn straight to the canvas once a frame, and not
   expect(c.style.display).toBe('')
   expect(gpu.draws).toHaveLength(3)
   for (const d of gpu.draws) expect([d.scene, d.target, d.override]).toEqual([me.scene, null, null])
+})
+
+test('an object put in the scene is compiled for it, with its lights, and left out of every draw until its programs are ready; one already compiled is drawn that frame, and its visible is its own after', () => {
+  const { me } = page()
+  const slow = new THREE.MeshStandardMaterial(), quick = new THREE.MeshStandardMaterial()
+  const late = new THREE.Mesh(new THREE.BoxGeometry(), slow), ready = new THREE.Mesh(new THREE.BoxGeometry(), quick)
+  gpu.slow.add(slow)
+  me.scene.add(late, ready)
+  me.afterTick()
+  // Both were compiled in one call, for the scene and through its camera, so the scene's lights are
+  // gathered once a frame however many things were put in.
+  expect(gpu.compiled.map(c => [c.walked, c.target, c.camera])).toEqual([[[late, ready], me.scene, me.camera]])
+  const shown = () => gpu.draws.at(-1)!.shown
+  expect(shown()).toEqual([ready])
+  expect(late.visible).toBe(true)
+  me.afterTick()
+  expect(shown()).toEqual([ready])
+  expect(gpu.compiled).toHaveLength(1)
+  // Its program is ready: drawn from that frame on.
+  gpu.slow.delete(slow)
+  me.afterTick()
+  expect(shown()).toEqual([late, ready])
+  // One hidden by its own look stays hidden; one taken out while compiling is forgotten.
+  const gone = new THREE.Mesh(new THREE.BoxGeometry(), slow)
+  gpu.slow.add(slow)
+  me.scene.add(gone)
+  me.afterTick()
+  me.scene.remove(gone)
+  gpu.slow.delete(slow)
+  late.visible = false
+  me.afterTick()
+  expect(shown()).toEqual([ready])
+  expect(late.visible).toBe(false)
+})
+
+test('what is put in is compiled last of the scene\'s own onBeforeRender, so with the lights as the draw has them, and the scene\'s own hook is its own again after the frame', () => {
+  const { me } = page()
+  const lamp = new THREE.PointLight(), sun = new THREE.DirectionalLight()
+  me.scene.add(lamp, sun)
+  // a plugin that takes the lamp out of three's lights for each draw, as lights3d does
+  const own = function (this: THREE.Scene) { lamp.layers.disableAll() }
+  me.scene.onBeforeRender = own
+  me.afterTick()
+  const box = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial())
+  lamp.layers.enableAll()
+  me.scene.add(box)
+  me.afterTick()
+  const last = gpu.compiled.at(-1)
+  expect(last.walked).toEqual([box])
+  expect(last.lit).toEqual([sun])
+  expect(me.scene.onBeforeRender).toBe(own)
+})
+
+test('prepare compiles a thing already in the scene, with its new material, as one just put in; compiling() counts what waits or compiles', () => {
+  const { me } = page()
+  const ground = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial())
+  me.scene.add(ground)
+  me.afterTick()
+  expect(me.compiling()).toBe(0)
+  const looked = new THREE.MeshStandardMaterial()
+  ground.material = looked
+  gpu.slow.add(looked)
+  me.prepare(ground)
+  expect(me.compiling()).toBe(1)
+  me.afterTick()
+  expect(gpu.compiled.at(-1).walked).toEqual([ground])
+  expect(gpu.draws.at(-1)!.shown).toEqual([])
+  expect(me.compiling()).toBe(1)
+  gpu.slow.delete(looked)
+  me.afterTick()
+  expect(gpu.draws.at(-1)!.shown).toEqual([ground])
+  expect(me.compiling()).toBe(0)
+  expect(() => me.prepare(new THREE.Mesh())).toThrow('render3d prepares only what is in its scene or its overlay')
+  gpu.parallel = false
+  me.prepare(ground)
+  expect(me.compiling()).toBe(0)
+})
+
+test('a thing put in the overlay is compiled for the overlay through its camera; with no parallel compiling on the GPU nothing is held back', () => {
+  const { me } = page()
+  const held = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial())
+  me.overlay.scene.add(held)
+  me.afterTick()
+  expect(gpu.compiled.map(c => [c.walked, c.target, c.camera])).toEqual([[[held], me.overlay.scene, me.overlay.camera]])
+  gpu.parallel = false
+  const late = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial())
+  gpu.slow.add(late.material)
+  me.scene.add(late)
+  me.afterTick()
+  expect(gpu.compiled).toHaveLength(1)
+  expect(gpu.draws.filter(d => d.scene === me.scene).at(-1)!.shown).toEqual([late])
 })
 
 test('with ao the scene is drawn once a frame with no override material, and every pass that reads depth reads the depth texture the scene was drawn into, with no normals', () => {
@@ -618,19 +737,55 @@ test('a `?chunk` goes after the chunk where the shader includes it, in the order
   expect(b.fragmentShader).toContain('#include <common>\nvarying vec3 vDressWorld;\nuniform float lampsOn;')
 })
 
+const ssr = { steps: 32, distance: 20, thickness: 0.5, roughness: 0.5 }
+
+test('with ssr, a dressed material traces its reflection after every other plugin\'s splice where three adds an envMap\'s light, a splice registered later too; one that does not light is left alone', () => {
+  const me = render3d()
+  me.tick(wire({ camera, ssr }))
+  const lit = me.dress(new THREE.MeshStandardMaterial())
+  me.splice('probes', { fragment: { '?lights_fragment_maps': 'float probes;' } })
+  const s = shader('standard')
+  lit.onBeforeCompile(s, undefined as unknown as THREE.WebGLRenderer)
+  const after = s.fragmentShader.slice(s.fragmentShader.indexOf('#include <lights_fragment_maps>'))
+  expect(after.indexOf('float probes;')).toBeGreaterThan(0)
+  expect(after.indexOf('rdSsrAt( rdFrom + rdWay * rdT')).toBeGreaterThan(after.indexOf('float probes;'))
+  expect(after.indexOf('rdSsrAt( rdFrom + rdWay * rdT')).toBeLessThan(after.indexOf('#include <lights_fragment_end>'))
+  expect(s.uniforms.uRdSsrOn.value).toBe(0)
+  expect(lit.customProgramCacheKey()).toContain('ssr')
+  const basic = me.dress(new THREE.MeshBasicMaterial())
+  const b = { vertexShader: THREE.ShaderLib.basic.vertexShader, fragmentShader: THREE.ShaderLib.basic.fragmentShader, uniforms: {} } as unknown as THREE.WebGLProgramParametersWithUniforms
+  basic.onBeforeCompile(b, undefined as unknown as THREE.WebGLRenderer)
+  expect(b.fragmentShader).not.toContain('rdSsrAt( rdFrom')
+  // with no ssr no material traces one
+  const none = render3d()
+  none.tick(wire({ camera }))
+  const plain = none.dress(new THREE.MeshStandardMaterial())
+  const p = shader('standard')
+  plain.onBeforeCompile(p, undefined as unknown as THREE.WebGLRenderer)
+  expect(p.fragmentShader).not.toContain('rdSsrAt')
+})
+
+test('an ssr the prefab gives wrongly throws where the prefab is read, naming the number', () => {
+  const bad = (s: object) => () => render3d().tick(wire({ camera, ssr: { ...ssr, ...s } }))
+  expect(bad({ steps: 0 })).toThrow('render3d ssr steps 0 is not a whole number from 1 to 256')
+  expect(bad({ distance: -1 })).toThrow('render3d ssr distance -1 is not above 0')
+  expect(bad({ thickness: 0 })).toThrow('render3d ssr thickness 0 is not above 0')
+  expect(bad({ roughness: 2 })).toThrow('render3d ssr roughness 2 is not above 0 and no more than 1')
+})
+
 test('a claim on the camera blocks a second owner until it is released, and only the owner releases it', () => {
   const me = render3d()
-  const cutscene = {}, editor = {}
+  const cutscene = {}, orbit = {}
   expect(me.claimed()).toBeUndefined()
   expect(me.claim(cutscene)).toBe(true)
   expect(me.claim(cutscene)).toBe(true)
-  expect(me.claim(editor)).toBe(false)
-  me.release(editor)
+  expect(me.claim(orbit)).toBe(false)
+  me.release(orbit)
   expect(me.claimed()).toBe(cutscene)
   me.release(cutscene)
   expect(me.claimed()).toBeUndefined()
-  expect(me.claim(editor)).toBe(true)
-  expect(me.claimed()).toBe(editor)
+  expect(me.claim(orbit)).toBe(true)
+  expect(me.claimed()).toBe(orbit)
 })
 
 // One frame as a page draws it: its tick handed the step `n` the client is on and `between`, how far

@@ -1,0 +1,6 @@
+[
+  { "name": "night", "file": "campfire.json", "effect": "campfire", "sheets": { "flame02": "flame02.json" }, "camera": [0, 0.7, 1.6], "target": [0, 0.4, 0], "at": [0, 0, 0], "preroll": 3.2, "sky": 1052184 },
+  { "name": "night-b", "file": "campfire.json", "effect": "campfire", "sheets": { "flame02": "flame02.json" }, "camera": [0, 0.7, 1.6], "target": [0, 0.4, 0], "at": [0, 0, 0], "preroll": 3.45, "sky": 1052184 },
+  { "name": "day", "file": "campfire.json", "effect": "campfire", "sheets": { "flame02": "flame02.json" }, "camera": [0, 0.7, 1.6], "target": [0, 0.4, 0], "at": [0, 0, 0], "preroll": 3.2, "sky": 12568786 },
+  { "name": "far", "file": "campfire.json", "effect": "campfire", "sheets": { "flame02": "flame02.json" }, "camera": [2.6, 1.2, 2.2], "target": [0, 0.5, 0], "at": [0, 0, 0], "preroll": 3.5, "sky": 1052184 }
+]

@@ -1,0 +1,21 @@
+{
+  "cap": 12000,
+  "effects": {
+    "grenade": [
+      { "n": [1, 1], "life": [0.1, 0.1], "shape": "glow", "size": [3, 3], "grow": 1.4, "tint": 16775388, "tint1": 16753920, "gain": 6, "a1": 0, "add": true },
+      { "n": [1, 1], "life": [0.08, 0.08], "shape": "star", "size": [3.5, 3.5], "grow": 1.8, "tint": 16777215, "gain": 9, "a1": 0, "add": true },
+      { "lamp": { "intensity": 450, "distance": 14, "decay": 2, "tint": 16748574, "flicker": 0.6 } },
+      { "n": [1, 1], "life": [0.35, 0.35], "shape": "ring", "size": [0.6, 0.6], "grow": 14, "dir": [0, 1, 0], "tint": 16772300, "gain": 2, "a0": 0.7, "a1": 0, "add": true },
+      { "n": [10, 14], "life": [0.3, 0.55], "shape": "puff", "size": [0.6, 1], "grow": 2.4, "speed": [2, 4.5], "drag": 4, "g": -1, "jitter": [0.2, 0.2, 0.2], "tint": 16767610, "tint1": 16722944, "gain": 5, "a1": 0, "spin": 2, "add": true },
+      { "n": [40, 55], "life": [0.25, 0.6], "shape": "streak", "stretch": true, "size": [0.35, 0.7], "speed": [12, 22], "g": 9.8, "drag": 1.8, "bounce": 0.4, "tint": 16771210, "tint1": 16735232, "gain": 7, "a1": 0, "add": true },
+      { "n": [14, 20], "life": [2.5, 3.5], "size": [0.08, 0.2], "speed": [5, 10], "dir": [0, 1, 0], "spread": 1.2, "g": 9.8, "drag": 0.25, "bounce": 0.4, "spin": 12, "carry": "grenade-chunktrail",
+        "mesh": { "rows": ["a", "b", "c", "d"], "seed": 7, "look": { "shape": { "detail": 1, "lumpy": [0.9, 0.4], "squash": 0.7 }, "colour": "#3a332c", "lods": [0], "shadow": 0, "leaf": 0 } } },
+      { "n": [16, 22], "after": 0.05, "life": [3, 4.5], "shape": "puff2", "size": [0.8, 1.3], "grow": 3.2, "speed": [2, 5], "dir": [0, 1, 0], "spread": 1.3, "drag": 2.8, "g": -0.8, "jitter": [0.3, 0.2, 0.3], "tint": 5459010, "tint1": 3355443, "a0": 0.85, "a1": 0, "fade": 1, "spin": 0.6 },
+      { "n": [20, 28], "after": 0.02, "life": [1.2, 2], "shape": "puff", "size": [0.4, 0.7], "grow": 3, "origin": [0.5, 0.85], "speed": [4, 7], "dir": [0, 0.15, 0], "spread": 1.45, "drag": 3.5, "box": [-0.2, -1.15, -0.2, 0.2, -1.1, 0.2], "tint": 11182711, "tint1": 8420713, "a0": 0.8, "a1": 0, "fade": 1.2, "spin": 0.5 }
+    ],
+    "grenade-chunktrail": [
+      { "n": [1, 1], "every": 0.025, "life": [0.6, 1.1], "shape": "puff", "size": [0.18, 0.28], "grow": 4, "speed": [0, 0.2], "g": -0.4, "drag": 1, "tint": 8421504, "tint1": 3947580, "a0": 0.65, "a1": 0, "spin": 1 },
+      { "n": [1, 1], "every": 0.05, "life": [0.15, 0.3], "shape": "spark", "size": [0.05, 0.09], "speed": [0.2, 0.8], "g": 4, "tint": 16766566, "tint1": 16725760, "gain": 4, "a1": 0, "add": true }
+    ]
+  }
+}

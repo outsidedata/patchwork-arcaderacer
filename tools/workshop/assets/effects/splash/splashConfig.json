@@ -1,0 +1,71 @@
+{
+  "cap": 200,
+  "ppm": 256,
+  "flipbooks": [
+    {
+      "name": "splash",
+      "clip": "splash",
+      "frames": 32,
+      "loop": 0,
+      "across": 8,
+      "cell": [256,256],
+      "plane": 2,
+      "samples": 8,
+      "fps": 30,
+      "pivot": [0.5,0.92],
+      "nodes": [
+        {"id":"coord","type":"ShaderNodeTexCoord"},
+        {"id":"xyz","type":"ShaderNodeSeparateXYZ","inputs":{"Vector":{"link":"coord.Object"}}},
+        {"id":"yr","type":"ShaderNodeMath","props":{"operation":"ADD"},"inputs":{"0":{"link":"xyz.Y"},"1":0.85}},
+        {"id":"ax","type":"ShaderNodeMath","props":{"operation":"ABSOLUTE"},"inputs":{"0":{"link":"xyz.X"}}},
+        {"id":"wall","type":"ShaderNodeMath","props":{"operation":"SUBTRACT"},"inputs":{"0":{"link":"ax.Value"},"1":{"keys":[[0,0.15],[0.3,0.42],[1,0.62]]}}},
+        {"id":"lean","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"yr.Value"},"1":-0.35,"2":{"link":"wall.Value"}}},
+        {"id":"wallA","type":"ShaderNodeMath","props":{"operation":"ABSOLUTE"},"inputs":{"0":{"link":"lean.Value"}}},
+        {"id":"wallB","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD","use_clamp":true},"inputs":{"0":{"link":"wallA.Value"},"1":-3.2,"2":1}},
+        {"id":"line","type":"ShaderNodeCombineXYZ","inputs":{"X":{"link":"xyz.X"},"Y":0,"Z":0}},
+        {"id":"spikes","type":"ShaderNodeTexNoise","props":{"noise_dimensions":"4D","noise_type":"FBM"},"inputs":{"Vector":{"link":"line.Vector"},"W":{"keys":[[0,0],[1,0.5]]},"Scale":9,"Detail":3,"Roughness":0.6,"Lacunarity":2.2,"Distortion":0}},
+        {"id":"sp","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD","use_clamp":true},"inputs":{"0":{"link":"spikes.Fac"},"1":2.4,"2":-0.7}},
+        {"id":"spP","type":"ShaderNodeMath","props":{"operation":"POWER"},"inputs":{"0":{"link":"sp.Value"},"1":2}},
+        {"id":"tall","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"spP.Value"},"1":{"keys":[[0,0.1],[0.3,0.9],[0.7,0.7],[1,0.1]]},"2":{"keys":[[0,0.05],[0.3,0.25],[1,0.05]]}}},
+        {"id":"under","type":"ShaderNodeMath","props":{"operation":"SUBTRACT"},"inputs":{"0":{"link":"tall.Value"},"1":{"link":"yr.Value"}}},
+        {"id":"underS","type":"ShaderNodeMath","props":{"operation":"MULTIPLY","use_clamp":true},"inputs":{"0":{"link":"under.Value"},"1":14}},
+        {"id":"above","type":"ShaderNodeMath","props":{"operation":"MULTIPLY","use_clamp":true},"inputs":{"0":{"link":"yr.Value"},"1":20}},
+        {"id":"crownA","type":"ShaderNodeMath","props":{"operation":"MULTIPLY"},"inputs":{"0":{"link":"underS.Value"},"1":{"link":"wallB.Value"}}},
+        {"id":"crown","type":"ShaderNodeMath","props":{"operation":"MULTIPLY"},"inputs":{"0":{"link":"crownA.Value"},"1":{"link":"above.Value"}}},
+        {"id":"fling","type":"ShaderNodeVectorMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"coord.Object"},"1":{"keys":[[0,[3,3,1]],[0.3,[1.3,1.3,1]],[1,[0.8,0.8,1]]]},"2":{"keys":[[0,[0,2.5,0]],[0.3,[0,0.2,0]],[0.6,[0,-0.05,0]],[1,[0,0.8,0]]]}}},
+        {"id":"drops","type":"ShaderNodeTexVoronoi","props":{"voronoi_dimensions":"2D","feature":"F1"},"inputs":{"Vector":{"link":"fling.Vector"},"Scale":6,"Randomness":1}},
+        {"id":"dsep","type":"ShaderNodeSeparateColor","inputs":{"Color":{"link":"drops.Color"}}},
+        {"id":"dot","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD","use_clamp":true},"inputs":{"0":{"link":"drops.Distance"},"1":-3.4,"2":1}},
+        {"id":"dotP","type":"ShaderNodeMath","props":{"operation":"POWER"},"inputs":{"0":{"link":"dot.Value"},"1":2}},
+        {"id":"keep","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD","use_clamp":true},"inputs":{"0":{"link":"dsep.Red"},"1":4,"2":-2.6}},
+        {"id":"r","type":"ShaderNodeVectorMath","props":{"operation":"LENGTH"},"inputs":{"0":{"link":"coord.Object"}}},
+        {"id":"inside","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD","use_clamp":true},"inputs":{"0":{"link":"r.Value"},"1":-2.5,"2":2.2}},
+        {"id":"upper","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD","use_clamp":true},"inputs":{"0":{"link":"yr.Value"},"1":4,"2":-0.4}},
+        {"id":"dA","type":"ShaderNodeMath","props":{"operation":"MULTIPLY"},"inputs":{"0":{"link":"dotP.Value"},"1":{"link":"keep.Value"}}},
+        {"id":"dB","type":"ShaderNodeMath","props":{"operation":"MULTIPLY"},"inputs":{"0":{"link":"dA.Value"},"1":{"link":"inside.Value"}}},
+        {"id":"dC","type":"ShaderNodeMath","props":{"operation":"MULTIPLY"},"inputs":{"0":{"link":"dB.Value"},"1":{"link":"upper.Value"}}},
+        {"id":"droplets","type":"ShaderNodeMath","props":{"operation":"MULTIPLY","use_clamp":true},"inputs":{"0":{"link":"dC.Value"},"1":{"keys":[[0,0],[0.15,2],[0.7,2],[1,0]]}}},
+        {"id":"water","type":"ShaderNodeMath","props":{"operation":"MAXIMUM"},"inputs":{"0":{"link":"crown.Value"},"1":{"link":"droplets.Value"}}}
+      ],
+      "images": [
+        {
+          "file": "splash.png",
+          "channels": [
+            {"field":"water.Value","op":"value"},
+            {"field":"water.Value","op":"glow","radius":3,"gain":1.5,"keep":false},
+            {"field":"crown.Value","op":"value"},
+            {"field":"water.Value","op":"glow","radius":1,"gain":1,"keep":true}
+          ]
+        }
+      ]
+    }
+  ],
+  "effects": {
+    "splash": [
+      {"n":[5,7],"life":[1,1.6],"shape":"puff2","size":[0.5,0.8],"box":[-0.3,0,-0.3,0.3,0.2,0.3],"outward":[0.5,1],"drag":1,"grows":[[0,0.6],[1,2]],"tints":[[0,12636380],[1,14477552]],"alphas":[[0,0],[0.1,0.4],[1,0]]},
+      {"n":[1,1],"life":[0.9,0.9],"sheet":"splash","clip":"splash","size":[1.4,1.4],"blend":true,"channels":{"value":[0.7,0.3,0.4,0],"alpha":[0,0,0,1],"hot":[0.3,0,0,0]},"tints":[[0,15267071],[1,12112104]],"alphas":[[0,1],[0.8,0.9],[1,0]]},
+      {"n":[30,40],"life":[0.6,1],"shape":"streak","stretch":true,"size":[0.08,0.14],"box":[-0.15,0.05,-0.15,0.15,0.1,0.15],"dir":[0,1,0],"spread":0.6,"speed":[2.5,4.5],"g":9.8,"tint":13690100,"alphas":[[0,1],[0.8,0.9],[1,0]]},
+      {"n":[25,35],"life":[0.6,1],"shape":"spark","size":[0.025,0.04],"box":[-0.2,0.05,-0.2,0.2,0.1,0.2],"dir":[0,1,0],"spread":0.9,"speed":[1.5,3],"g":9.8,"tint":14741759,"alphas":[[0,1],[0.8,0.9],[1,0]]}
+    ]
+  }
+}

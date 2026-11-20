@@ -1,5 +1,5 @@
 # anim's export: a rig file's clips baked onto each body it names, one glb per body, and the rig's
-# `table` measured. Run by the anim extension's route (`anim.route.ts`), or by hand:
+# `table` measured. Run by the asset workshop's server (`tools/workshop/workshop.server.ts`), or by hand:
 #
 #   Blender -b --factory-startup --python plugins/anim/anim.export.py -- \
 #       <rig.json> <table.json> <body>=<out.glb> [<body>=<out.glb> ...]
@@ -17,6 +17,11 @@
 #           on it: a gear's speed, a one-shot's travel, the hips' height and every segment's ends come
 #           out times `size`. It is the rig's, not a body's, since the table is measured once for
 #           every body of the rig.
+#   textures `{ color, normal, roughness, emission }`: the most pixels each type of map a body's
+#           materials draw keeps on its longer side, its shape kept; a type left out keeps 512. A map's
+#           type is the input of the material it feeds (Base Color and Alpha are `color`), and an image
+#           feeding two types keeps the larger. The library's files are never changed. Each image is
+#           logged `TEXTURE <image> <from> -> <to>`. A name not of the four stops the bake.
 #   clips   `<name>: "<fbx>"` or `{ file, rebase, ... }`. A clip with no `file` (a `mirror`) is built
 #           by anim itself and is skipped here.
 #   blades  `[<mesh>]`: names of the rig's `meshes`, each a rigid weapon its body holds, measured as
@@ -630,6 +635,49 @@ def metal_rough(objs):
         print(f'METAL_ROUGH {m.name} alpha={"clip" if alpha.is_linked else "opaque"}')
 
 
+MAPS = {'Base Color': 'color', 'Alpha': 'color', 'Normal': 'normal', 'Roughness': 'roughness', 'Emission Color': 'emission'}
+CAP = 512
+
+
+def fed(sock, seen=None):
+    """The map types an output feeds: the Principled inputs it reaches, through any nodes between."""
+    seen = seen if seen is not None else set()
+    out = set()
+    for l in sock.links:
+        n = l.to_node
+        if n.type == 'BSDF_PRINCIPLED':
+            if l.to_socket.name in MAPS:
+                out.add(MAPS[l.to_socket.name])
+        elif n.name not in seen:
+            seen.add(n.name)
+            for o in n.outputs:
+                out |= fed(o, seen)
+    return out
+
+
+def shrink(objs, caps):
+    """Every image the body's materials draw cut to its type's cap (the rig's `textures`, else CAP) on its
+    longer side, its shape kept; an image feeding two types takes the larger cap (see the header)."""
+    unknown = set(caps) - set(MAPS.values())
+    if unknown:
+        raise SystemExit(f'anim export: textures names {sorted(unknown)}, and the types are {sorted(set(MAPS.values()))}')
+    mats = {s.material for o in objs if o.type == 'MESH' for s in o.material_slots if s.material}
+    want = {}
+    for m in mats:
+        for n in (m.node_tree.nodes if m.node_tree else []):
+            if n.type != 'TEX_IMAGE' or not n.image:
+                continue
+            types = set().union(*(fed(o) for o in n.outputs))
+            cap = max([caps.get(t, CAP) for t in types] or [CAP])
+            want[n.image] = max(want.get(n.image, 0), cap)
+    for img, cap in want.items():
+        w, h = img.size
+        if max(w, h) > cap:
+            k = cap / max(w, h)
+            img.scale(max(1, round(w * k)), max(1, round(h * k)))
+        print(f'TEXTURE {img.name} {w}x{h} -> {img.size[0]}x{img.size[1]}')
+
+
 def split(path):
     """A glb's JSON and its binary chunk, header and all."""
     data = open(path, 'rb').read()
@@ -695,9 +743,7 @@ for body_name, out in OUTS.items():
     if table is None:
         table = {name: measure(body, act) for name, act in acts.items()}
     metal_rough(keep)
-    for img in bpy.data.images:
-        if img.size[0] > 1024 or img.size[1] > 1024:
-            img.scale(min(1024, img.size[0]), min(1024, img.size[1]))
+    shrink(keep, spec.get('textures', {}))
     bpy.ops.object.select_all(action='DESELECT')
     for o in keep:
         o.select_set(True)

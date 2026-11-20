@@ -293,6 +293,15 @@ test('what throws: an interaction the cart has not, a point the cart has not, a 
   } finally {
     written(HOP_URL, JSON.stringify(HOP))
   }
+  // A file written into in place, deep in a step, is checked again; put back, it is in shape again.
+  const hop = interactionOf(w, 'cart', 'hop')!
+  hop.steps[0].name = ''
+  try {
+    expect(() => interactionOf(w, 'cart', 'hop')).toThrow('interact cart.hop.steps[0].name is not a word')
+  } finally {
+    hop.steps[0].name = HOP.steps[0].name
+  }
+  expect(interactionOf(w, 'cart', 'hop')).toBe(hop)
   const mods = (w.world.interact as any).mods
   delete (w.world.interact as any).mods
   try {

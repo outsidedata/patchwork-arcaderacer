@@ -12,7 +12,8 @@
 //   spline `{ points, yaw, normal? }`: a curve through every one of `points`, two or more; the place is
 //          metres along it from the first, a want of one number moves it toward the last, stopped at
 //          both ends
-// Each also gives kinematics3d `footing`: a body standing on a shape `move` moved is carried with it.
+// Each also gives kinematics3d `footing`: a body standing on a shape `move` moved is carried with it, by
+// how far the shape has moved since the body was last carried (shapes3d's `carried`).
 // `at` hands back where the place stands, the target's `normal` there (straight up where it gives none)
 // and its `yaw`; `nearest` the place nearest a point [x, y, z] in the world, within the edges; and `ways`
 // the ways a place moves, each `{ dir, from, lo, hi }`: a unit vector in the world, the place's number
@@ -32,7 +33,7 @@ import { numbers as kindNumbers, type Behavior, type Place, type Way, type Where
 import type { Footprinter, Worded } from '#plugins/terrain3d/terrain3d.kinematics3d.ts'
 import type { Row, W } from '#engine/engine.ts'
 import * as math from '#plugins/math/math.sim.ts'
-import { conj, corners, moves, mul, rotate, shapes, turnOf, words, type Placed } from './shapes3d.sim.ts'
+import { carried, corners, moves, shapes, words, type Placed } from './shapes3d.sim.ts'
 
 type Point = { at: number[]; yaw: number; normal?: number[] }
 type Line = { from: number[]; to: number[]; yaw: number; normal?: number[] }
@@ -176,38 +177,13 @@ const spline: Behavior = {
   },
 }
 
-// Where a body at `pos` facing `yaw` is carried by the moved shape whose top it stood on: the highest shape
-// `move` moved whose top, where it stood before (its row's `was`), over (pos x, pos z) is at the body's
-// feet or no more than its `triangles.step` under them. The body's point in that shape's frame as it
-// stood is put back through the shape as it stands now, by quaternions, so a tilt and a roll carry it as
-// a turn does, and its yaw is the heading its facing is turned to by the shape's turn. Undefined off a
-// moved shape, so a body on the land or a still shape is left as it is.
-const TOLERANCE = 1e-9
-function footing(pos: number[], yaw: number, me: Row, w: W): { pos: number[]; yaw: number } | undefined {
+// Where a body at `pos` facing `yaw` is carried by the moved shape it stands on: shapes3d's `carried`,
+// among the shapes whose rows carry `was`, by its kind's `triangles.step`. Undefined off a moved shape,
+// so a body on the land or a still shape is left as it is.
+function footing(pos: number[], yaw: number, me: Row, w: W, grounded: boolean): { pos: number[]; yaw: number } | undefined {
   const step = kindNumbers(me, w).triangles?.step
   if (step === undefined) return undefined
-  let on: { row: Row; was: number[]; top: number } | undefined
-  for (const p of standing(w).placed) {
-    const row = w.get(p.id)
-    const was = row.data.was as number[] | null | undefined
-    if (!was) continue
-    // The shape as it stood the step before.
-    const before = { ...p.shape[p.word], pos: [was[0], was[1], was[2]], ...(was.length === 7 ? { rot: was.slice(3) } : { yaw: was[3] }) }
-    const t = words[p.word].top(before, pos[0], pos[2])
-    if (t === undefined || t > pos[1] + TOLERANCE || t < pos[1] - step || (on && t <= on.top)) continue
-    on = { row, was, top: t }
-  }
-  if (!on) return undefined
-  const { row, was } = on
-  const from = was.length === 7 ? was.slice(3) : [0, math.sin(was[3] / 2), 0, math.cos(was[3] / 2)]
-  const to = turnOf(row), at = row.data.pos as number[]
-  const local = rotate(conj(from), [pos[0] - was[0], pos[1] - was[1], pos[2] - was[2]])
-  const there = rotate(to, local)
-  const facing = rotate(mul(to, conj(from)), [math.sin(yaw), 0, math.cos(yaw)])
-  return {
-    pos: [at[0] + there[0], at[1] + there[1], at[2] + there[2]],
-    yaw: math.hypot(facing[0], facing[2]) > 1e-9 ? math.atan2(facing[0], facing[2]) : yaw,
-  }
+  return carried(w, standing(w).movers, me, pos, yaw, step, grounded)
 }
 
 export const behaviors = (): Record<string, Behavior> => ({
@@ -234,7 +210,7 @@ export const footprints = (): Record<string, Footprinter> => ({
 // A truth's shapes, `placed` in `shapes`' order, and by square SQUARE metres a side the places in
 // `placed` of the shapes whose footprint's box takes in some of it. Read again when a shape has moved.
 const SQUARE = 2
-type Standing = { placed: Placed[]; squares: Map<number, number[]>; moves: number }
+type Standing = { placed: Placed[]; squares: Map<number, number[]>; moves: number; movers: Placed[] }
 const stood = new WeakMap<object, Standing>()
 const squareOf = (i: number, j: number) => (i + 32768) * 65536 + (j + 32768)
 
@@ -254,7 +230,10 @@ function standing(w: W): Standing {
       }
     }
   })
-  stood.set(w.world, (s = { placed, squares, moves: moves(w) }))
+  // The shapes that may move: a kind whose rows move gives `was` in its prefab, and a row with none was
+  // never moved.
+  const movers = placed.filter(p => p.id > 0 && 'was' in w.get(p.id).data)
+  stood.set(w.world, (s = { placed, squares, moves: moves(w), movers }))
   return s
 }
 

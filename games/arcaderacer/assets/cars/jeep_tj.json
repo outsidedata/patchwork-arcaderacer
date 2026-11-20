@@ -1,0 +1,31 @@
+{
+  "name": "JEEP",
+  "form": "kit",
+  "turn": 3.141592653589793,
+  "body": { "glb": "jeep_tj.body", "looks": "jeep_tj.body.looks" },
+  "wheels": {
+    "fl": { "glb": "jeep_tj.wheel-left", "looks": "jeep_tj.wheel-left.looks", "at": [0.743, 0.356, 1.1875], "radius": 0.356 },
+    "fr": { "glb": "jeep_tj.wheel-right", "looks": "jeep_tj.wheel-right.looks", "at": [-0.743, 0.356, 1.1875], "radius": 0.356 },
+    "rl": { "glb": "jeep_tj.wheel-left", "looks": "jeep_tj.wheel-left.looks", "at": [0.743, 0.356, -1.1875], "radius": 0.356 },
+    "rr": { "glb": "jeep_tj.wheel-right", "looks": "jeep_tj.wheel-right.looks", "at": [-0.743, 0.356, -1.1875], "radius": 0.356 }
+  },
+  "steer": 0.45,
+  "steering": { "bone": "steer wheel", "lock": 3 },
+  "lamps": {
+    "brake": { "material": "jeep_lens_red", "setting": "lnGlow", "off": [0.3, 0.01, 0.005], "on": [3, 0.1, 0.05] },
+    "heads": { "material": "jeep_headlamp", "setting": "sbGlow", "off": 0, "on": 3 }
+  },
+  "tracks": [[0.743, -1.1875], [-0.743, -1.1875]],
+  "paint": {
+    "material": "jeep_paint_red",
+    "options": [
+      { "name": "red", "settings": { "apColour": [0.42, 0.018, 0.012], "apFlake": 0, "apFlakeColour": [0.9, 0.85, 0.8], "apFlakeSize": 0.00035, "apRough": 0.32, "apCoat": 1, "apCoatRough": 0.06, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } },
+      { "name": "green", "settings": { "apColour": [0.02, 0.07, 0.03], "apFlake": 0.35, "apFlakeColour": [0.9, 0.85, 0.8], "apFlakeSize": 0.00035, "apRough": 0.32, "apCoat": 1, "apCoatRough": 0.06, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } },
+      { "name": "black", "settings": { "apColour": [0.008, 0.008, 0.009], "apFlake": 0.15, "apFlakeColour": [0.9, 0.85, 0.8], "apFlakeSize": 0.00035, "apRough": 0.32, "apCoat": 1, "apCoatRough": 0.06, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } },
+      { "name": "white", "settings": { "apColour": [0.78, 0.78, 0.75], "apFlake": 0, "apFlakeColour": [0.9, 0.85, 0.8], "apFlakeSize": 0.00035, "apRough": 0.28, "apCoat": 1, "apCoatRough": 0.06, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } },
+      { "name": "silver", "settings": { "apColour": [0.36, 0.37, 0.38], "apFlake": 0.8, "apFlakeColour": [0.9, 0.85, 0.8], "apFlakeSize": 0.00035, "apRough": 0.3, "apCoat": 1, "apCoatRough": 0.06, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } },
+      { "name": "yellow", "settings": { "apColour": [0.75, 0.42, 0.01], "apFlake": 0, "apFlakeColour": [0.9, 0.85, 0.8], "apFlakeSize": 0.00035, "apRough": 0.32, "apCoat": 1, "apCoatRough": 0.06, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } },
+      { "name": "sand", "settings": { "apColour": [0.42, 0.32, 0.17], "apFlake": 0.25, "apFlakeColour": [0.9, 0.85, 0.8], "apFlakeSize": 0.00035, "apRough": 0.32, "apCoat": 1, "apCoatRough": 0.06, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } }
+    ]
+  }
+}

@@ -23,8 +23,8 @@
 // throws.
 //
 // The camera has one driver at a time: this places it only while `render3d.claimed()` is empty, and
-// never claims it, so a cutscene or the editor's orbit keeps it while they hold it, and the frame
-// they let go it is back on the row. It places nothing before `follow`, or on a frame whose rows
+// never claims it, so a cutscene keeps it while it holds it, and the frame it lets go it is back on
+// the row. It places nothing before `follow`, or on a frame whose rows
 // lack the followed row: the camera stays where it was.
 //
 // `eye()` is `{ pos, dir }`: where render3d's camera stands and the way it looks, its world −z,

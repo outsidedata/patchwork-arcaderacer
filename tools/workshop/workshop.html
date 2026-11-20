@@ -199,7 +199,7 @@ main canvas { display: block }
       <div class="row" id="acts-row" title="The machine alone, or in one of its interactions"><span class="lab">interaction</span><div class="btns" id="acts"></div></div>
       <div class="row" id="steps-row" title="The interaction's steps, each tuned alone"><span class="lab">step</span><div class="btns" id="steps"></div></div>
       <div class="row" id="clip-row"><span class="lab">clip</span><div class="picker"><input id="clip-search" placeholder="search clips" autocomplete="off" spellcheck="false"><div id="clip-list"></div></div></div>
-      <div class="row" id="time-row"><button data-act="pause">Pause</button><input id="time" type="range" min="0" max="1" step="0.001" value="0"><span id="clock">0.00 s</span></div>
+      <div class="row" id="time-row"><button data-act="pause">Pause</button><input id="time" type="range" min="0" max="1" step="0.001" value="0"><span id="clock">0.00 s</span><select id="speed"><option value="1">1×</option><option value="0.5">½×</option><option value="0.25">¼×</option><option value="0.1">0.1×</option><option value="0.05">0.05×</option></select></div>
       <div class="row" id="frames-row"><button data-act="back" title="A frame back (,)">◀ frame</button><button data-act="ahead" title="A frame on (.)">frame ▶</button><span class="sp"></span><button data-act="sheet" title="The step at every moment a contact begins or ends, side by side">Key frames</button></div>
       <div class="step">
         <div class="row"><span class="lab">facing</span><input id="turn" type="number" step="1" title="Degrees the body faces from its point's way, left positive"><span class="unit">°</span><span class="sp"></span><span id="held"></span></div>

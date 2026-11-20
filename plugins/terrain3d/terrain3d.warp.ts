@@ -1,17 +1,22 @@
 // terrain3d's ground look as one shared, deterministic field: which texture layer covers each point
 // of the ground, and by how much. It is written twice, here in TS, which the land record answers
-// `layer:<name>` with (`terrain3d.sim.ts`), so the server, the workers and scatter3d read it, and as
+// `layer:<name>` with (`terrain3d.sim.ts`), so the server, the workers and lod3d read it, and as
 // GLSL from the same numbers (`glsl`), which the ground's shader draws (`terrain3d.plugin.ts`). There
 // is no `sin` hash: every bit of the hash is integer arithmetic, which a GPU and JS do the same way.
 //
 // The field's `ground`:
-//   layers       `[{ name, map, normal?, scale, strength?, tri?, sharp?, where?, noise?, edge?, warp? }]`,
+//   layers       `[{ name, <word>, normal?, scale?, strength?, tri?, sharp?, where?, noise?, edge?, warp? }]`,
 //                in order: the first covers everything, and each later one lies over the ones before
-//                it where its mask is.
+//                it where its mask is. A layer is of one word, the one key it gives beside its own
+//                fields (`OWN`): `map`, a picture, is terrain3d's own word, and any other is a word a
+//                plugin `world.terrain3d.mods.behaviors` names delivers (`look`, supershader3d's,
+//                `supershader3d.terrain3d.ts`); a layer of no word, or of two, throws naming it. What
+//                a word's layer draws is the word's; its mask, its noise, its edge and its warp are
+//                every layer's, below.
 //     map, normal  catalogue `texture` entries: the colour (sRGB) and an OpenGL normal map. Every
 //                  layer's maps are drawn into two texture arrays, so the ground binds two maps
 //                  however many layers it has.
-//     scale        metres a repeat.
+//     scale        metres a repeat (a `map` layer's).
 //     strength     the normal map's xy multiplied, 1 when absent.
 //     tri, sharp   projected along all three axes, each axis's share its normal's part to the power
 //                  `sharp` (4 when absent), so a cliff does not stretch the map down its face; else
@@ -47,8 +52,17 @@ const shape = (v: number, lo: number, hi: number) => (lo === hi ? (v >= lo ? 1 :
 
 export type Octave = { freq: number; amp: number; stretch: number[]; rotate: number }
 export type GroundLayer = {
-  name: string; map: string; normal?: string; scale: number; strength?: number; tri?: boolean; sharp?: number
+  name: string; map?: string; normal?: string; scale?: number; strength?: number; tri?: boolean; sharp?: number
   where?: Rule[]; noise?: { freq: number; amp: number }; edge?: number; warp?: Octave[]
+  [word: string]: unknown
+}
+// A layer's own fields: every other key it gives is its word.
+export const OWN = ['name', 'normal', 'scale', 'strength', 'tri', 'sharp', 'where', 'noise', 'edge', 'warp']
+// The word layer `l`, the k-th, is of: throws for a layer of no word or of two.
+export function wordOf(l: GroundLayer, k: number): string {
+  const words = Object.keys(l).filter(key => !OWN.includes(key) && l[key] !== undefined)
+  if (words.length !== 1) throw new Error(`terrain3d ground layer ${k}${l.name ? ` (${l.name})` : ''} ${words.length ? `gives the words ${words.join(', ')}, and a layer is of one word` : 'gives no word: a map, or a word a plugin world.terrain3d.mods.behaviors names delivers'}`)
+  return words[0]
 }
 export type Look = {
   layers: GroundLayer[]; compose?: 'stack' | 'normalise' | 'sharpened'
@@ -162,8 +176,11 @@ export function checked(look: Look, known: readonly string[]) {
     if (!l.name) throw new Error(`${what} has no name`)
     if (names.has(l.name)) throw new Error(`terrain3d ground has two layers ${l.name}`)
     names.add(l.name)
-    if (!l.map) throw new Error(`${what} names no map`)
-    if (!(l.scale > 0)) throw new Error(`${what} scale ${l.scale} is not above 0`)
+    const word = wordOf(l, k)
+    if (word === 'map') {
+      if (!l.map) throw new Error(`${what} names no map`)
+      if (!(l.scale! > 0)) throw new Error(`${what} scale ${l.scale} is not above 0`)
+    }
     ;(l.where ?? []).forEach((r, j) => {
       if (!known.includes(r.q)) throw new Error(`${what} rule ${j} reads ${r.q}, which is none of the land record's keys: ${known.join(', ')}`)
     })

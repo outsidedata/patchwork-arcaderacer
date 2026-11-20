@@ -1,9 +1,23 @@
 {
+  "extends": "arcaderacer.partial_scene.json",
   "world": {
     "seed": 23,
     "course": "tokyo",
     "loader": {
+      "mods": { "shaders": "render3d" },
       "assets": {
+        "splash": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/loading/splash.webp",
+          "for": "ui",
+          "preload": true
+        },
+        "logo": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/loading/logo.webp",
+          "for": "ui",
+          "preload": true
+        },
         "arcaderacer": {
           "type": "json",
           "url": "/games/arcaderacer/assets/arcaderacer.json",
@@ -12,6 +26,11 @@
         "tokyo": {
           "type": "json",
           "url": "/games/arcaderacer/assets/courses/tokyo.json",
+          "preload": true
+        },
+        "ui3d": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/ui3d.json",
           "preload": true
         },
         "intro": {
@@ -24,6 +43,11 @@
           "url": "/games/arcaderacer/assets/fx/fx.json",
           "preload": true
         },
+        "smoke": {
+          "type": "sheet",
+          "url": "/games/arcaderacer/assets/fx/smoke.json",
+          "preload": true
+        },
         "effects": {
           "type": "json",
           "url": "/games/arcaderacer/assets/fx/effects.json",
@@ -32,6 +56,266 @@
         "supercar": {
           "type": "model",
           "url": "/games/arcaderacer/assets/supercar/supercar.glb",
+          "preload": true
+        },
+        "originalcar": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/cars/originalcar.json",
+          "preload": true
+        },
+        "jeep_tj": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/cars/jeep_tj.json",
+          "preload": true
+        },
+        "jeep_tj.body": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/jeep_tj/body.kit.glb",
+          "preload": true
+        },
+        "jeep_tj.body.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/jeep_tj/body.kit.looks.json",
+          "preload": true
+        },
+        "jeep_tj.wheel-left": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/jeep_tj/wheel-left.kit.glb",
+          "preload": true
+        },
+        "jeep_tj.wheel-left.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/jeep_tj/wheel-left.kit.looks.json",
+          "preload": true
+        },
+        "jeep_tj.wheel-right": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/jeep_tj/wheel-right.kit.glb",
+          "preload": true
+        },
+        "jeep_tj.wheel-right.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/jeep_tj/wheel-right.kit.looks.json",
+          "preload": true
+        },
+        "countach": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/cars/countach.json",
+          "preload": true
+        },
+        "countach.body": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/countach/body.kit.glb",
+          "preload": true
+        },
+        "countach.body.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/countach/body.kit.looks.json",
+          "preload": true
+        },
+        "countach.wheel-front-left": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/countach/wheel-front-left.kit.glb",
+          "preload": true
+        },
+        "countach.wheel-front-left.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/countach/wheel-front-left.kit.looks.json",
+          "preload": true
+        },
+        "countach.wheel-front-right": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/countach/wheel-front-right.kit.glb",
+          "preload": true
+        },
+        "countach.wheel-front-right.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/countach/wheel-front-right.kit.looks.json",
+          "preload": true
+        },
+        "countach.wheel-rear-left": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/countach/wheel-rear-left.kit.glb",
+          "preload": true
+        },
+        "countach.wheel-rear-left.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/countach/wheel-rear-left.kit.looks.json",
+          "preload": true
+        },
+        "countach.wheel-rear-right": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/countach/wheel-rear-right.kit.glb",
+          "preload": true
+        },
+        "countach.wheel-rear-right.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/countach/wheel-rear-right.kit.looks.json",
+          "preload": true
+        },
+        "ferrari_f40": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/cars/ferrari_f40.json",
+          "preload": true
+        },
+        "ferrari_f40.body": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/ferrari_f40/body.kit.glb",
+          "preload": true
+        },
+        "ferrari_f40.body.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/ferrari_f40/body.kit.looks.json",
+          "preload": true
+        },
+        "ferrari_f40.wheel-front-left": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/ferrari_f40/wheel-front-left.kit.glb",
+          "preload": true
+        },
+        "ferrari_f40.wheel-front-left.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/ferrari_f40/wheel-front-left.kit.looks.json",
+          "preload": true
+        },
+        "ferrari_f40.wheel-front-right": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/ferrari_f40/wheel-front-right.kit.glb",
+          "preload": true
+        },
+        "ferrari_f40.wheel-front-right.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/ferrari_f40/wheel-front-right.kit.looks.json",
+          "preload": true
+        },
+        "ferrari_f40.wheel-rear-left": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/ferrari_f40/wheel-rear-left.kit.glb",
+          "preload": true
+        },
+        "ferrari_f40.wheel-rear-left.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/ferrari_f40/wheel-rear-left.kit.looks.json",
+          "preload": true
+        },
+        "ferrari_f40.wheel-rear-right": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/ferrari_f40/wheel-rear-right.kit.glb",
+          "preload": true
+        },
+        "ferrari_f40.wheel-rear-right.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/ferrari_f40/wheel-rear-right.kit.looks.json",
+          "preload": true
+        },
+        "porsche_911": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/cars/porsche_911.json",
+          "preload": true
+        },
+        "porsche_911.body": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/porsche_911/body.kit.glb",
+          "preload": true
+        },
+        "porsche_911.body.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/porsche_911/body.kit.looks.json",
+          "preload": true
+        },
+        "porsche_911.wheel-left": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/porsche_911/wheel-left.kit.glb",
+          "preload": true
+        },
+        "porsche_911.wheel-left.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/porsche_911/wheel-left.kit.looks.json",
+          "preload": true
+        },
+        "porsche_911.wheel-right": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/porsche_911/wheel-right.kit.glb",
+          "preload": true
+        },
+        "porsche_911.wheel-right.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/porsche_911/wheel-right.kit.looks.json",
+          "preload": true
+        },
+        "skyline_gtr": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/cars/skyline_gtr.json",
+          "preload": true
+        },
+        "skyline_gtr.body": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/skyline_gtr/body.kit.glb",
+          "preload": true
+        },
+        "skyline_gtr.body.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/skyline_gtr/body.kit.looks.json",
+          "preload": true
+        },
+        "skyline_gtr.wheel-left": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/skyline_gtr/wheel-left.kit.glb",
+          "preload": true
+        },
+        "skyline_gtr.wheel-left.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/skyline_gtr/wheel-left.kit.looks.json",
+          "preload": true
+        },
+        "skyline_gtr.wheel-right": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/skyline_gtr/wheel-right.kit.glb",
+          "preload": true
+        },
+        "skyline_gtr.wheel-right.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/skyline_gtr/wheel-right.kit.looks.json",
+          "preload": true
+        },
+        "volvo_240": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/cars/volvo_240.json",
+          "preload": true
+        },
+        "volvo_240.body": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/volvo_240/body.kit.glb",
+          "preload": true
+        },
+        "volvo_240.body.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/volvo_240/body.kit.looks.json",
+          "preload": true
+        },
+        "volvo_240.wheel-left": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/volvo_240/wheel-left.kit.glb",
+          "preload": true
+        },
+        "volvo_240.wheel-left.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/volvo_240/wheel-left.kit.looks.json",
+          "preload": true
+        },
+        "volvo_240.wheel-right": {
+          "type": "binary",
+          "url": "/games/arcaderacer/assets/volvo_240/wheel-right.kit.glb",
+          "preload": true
+        },
+        "volvo_240.wheel-right.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/volvo_240/wheel-right.kit.looks.json",
+          "preload": true
+        },
+        "kit.looks": {
+          "type": "json",
+          "url": "/games/arcaderacer/assets/kit.looks.json",
           "preload": true
         },
         "Ithaca": {
@@ -49,60 +333,60 @@
         },
         "concrete.colour": {
           "type": "texture",
-          "url": "/games/arcaderacer/assets/surfaces/concrete-color-1024.webp",
+          "url": "/games/arcaderacer/assets/surfaces/concrete-color-1024.ktx2",
           "wrap": "repeat",
           "anisotropy": 8
         },
         "concrete.normal": {
           "type": "texture",
-          "url": "/games/arcaderacer/assets/surfaces/concrete-normal-1024.webp",
+          "url": "/games/arcaderacer/assets/surfaces/concrete-normal-1024.ktx2",
           "space": "linear",
           "wrap": "repeat",
           "anisotropy": 8
         },
         "concrete.roughness": {
           "type": "texture",
-          "url": "/games/arcaderacer/assets/surfaces/concrete-roughness-1024.webp",
+          "url": "/games/arcaderacer/assets/surfaces/concrete-roughness-1024.ktx2",
           "space": "linear",
           "wrap": "repeat",
           "anisotropy": 8
         },
         "lawn.colour": {
           "type": "texture",
-          "url": "/games/arcaderacer/assets/surfaces/lawn-color-1024.webp",
+          "url": "/games/arcaderacer/assets/surfaces/lawn-color-1024.ktx2",
           "wrap": "repeat",
           "anisotropy": 8
         },
         "lawn.normal": {
           "type": "texture",
-          "url": "/games/arcaderacer/assets/surfaces/lawn-normal-1024.webp",
+          "url": "/games/arcaderacer/assets/surfaces/lawn-normal-1024.ktx2",
           "space": "linear",
           "wrap": "repeat",
           "anisotropy": 8
         },
         "lawn.roughness": {
           "type": "texture",
-          "url": "/games/arcaderacer/assets/surfaces/lawn-roughness-1024.webp",
+          "url": "/games/arcaderacer/assets/surfaces/lawn-roughness-1024.ktx2",
           "space": "linear",
           "wrap": "repeat",
           "anisotropy": 8
         },
         "asphalt.colour": {
           "type": "texture",
-          "url": "/games/arcaderacer/assets/surfaces/asphalt-color-1024.webp",
+          "url": "/games/arcaderacer/assets/surfaces/asphalt-color-1024.ktx2",
           "wrap": "repeat",
           "anisotropy": 8
         },
         "asphalt.normal": {
           "type": "texture",
-          "url": "/games/arcaderacer/assets/surfaces/asphalt-normal-1024.webp",
+          "url": "/games/arcaderacer/assets/surfaces/asphalt-normal-1024.ktx2",
           "space": "linear",
           "wrap": "repeat",
           "anisotropy": 8
         },
         "asphalt.roughness": {
           "type": "texture",
-          "url": "/games/arcaderacer/assets/surfaces/asphalt-roughness-1024.webp",
+          "url": "/games/arcaderacer/assets/surfaces/asphalt-roughness-1024.ktx2",
           "space": "linear",
           "wrap": "repeat",
           "anisotropy": 8
@@ -120,16 +404,28 @@
       ]
     },
     "shipped": {
-      "plugins": ["drive", "fx", "land", "air", "match"]
+      "plugins": ["drive", "fx", "land", "air", "match", "interface"]
+    },
+    "ui3d": {
+      "overlay": [0.1, 200],
+      "keys": {
+        "next": ["ArrowRight", "ArrowDown"],
+        "previous": ["ArrowLeft", "ArrowUp"],
+        "press": ["Enter"]
+      },
+      "looks": "ui3d",
+      "mods": { "behaviors": ["interface", "particle3d"] }
     }
   },
   "plugins": [
     "loader",
     "scenemanager",
+    "ui3d",
     "particle3d",
     "dither3d",
     "render3d",
     "cull3d",
+    "supershader3d",
     "cutscene",
     "ui",
     "shipped"
@@ -177,13 +473,11 @@
     { "is": "curtain" },
     { "is": "titlecard" },
     { "is": "cutscene" },
-    { "is": "rival", "grid": 0, "name": "rival1" },
-    { "is": "rival", "grid": 1, "name": "rival2" },
-    { "is": "rival", "grid": 2, "name": "rival3" },
-    { "is": "rival", "grid": 3, "name": "rival4" },
-    { "is": "rival", "grid": 4, "name": "rival5" },
-    { "is": "rival", "grid": 5, "name": "rival6" },
-    { "is": "rival", "grid": 6, "name": "rival7" },
-    { "is": "rival", "grid": 7, "name": "rival8" }
+    { "is": "rival", "grid": 0, "name": "rival1", "car": "jeep_tj" },
+    { "is": "rival", "grid": 1, "name": "rival2", "car": "countach" },
+    { "is": "rival", "grid": 2, "name": "rival3", "car": "ferrari_f40" },
+    { "is": "rival", "grid": 3, "name": "rival4", "car": "porsche_911" },
+    { "is": "rival", "grid": 4, "name": "rival5", "car": "skyline_gtr" },
+    { "is": "rival", "grid": 5, "name": "rival6", "car": "volvo_240" }
   ]
 }

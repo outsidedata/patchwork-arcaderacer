@@ -124,6 +124,10 @@
 // key light less the lift, all put back after, so a refresh during a flash does not hold the flash
 // for as long as it stands.
 //
+// `aim(way)` shines the key light from `way` ([x, y, z], three's axes, made unit) in place of the sun or the moon,
+// at the same colour and intensity, its shadow box turned with it, while the dome is drawn as the row's time has it:
+// a shot of an underside lit from below. `aim()` gives it back to the sun and the moon.
+//
 // It hands out `light()`, for the sea, the weather, the clouds and whatever is lit apart from the
 // scene, a cockpit drawn in render3d's overlay: `{ sun, sunColor, zenith, horizon, fog, key, keyColor,
 // sky, ground, night }`, the sun's direction, its colour times its share of the key light and dark (0
@@ -373,6 +377,8 @@ export function skydome3d() {
   let b: Built | undefined
   let probe: ReturnType<typeof read> | undefined
   let shown = false
+  // the way the key light shines from when `aim` names one, in place of the sun's or the moon's
+  let aimed: number[] | undefined
   const splices = new Map<string, DomeSplice>()
 
   // The dome's shader with every splice handed over so far, and their uniforms beside its own.
@@ -449,7 +455,7 @@ export function skydome3d() {
     const steady = Math.abs(sunKey - moonKey) * dark
     key.intensity = steady + lift
     key.color.copy(body === 'sun' ? sunColour : moonColour)
-    const toward = body === 'sun' ? s : m
+    const toward = aimed ?? (body === 'sun' ? s : m)
     hemi.color.copy(horizon)
     hemi.groundColor.set(look.ground).multiplyScalar(dark)
     hemi.intensity = (look.hemiNight + look.hemiDay * day) * dark
@@ -584,6 +590,12 @@ export function skydome3d() {
     },
     light: () => (shown ? b!.light : undefined),
     sky: () => (shown ? probe : undefined),
+    aim(way?: number[]) {
+      if (way === undefined) { aimed = undefined; return }
+      const n = Math.hypot(way[0], way[1], way[2])
+      if (!(n > 0)) throw new Error(`skydome3d: aim is a way the key light shines from, [x, y, z] not all 0, not ${JSON.stringify(way)}`)
+      aimed = [way[0] / n, way[1] / n, way[2] / n]
+    },
     close() {
       if (!b) return
       const { scene, dome, key, hemi, fog, env } = b

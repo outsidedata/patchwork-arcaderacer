@@ -7,7 +7,7 @@ import { expect, test } from 'vitest'
 import { boot, type Scene, type W } from '#engine/engine.ts'
 import { loader, written } from '#plugins/loader/loader.sim.ts'
 import {
-  analyse, depthAt, edits, heightAt, land, normalAt, occludes, paintAt, ramp, rawAt, ray, restsAt,
+  analyse, depthAt, edits, ERASED, heightAt, land, normalAt, occludes, paintAt, ramp, rawAt, ray, restsAt,
   type Field, type Node, type Program, type Stroke,
 } from './terrain3d.sim.ts'
 
@@ -21,7 +21,7 @@ const fieldOf = (more: Partial<Field> = {}, program: Partial<Program> = {}): Fie
   program: { world: 600, hscale: 120, sea: 0.5, flood: false, out: 'spawn', nodes: HILLS, ...program },
   analysis: ANALYSIS,
   ground: { layers: [{ name: 'grass', map: 'grass', scale: 30 }, { name: 'rock', map: 'rock', scale: 30, where: [{ q: 'slope', lo: 0.3, hi: 0.45 }] }] },
-  surfaces: { road: { colour: '#6d6459', cover: 0, grip: 0.6, drag: 0.02, spray: 'grit', mark: 0 } },
+  surfaces: { road: { colour: '#6d6459', cover: 0, grip: 0.6, drag: 0.02, drivers: { tint: 7169113, grit: 1 }, mark: 0 } },
   layers: [],
   ...more,
 })
@@ -115,14 +115,14 @@ test('a road painted in the field is cut level across the hillside, and says it 
     const on = paintAt(w, x, z)
     expect(on.surface).toBe('road')
     expect(on.weight).toBeGreaterThan(0.99)
-    expect(on).toMatchObject({ spray: 'grit', mark: 0 })
+    expect(on).toMatchObject({ drivers: { tint: 7169113, grit: 1 }, mark: 0 })
     expect(on.cover).toBeCloseTo(0, 2)
     expect(on.grip).toBeCloseTo(0.6, 2)
     expect(on.drag).toBeCloseTo(0.02, 4)
     expect(ramp(w, { q: 'surface:road', lo: 0.5, hi: 1 }, x, z)).toBe(1)
   }
   // Off it: unpainted ground.
-  expect(paintAt(w, 0, -60)).toEqual({ weight: 0, surface: undefined, cover: 1, grip: 1, drag: 0, spray: undefined, mark: undefined })
+  expect(paintAt(w, 0, -60)).toEqual({ weight: 0, surface: undefined, cover: 1, grip: 1, drag: 0, drivers: undefined, mark: undefined })
   expect(ramp(w, { q: 'surface:road', lo: 0.5, hi: 1 }, 0, -60)).toBe(0)
 })
 
@@ -220,6 +220,23 @@ test('the brush: a stroke raises the ground under it and says where, discarding 
   const saved = land({ ...field, layers: [{ ...field.layers[0], strokes: [raise] }] }, l)
   expect(saved.unsaved(0)).toBeUndefined()
   expect(saved.height(50.5, 50.5)).toBe(l.height(50.5, 50.5))
+})
+
+test('an erase stroke takes the ground away: its heights answer ERASED, and the ground round it is as it was', () => {
+  const field = fieldOf({ layers: [{ at: [0, 0], size: 64, px: 64, strokes: [] }] })
+  const l = land(field)
+  const out = l.height(20.5, 0.5), edge = l.height(6.5, 0.5)
+  const erase: Stroke = { verb: 'erase', radius: 4, hardness: 1, strength: 0, level: 0, surface: '', path: [[-2, 0], [2, 0]] }
+  l.stroke(0, erase)
+  expect(l.erased(0.5, 0.5)).toBe(true)
+  expect(l.height(0.5, 0.5)).toBe(ERASED)
+  expect(l.raw(0.5, 0.5)).toBe(ERASED)
+  expect(l.whole.height(0.5, 0.5)).toBeGreaterThan(ERASED)
+  expect(l.erased(20.5, 0.5)).toBe(false)
+  expect(l.height(20.5, 0.5)).toBe(out)
+  expect(l.height(6.5, 0.5)).toBe(edge)
+  l.discard(0)
+  expect(l.height(0.5, 0.5)).toBeGreaterThan(ERASED)
 })
 
 test('a moon of craters has bowls sunk below its plain, with rims raised round them', () => {

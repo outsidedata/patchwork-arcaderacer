@@ -9,7 +9,7 @@
 //              the line (`terrain3d.hitscan3d.ts`).
 //   solids     `(w, from, dir, far) → Shape[]`, every solid standing on it, a trunk, a boulder, a wall,
 //              that the line may cross within `far`, as shapes (Shapes, below), named as one plugin or
-//              a list of them, each one's solids taken (`scatter3d.hitscan3d.ts`,
+//              a list of them, each one's solids taken (`lod3d.hitscan3d.ts`,
 //              `shapes3d.hitscan3d.ts`).
 //   bodies     `(w) → { id, kind, pos, shapes }[]`, every body that could be hit, `pos` its feet and
 //              `shapes` what of it a shot meets, in the world, each a shape named by its `part`,

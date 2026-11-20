@@ -65,8 +65,8 @@ turns each model bone to follow its body.
 - **anim**: the mod `anim.ragdoll3d.ts` (`mods: { model: 'anim', pose: 'anim' }`) hands the model and
   draws the death pose; anim stops drawing a limp row; anim's `ends` measure every bone.
 - **terrain3d**: the mod `terrain3d.ragdoll3d.ts` (`mods: { land: 'terrain3d' }`) is the ground.
-- **scatter3d**: the mod `scatter3d.ragdoll3d.ts` (`mods: { solids: 'scatter3d' }`) pushes bodies out
-  of trunks.
+- **lod3d**: the mod `lod3d.ragdoll3d.ts` (`mods: { solids: 'lod3d' }`) pushes bodies out of the
+  instances this page's lod3d holds of every row that gives `solid`, the trunks a seat sees.
 - **walker**: the mod `walker.ragdoll3d.ts` (`mods: { gravity: 'walker' }`) is the gravity each kind
   walked under.
 - **hitscan3d**: ragdoll3d's mod `ragdoll3d.hitscan3d.ts` (`world.hitscan3d.mods: { bodies:

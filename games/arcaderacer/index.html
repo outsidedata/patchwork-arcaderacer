@@ -14,18 +14,18 @@
       // The page holds one client, for the scene the seat is on: `view` makes it when the seat
       // arrives and closes it when the seat leaves, and `mount` gives each one its canvases: the
       // game's, and the UI's over it in the same grid cell, for a scene that names each. The seat is
-      // the game's match addon's, which holds who races.
+      // the game's match addon's `solo`, one player in one tab: no lobby, the pick starts the race.
       import { boot } from '#engine/engine.ts'
       import { load, manager, link, view } from '#addons/scenemanager/scenemanager.addon.ts'
       import { loopback } from '#addons/loopback/loopback.addon.ts'
-      import { match } from './addons/match/match.addon.ts'
+      import { solo } from './addons/match/match.addon.ts'
       import { sim } from './arcaderacer.sim.ts'
       import file from './arcaderacer.scene.json'
 
       const dt = file.prefabs.engine.dt
       const truth = boot(file, sim)
       await load(truth, import.meta.url)
-      const page = view(link(loopback(match(manager(truth)))), file, import.meta.url, (me, scene) => {
+      const page = view(link(loopback(solo(manager(truth)))), file, import.meta.url, (me, scene) => {
         for (const surface of [me.plugins.render3d ?? me.plugins.render2d, me.plugins.ui]) {
           if (!surface) continue
           const canvas = document.createElement('canvas')

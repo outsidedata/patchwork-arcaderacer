@@ -36,29 +36,32 @@ to measure it, and never call it smooth yourself.
 - **A thing moved on a frame that took no step** (an animation, a particle, a camera turned on the page's
   clock) is drawn where it is set for the rest of that step and all of the next, and between steps
   again once a whole step has gone by with only the steps moving it (`engine/browser.ts`).
-- **A thing a look moves on the page's clock off a row it rides** (a rig of parts pulled about by their
-  own forces, a trailing cable, a part that swings behind its row) reads that row as it is drawn this
-  frame: its position and its turn both `between` the last two steps (`plugins.wire.between`), the
-  same blend render3d draws its parent with, never the newest step's numbers and never one blended
-  and the other not. Any going or spin it takes from the row is the difference between two drawn
-  frames, never between numbers that change only on the frame a step lands: those read 0 on every
-  frame of no step and a whole step's worth on the one that takes it, a kick once a step. Canyon
-  racer's pod rig (`games/canyonracer/plugins/pod/pod.plugin.ts`, 2026-10-28) placed its engines and
-  cockpit off the pod's blended position but its newest turn, and took the pod's spin from that turn
-  frame to frame: the parts swung off the pod between steps and were kicked once a step.
-- **Its blend is render3d's, to the bit.** The share of the way between the last two steps is
-  `(n − 1 + between − was) / (n − was)`, `was` the step render3d saw on the frame before the newest
-  step's (`steps`, `engine/browser.ts`), never `between` alone: they are the same only when the frame
-  that took the newest step took one step. Keep the step each of the two places came from beside it.
-- **It is stepped by the steps' clock, never the page's.** The time a frame's rig moves by is how far
-  the moment drawn moved since the frame before, `(n − 1 + between) × dt` now less the same then, not
-  `performance.now()` between frames. A frame that runs a step reaches the look later than one that
-  runs none, by however long the step took, so above 60 frames a second the page's clock between
-  frames runs long, short, long, short while the drawn row moves the same each frame; a going taken as
-  the distance drawn over the page's time then swings each frame, and every damper on it kicks. At 60,
-  every frame runs a step and the page's clock is even, so it looks right there and judders only on a
-  faster display. Canyon racer's pod rig (`pod.plugin.ts`, 2026-10-28) took the pod's going over the
-  page's clock, and its handler and leash dampers shook the engines every frame at 120 Hz.
+- **A thing a look moves itself** (a gait, a rig of parts pulled about by their own forces, a trailing
+  cable, a whip, a spin, a camera on springs) is moved only on a frame that took a step, from the
+  newest rows, by the seconds of the steps taken (`(n − was) × dt`, `was` the step it last moved on),
+  and is not touched on a frame that took none. render3d then draws every part of it between the
+  steps, once, as it draws everything else. Never step it by the page's clock (`performance.now()`
+  between frames): it then moves on frames of no step and drops out of the blend, drawn where it is set,
+  a step jumping under it. Any going or spin it takes from the row is the difference between the rows
+  of two steps over the seconds between them.
+- **A look never blends a row between steps itself.** No reading `wire.between` to place a thing,
+  no `(n − 1 + between) × dt` clock, no copy of render3d's share. render3d blends every object of its
+  scene, the camera among them, whatever the look set it from (`steps`, `engine/browser.ts`): a thing
+  placed off a row the look already blended is blended a second time. That is a mistake made twice, and
+  the second time it broke a game:
+  - Mech (`games/mech`, 2026-11-19): to stop the legs moving on the page's clock, legs3d, the chase and
+    foot cameras, `base`, `modules`, `whip3d` and `mount3d` were made to read each row "as render3d
+    would draw it this frame" (a `drawn()` that blended `pos`, `yaw` and `heading` between the last two
+    steps by render3d's share) and to step by "the moment drawn", `(n − 1 + between) × dt`. render3d
+    then blended those poses again. The root was drawn two steps behind, each hip, knee and ankle was
+    mixed between poses solved for other places of the body so the legs no longer reached their planted
+    feet, and on every frame that took two steps or none the nodes fell out of the blend and were drawn
+    as set, so the walk flipped between the two. The fix was to delete the helper and do nothing the
+    renderer does: pose on a frame that took a step, from the newest row, and leave the rest to render3d
+    (`games/mech/plugins/mechs/mechs.steps.ts`).
+  - Canyon racer's pod rig (`games/canyonracer/plugins/pod/pod.plugin.ts`, 2026-10-28) was given the same
+    blended row and moment clock, by an earlier version of this guide.
+  The tell, in code: a look that reads `wire.between`, or imports a helper that does. Delete it.
 - **A thing new on the newest step** is not drawn until the clock reaches its step, then drawn where it
   was set (`engine/browser.ts`).
 - **The steps gone back** (the recorder's seek): everything drawn where it is set.
@@ -104,6 +107,16 @@ export function tick(row: Row, plugins: Plugins) {
 Every other mesh that jumps with it (the player's body for the other seats, a held thing) flags itself
 the same way, off the same count.
 
+What is moved on the GPU hangs off those objects, and is moved as the scene is drawn, where every bone
+stands between the steps:
+
+- fabric3d reads the flag: a fabric pinned to an object that raises `userData.teleport`, or to one
+  under an object that does, is laid again where the object now is. Unflagged, its pinned points are
+  carried from where they were to where they are over that frame's substeps, the rest of the cloth
+  pulled after them.
+- hair3d needs no flag: a lock whose root is more than a metre from where it was the frame before is
+  laid afresh, not swung.
+
 ## The rules that keep it smooth
 
 - **Turns are set whole**, as a quaternion: `quaternion.setFromAxisAngle`, `quaternion.fromArray`.
@@ -137,9 +150,8 @@ the same way, off the same count.
 | A thing that jumps every step (a lamp pool) streaks | blended | leave its flag up |
 | A turn spins the long way, or a sprite, camera or mesh wiggles | `.rotation` set (`rotation.y = …`, `rotation.set(…)`) | the whole quaternion, `quaternion.setFromAxisAngle`: this is the cause, every time |
 | A look's own smoothing lags and wobbles | a second blend over render3d's | write the object from the row as it is |
-| Parts a look moves on the page's clock (a rig, a trailing part) swing off what they ride between steps, or are kicked once a step | they read the row's newest turn (or position) while the parent is drawn between steps, or take a spin or going from numbers that change only on a step's frame | read the row's position and turn both `between` the last two steps, and take any going or spin from those drawn frames |
-| Smooth at 60 frames a second, and a rig or trailing part shakes on a faster display | the look steps it, or takes a going from the drawn row, by the page's clock (`performance.now()` between frames), which runs long and short on frames that do and don't run a step | step it by how far the moment drawn moved, `(n − 1 + between) × dt`, frame to frame |
-| Parts a look draws between steps sit off what they ride on a frame after one that took two steps | the look blends by `between` alone | render3d's share, `(n − 1 + between − was) / (n − was)` |
+| Parts a look moves (a gait, a rig, a trailing part, a camera on springs) swing off what they ride, or are kicked once a step | the look moves them on the page's clock, on frames of no step, so they drop out of render3d's blend while what they ride is blended | move them only on a frame that took a step, from the newest rows, by the steps' seconds, and touch nothing on other frames |
+| A rig lags its row, its parts don't meet (feet sliding, knees wrong), and it flips between two looks as frames take two steps or none | the look blends the row between steps itself (`wire.between`, a `drawn()` helper, `(n − 1 + between) × dt`) and render3d blends it again | delete the look's blend: pose from the newest row on a step's frame and let render3d alone draw it between |
 | The flag on a group, and a child still slides | the child moved itself | flag the child |
 | A jump missed on some frames | a one-step boolean on the row | a count |
 | A thing jumps a step ahead of what it rides, now and then (a driver in a car) | its look recomputes it every frame through a matrix round trip, reading back what it wrote the frame before (`decompose` of its own `matrixWorld`, its scale kept from it), so its numbers change in the last bit on frames of no step and it drops out of the blend | set its `position` and `quaternion` straight from the inputs, and never read back its own scale: the same inputs give the same bits every frame |

@@ -1,0 +1,10 @@
+[
+  { "name": "blast-0.03", "file": "explosions.json", "effect": "blast", "camera": [10, 3.5, 14], "target": [0, 2.4, 0], "preroll": 0.03 },
+  { "name": "blast-0.1", "file": "explosions.json", "effect": "blast", "camera": [10, 3.5, 14], "target": [0, 2.4, 0], "preroll": 0.1 },
+  { "name": "blast-0.25", "file": "explosions.json", "effect": "blast", "camera": [10, 3.5, 14], "target": [0, 2.4, 0], "preroll": 0.25 },
+  { "name": "blast-0.5", "file": "explosions.json", "effect": "blast", "camera": [10, 3.5, 14], "target": [0, 2.4, 0], "preroll": 0.5 },
+  { "name": "blast-0.9", "file": "explosions.json", "effect": "blast", "camera": [10, 3.5, 14], "target": [0, 2.4, 0], "preroll": 0.9 },
+  { "name": "blast-1.5", "file": "explosions.json", "effect": "blast", "camera": [10, 3.5, 14], "target": [0, 2.4, 0], "preroll": 1.5 },
+  { "name": "blast-2.5", "file": "explosions.json", "effect": "blast", "camera": [10, 3.5, 14], "target": [0, 2.4, 0], "preroll": 2.5 },
+  { "name": "blast-4.5", "file": "explosions.json", "effect": "blast", "camera": [10, 3.5, 14], "target": [0, 2.4, 0], "preroll": 4.5 }
+]

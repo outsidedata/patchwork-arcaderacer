@@ -1,0 +1,175 @@
+{
+  "cap": 800,
+  "ppm": 256,
+  "flipbooks": [
+    {
+      "name": "tongues",
+      "clip": "lick",
+      "frames": 32,
+      "loop": 8,
+      "across": 8,
+      "cell": [256, 256],
+      "plane": 2,
+      "samples": 8,
+      "fps": 30,
+      "pivot": [0.5, 0.95],
+      "nodes": [
+        { "id": "coord", "type": "ShaderNodeTexCoord" },
+        { "id": "xyz", "type": "ShaderNodeSeparateXYZ", "inputs": { "Vector": { "link": "coord.Object" } } },
+        { "id": "h", "type": "ShaderNodeMath", "props": { "operation": "ADD" }, "inputs": { "0": { "link": "xyz.Y" }, "1": 0.92 } },
+
+        { "id": "scroll", "type": "ShaderNodeVectorMath", "props": { "operation": "ADD" },
+          "inputs": { "0": { "link": "coord.Object" }, "1": { "keys": [[0, [0, 0, 0]], [1, [0, -3.0, 0]]] } } },
+        { "id": "stretch", "type": "ShaderNodeVectorMath", "props": { "operation": "MULTIPLY" },
+          "inputs": { "0": { "link": "scroll.Vector" }, "1": [3.4, 1.0, 1] } },
+        { "id": "lick", "type": "ShaderNodeTexNoise", "props": { "noise_dimensions": "4D", "noise_type": "FBM" },
+          "inputs": { "Vector": { "link": "stretch.Vector" }, "W": { "keys": [[0, 0], [1, 1.8]] }, "Scale": 1.7, "Detail": 7, "Roughness": 0.6, "Lacunarity": 2.2, "Distortion": 0.5 } },
+        { "id": "sway", "type": "ShaderNodeTexNoise", "props": { "noise_dimensions": "4D", "noise_type": "FBM" },
+          "inputs": { "Vector": { "link": "scroll.Vector" }, "W": { "keys": [[0, 20], [1, 21.4]] }, "Scale": 0.9, "Detail": 2, "Roughness": 0.5, "Lacunarity": 2, "Distortion": 0 } },
+        { "id": "swayC", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY_ADD" }, "inputs": { "0": { "link": "sway.Fac" }, "1": 0.6, "2": -0.3 } },
+        { "id": "swayH", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY" }, "inputs": { "0": { "link": "swayC.Value" }, "1": { "link": "h.Value" } } },
+        { "id": "xw", "type": "ShaderNodeMath", "props": { "operation": "ADD" }, "inputs": { "0": { "link": "xyz.X" }, "1": { "link": "swayH.Value" } } },
+        { "id": "ax", "type": "ShaderNodeMath", "props": { "operation": "ABSOLUTE" }, "inputs": { "0": { "link": "xw.Value" } } },
+
+        { "id": "narrow", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY_ADD", "use_clamp": true }, "inputs": { "0": { "link": "h.Value" }, "1": -0.38, "2": 0.9 } },
+        { "id": "ratio", "type": "ShaderNodeMath", "props": { "operation": "DIVIDE" }, "inputs": { "0": { "link": "ax.Value" }, "1": { "link": "narrow.Value" } } },
+        { "id": "ratio2", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY" }, "inputs": { "0": { "link": "ratio.Value" }, "1": { "link": "ratio.Value" } } },
+        { "id": "body", "type": "ShaderNodeMath", "props": { "operation": "SUBTRACT" }, "inputs": { "0": 1, "1": { "link": "ratio2.Value" } } },
+
+        { "id": "noisy", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY_ADD" }, "inputs": { "0": { "link": "lick.Fac" }, "1": 2.7, "2": { "link": "body.Value" } } },
+        { "id": "cool", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY_ADD" }, "inputs": { "0": { "link": "h.Value" }, "1": -0.5, "2": { "link": "noisy.Value" } } },
+        { "id": "cut", "type": "ShaderNodeMath", "props": { "operation": "SUBTRACT" }, "inputs": { "0": { "link": "cool.Value" }, "1": 1.45 } },
+
+        { "id": "footA", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY" }, "inputs": { "0": { "link": "h.Value" }, "1": 2.2 } },
+        { "id": "footU", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY_ADD", "use_clamp": true }, "inputs": { "0": { "link": "ratio2.Value" }, "1": -0.7, "2": { "link": "footA.Value" } } },
+        { "id": "footS", "type": "ShaderNodeMath", "props": { "operation": "SMOOTH_MIN" }, "inputs": { "0": { "link": "footU.Value" }, "1": 1, "2": 0.4 } },
+        { "id": "foot", "type": "ShaderNodeMath", "props": { "operation": "POWER" }, "inputs": { "0": { "link": "footS.Value" }, "1": 0.6 } },
+        { "id": "footed", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY" }, "inputs": { "0": { "link": "cut.Value" }, "1": { "link": "foot.Value" } } },
+        { "id": "top", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY_ADD", "use_clamp": true }, "inputs": { "0": { "link": "h.Value" }, "1": -3.5, "2": 6.4 } },
+        { "id": "topped", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY" }, "inputs": { "0": { "link": "footed.Value" }, "1": { "link": "top.Value" } } },
+        { "id": "heat", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY", "use_clamp": true }, "inputs": { "0": { "link": "topped.Value" }, "1": 1.4 } },
+        { "id": "core", "type": "ShaderNodeMath", "props": { "operation": "POWER" }, "inputs": { "0": { "link": "heat.Value" }, "1": 2.5 } }
+      ],
+      "images": [
+        {
+          "file": "tongues.png",
+          "channels": [
+            { "field": "heat.Value", "op": "value" },
+            { "field": "core.Value", "op": "glow", "radius": 2, "gain": 1.2, "keep": true },
+            { "field": "heat.Value", "op": "glow", "radius": 7, "gain": 1.4, "keep": false },
+            { "field": "heat.Value", "op": "glow", "radius": 3, "gain": 2.5, "keep": true }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "coals",
+      "clip": "smoulder",
+      "frames": 32,
+      "loop": 8,
+      "across": 8,
+      "cell": [256, 256],
+      "plane": 2,
+      "samples": 8,
+      "fps": 30,
+      "pivot": [0.5, 0.5],
+      "nodes": [
+        { "id": "coord", "type": "ShaderNodeTexCoord" },
+        { "id": "xyz", "type": "ShaderNodeSeparateXYZ", "inputs": { "Vector": { "link": "coord.Object" } } },
+        { "id": "mx", "type": "ShaderNodeMath", "props": { "operation": "DIVIDE" }, "inputs": { "0": { "link": "xyz.X" }, "1": 0.9 } },
+        { "id": "my", "type": "ShaderNodeMath", "props": { "operation": "DIVIDE" }, "inputs": { "0": { "link": "xyz.Y" }, "1": 0.55 } },
+        { "id": "mx2", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY" }, "inputs": { "0": { "link": "mx.Value" }, "1": { "link": "mx.Value" } } },
+        { "id": "my2", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY" }, "inputs": { "0": { "link": "my.Value" }, "1": { "link": "my.Value" } } },
+        { "id": "r2", "type": "ShaderNodeMath", "props": { "operation": "ADD" }, "inputs": { "0": { "link": "mx2.Value" }, "1": { "link": "my2.Value" } } },
+        { "id": "rough", "type": "ShaderNodeTexNoise", "props": { "noise_dimensions": "3D", "noise_type": "FBM" },
+          "inputs": { "Vector": { "link": "coord.Object" }, "Scale": 3, "Detail": 4, "Roughness": 0.55, "Lacunarity": 2, "Distortion": 0 } },
+        { "id": "mound0", "type": "ShaderNodeMath", "props": { "operation": "SUBTRACT" }, "inputs": { "0": 1, "1": { "link": "r2.Value" } } },
+        { "id": "mound1", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY_ADD" }, "inputs": { "0": { "link": "rough.Fac" }, "1": 0.7, "2": { "link": "mound0.Value" } } },
+        { "id": "mound", "type": "ShaderNodeMath", "props": { "operation": "SUBTRACT" }, "inputs": { "0": { "link": "mound1.Value" }, "1": 0.35 } },
+        { "id": "below", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY_ADD", "use_clamp": true }, "inputs": { "0": { "link": "xyz.Y" }, "1": -20, "2": 1 } },
+        { "id": "upper", "type": "ShaderNodeMath", "props": { "operation": "SUBTRACT", "use_clamp": true }, "inputs": { "0": 1, "1": { "link": "below.Value" } } },
+        { "id": "shape", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY" }, "inputs": { "0": { "link": "mound.Value" }, "1": { "link": "upper.Value" } } },
+        { "id": "cover", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY", "use_clamp": true }, "inputs": { "0": { "link": "shape.Value" }, "1": 10 } },
+
+        { "id": "bend", "type": "ShaderNodeTexNoise", "props": { "noise_dimensions": "3D", "noise_type": "FBM" },
+          "inputs": { "Vector": { "link": "coord.Object" }, "Scale": 2.5, "Detail": 3, "Roughness": 0.55, "Lacunarity": 2, "Distortion": 0 } },
+        { "id": "bendC", "type": "ShaderNodeVectorMath", "props": { "operation": "SUBTRACT" }, "inputs": { "0": { "link": "bend.Color" }, "1": [0.5, 0.5, 0.5] } },
+        { "id": "bent", "type": "ShaderNodeVectorMath", "props": { "operation": "MULTIPLY_ADD" }, "inputs": { "0": { "link": "bendC.Vector" }, "1": [0.35, 0.35, 0], "2": { "link": "coord.Object" } } },
+        { "id": "lumps", "type": "ShaderNodeTexVoronoi", "props": { "voronoi_dimensions": "2D", "feature": "F1" },
+          "inputs": { "Vector": { "link": "bent.Vector" }, "Scale": 4.5, "Randomness": 1 } },
+        { "id": "seams", "type": "ShaderNodeTexVoronoi", "props": { "voronoi_dimensions": "2D", "feature": "DISTANCE_TO_EDGE" },
+          "inputs": { "Vector": { "link": "bent.Vector" }, "Scale": 4.5, "Randomness": 1 } },
+        { "id": "dome", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY_ADD", "use_clamp": true }, "inputs": { "0": { "link": "lumps.Distance" }, "1": -1.6, "2": 0.9 } },
+        { "id": "crack", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY_ADD", "use_clamp": true }, "inputs": { "0": { "link": "seams.Distance" }, "1": -14, "2": 1 } },
+        { "id": "breath", "type": "ShaderNodeTexNoise", "props": { "noise_dimensions": "4D", "noise_type": "FBM" },
+          "inputs": { "Vector": { "link": "coord.Object" }, "W": { "keys": [[0, 0], [1, 1.2]] }, "Scale": 2.2, "Detail": 2, "Roughness": 0.5, "Lacunarity": 2, "Distortion": 0 } },
+        { "id": "pulse", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY_ADD", "use_clamp": true }, "inputs": { "0": { "link": "breath.Fac" }, "1": 3, "2": -0.9 } },
+        { "id": "inner", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY", "use_clamp": true }, "inputs": { "0": { "link": "shape.Value" }, "1": 3 } },
+        { "id": "glowing", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY" }, "inputs": { "0": { "link": "crack.Value" }, "1": { "link": "pulse.Value" } } },
+        { "id": "ember", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY", "use_clamp": true }, "inputs": { "0": { "link": "glowing.Value" }, "1": { "link": "inner.Value" } } },
+        { "id": "hotlump", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY" }, "inputs": { "0": { "link": "dome.Value" }, "1": { "link": "pulse.Value" } } },
+        { "id": "hotcoal", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY" }, "inputs": { "0": { "link": "hotlump.Value" }, "1": { "link": "inner.Value" } } },
+        { "id": "heat", "type": "ShaderNodeMath", "props": { "operation": "MULTIPLY_ADD", "use_clamp": true }, "inputs": { "0": { "link": "hotcoal.Value" }, "1": 0.25, "2": { "link": "ember.Value" } } }
+      ],
+      "images": [
+        {
+          "file": "coals.png",
+          "channels": [
+            { "field": "dome.Value", "op": "value" },
+            { "field": "heat.Value", "op": "glow", "radius": 2, "gain": 1.5, "keep": true },
+            { "field": "heat.Value", "op": "glow", "radius": 6, "gain": 2, "keep": false },
+            { "field": "cover.Value", "op": "value" }
+          ]
+        }
+      ]
+    }
+  ],
+  "effects": {
+    "campfire": [
+      { "lamp": { "intensity": 30, "distance": 9, "decay": 2, "at": [0, 0.45, 0], "tint": 16742944, "flicker": 0.35 } },
+      {
+        "n": [1, 1], "every": 0.22, "life": [0.9, 1.3], "sheet": "tongues", "clip": "lick", "size": [0.6, 0.8],
+        "box": [-0.15, 0.02, -0.15, 0.15, 0.04, 0.15], "start": [0, 1], "blend": true,
+        "channels": { "value": [0.8, 0.4, 0, 0], "alpha": [1, 0, 0, 0], "hot": [0, 0, 0, 0] },
+        "grows": [[0, 0.75], [0.3, 1], [1, 0.85]],
+        "tints": [[0, 16750128], [0.5, 15227408], [1, 9447432]], "alphas": [[0, 0], [0.15, 0.9], [0.8, 0.8], [1, 0]], "gain": 1
+      },
+      {
+        "n": [1, 1], "every": 0.3, "life": [0.8, 1.1], "sheet": "tongues", "clip": "lick", "size": [0.8, 1.0],
+        "box": [-0.03, 0.03, -0.03, 0.03, 0.04, 0.03], "start": [0, 1], "blend": true,
+        "channels": { "value": [0.6, 0.6, 0.4, 0], "alpha": [0, 0, 0, 1], "hot": [0, 0.45, 0, 0] },
+        "tints": [[0, 16756800], [0.5, 16746536], [1, 12596248]], "alphas": [[0, 0], [0.15, 0.85], [0.8, 0.8], [1, 0]], "gain": 0.95, "add": true
+      },
+      {
+        "n": [1, 1], "every": 1, "life": [3, 3], "sheet": "coals", "clip": "smoulder", "size": [0.85, 0.85],
+        "start": [0, 1], "blend": true,
+        "channels": { "value": [1, 0, 0, 0], "alpha": [0, 0, 0, 1], "hot": [0, 0, 0, 0] },
+        "tints": [[0, 1708296], [1, 1708296]], "alphas": [[0, 0], [0.33, 1], [0.67, 1], [1, 0]]
+      },
+      {
+        "n": [1, 1], "every": 1, "life": [3, 3], "sheet": "coals", "clip": "smoulder", "size": [0.85, 0.85],
+        "start": [0, 1], "blend": true,
+        "channels": { "value": [0, 1, 0.5, 0], "alpha": [0, 1, 0.4, 0], "hot": [0, 0.5, 0, 0] },
+        "tints": [[0, 16737824], [1, 16737824]], "alphas": [[0, 0], [0.33, 1], [0.67, 1], [1, 0]], "gain": 0.85, "add": true
+      },
+      {
+        "n": [1, 1], "every": 0.3, "life": [4, 5.5], "sheet": "smoke", "clip": "billow", "size": [0.5, 0.8],
+        "box": [-0.08, 0.85, -0.08, 0.08, 0.95, 0.08], "start": [0, 0.15], "blend": true, "erode": [[0, 0], [0.5, 0.15], [1, 0.75]],
+        "channels": { "value": [0.55, 0.45, 0, 0], "alpha": [0, 0, 0, 1], "hot": [0, 0, 0, 0] },
+        "dir": [0, 1, 0], "spread": 0.2, "speed": [0.35, 0.55], "drag": 0.3,
+        "grows": [[0, 0.6], [1, 2.6]], "tints": [[0, 2630690], [0.4, 4210752], [1, 6316128]], "alphas": [[0, 0], [0.35, 0.5], [1, 0]]
+      },
+      {
+        "n": [1, 1], "every": 0.08, "life": [1.2, 2.2], "shape": "spark", "size": [0.02, 0.035],
+        "box": [-0.15, 0.1, -0.15, 0.15, 0.4, 0.15], "dir": [0, 1, 0], "spread": 0.35, "speed": [0.6, 1.4], "drag": 0.6, "g": -0.4,
+        "swirl": 1.5, "tints": [[0, 16772300], [0.5, 16744448], [1, 11534336]], "alphas": [[0, 1], [0.7, 0.9], [1, 0]], "gain": 1.6, "add": true
+      },
+      {
+        "n": [1, 1], "every": 0.9, "life": [1.6, 1.6], "sheet": "embers", "clip": "drift", "size": [0.8, 0.8],
+        "box": [0, 0.5, 0, 0, 0.6, 0], "start": [0, 1],
+        "channels": { "value": [1, 0.6, 0, 0], "alpha": [0, 0, 0, 1], "hot": [0.6, 0, 0, 0] },
+        "tints": [[0, 16769184], [1, 16733440]], "alphas": [[0, 0], [0.2, 0.7], [0.8, 0.7], [1, 0]], "gain": 1.2, "add": true
+      }
+    ]
+  }
+}

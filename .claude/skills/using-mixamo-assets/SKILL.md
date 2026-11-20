@@ -156,6 +156,21 @@ keep the prop's turn in the world and its offset from the bone. three.js's `'XYZ
 `'ZYX'`; the script converts both ways. Write the new numbers into every scene that holds the kind's
 `anim` table (in mech: training, defense, night, highlands).
 
+## 4b. Hair, a cape, and what meets the body
+
+A bald Mixamo body gets its hair from hair3d, and a cape or a ribbon from fabric3d, with nothing
+modelled for either:
+
+- Hair: `world.hair3d.mods: { skins: ['anim'], behaviors: ['render3d'] }` and a hairs file whose
+  `kinds` lists the kind anim draws the row as. A hair's `on` names the body's skinned mesh and bones:
+  the X Bot's scalp grows on `Alpha_Surface`, on the `Head` bone's skin (`using-hair3d`).
+- A cape: `world.fabric3d.mods.sources: ['anim']` and a fabric pinned `on` a bone, a prop or an empty
+  in a prop, named by the end of its name (`using-fabric3d`).
+- For either to lie on the body and not hang through it, the kind gives
+  `world.anim.kinds.<kind>.capsules`, `[{ from, to, radius }]` between two bones or `{ bone, at,
+  radius }`, a ball a bone carries, the scene names `anim` under `world.gpgpu3d.mods.things` and
+  `behaviors`, and hair3d and fabric3d each name `solids: 'gpgpu3d'` in their mods (`using-gpgpu3d`). Each radius is fitted to the body it is on.
+
 ## 5. Look at it in the game
 
 Look at the body in a gym scene: the game's own scene with the bodies standing from the first step,

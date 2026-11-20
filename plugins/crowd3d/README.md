@@ -185,6 +185,7 @@ For a walker's feet to stay planted, give it `speed = travel(body, clip)`.
 | `ready()`              | `true` once every body has been baked and every item built. |
 | `travel(body, clip)`   | How fast that clip carries that body, in metres per second along its facing: the length of the hips' steady line through the clip, in the world, divided by the clip's length. |
 | `counts()`             | `{ <body>: { copies, groups } }`: how many people of each body are drawn, and that body's draw calls per light. |
+| `worn()`               | Every body as it is drawn, for whatever grows on its people (hair3d, through `crowd3d.hair3d.ts`), `[]` before they are built: `{ name, first, count, unit, bones, inverses, pose, groups }`, its people the `count` rows of the pose from `first`, `unit` the metres one unit of its geometry is, the bones' names and this body's inverse bind of each, the pose's texture and its mesh groups. |
 | `items()`              | `{ <item>: { copies, groups } }`: how many copies of each item are drawn (one for each place anyone holds it on), and that item's draw calls per light. |
 | `pool()`               | `{ size, used, writes }`: the slots, how many hold a person, and how many slot writes there have been since the start. |
 | `pose(body, clip, t, from?)`  | `{ bones, matrices }`: the bone names, and the column-major matrix for each bone that the pose pass writes for a person of `body` standing at the origin facing +z, `t` seconds into `clip` (a pose stands at its frame whatever `t`). With `from`, `{ clip, t, share }`, the same mixed from that clip, which keeps `share` of every bone, as the pass draws a fade. It works them out the same way the pass does, for a testbed to compare against three's own mixer. |
@@ -289,7 +290,9 @@ The group's material is a clone of the glb's, dressed by render3d (`dress`) with
 skins each vertex by four bones from that copy's row of the pose. The row is the body's first row
 plus `gl_InstanceID`. There are no instance matrices, and render3d's between-steps does not move the
 mesh. Shadows are cast through a depth material and a distance material dressed with the same
-surface. A group is never culled as a whole, because its people can stand anywhere.
+surface. A group is never culled as a whole, because its people can stand anywhere. It is marked
+moving (`userData.moving`), so lights3d draws its shadow every frame into its moving atlas, in every
+face of every shadowed light, while the still scene's shadows are drawn once.
 
 ### The items
 

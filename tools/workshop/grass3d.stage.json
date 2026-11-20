@@ -1,0 +1,38 @@
+{
+  "field": { "size": 240, "cell": 0.5, "grid": 1 },
+  "colours": { "ground": "#3f4f24", "bare": "#6b5a44", "line": "#2c3819", "treader": "#8a7f78" },
+  "sky": { "colour": "#dfe6f0", "ground": "#4a4540", "power": 1.1, "background": "#a9bfd6" },
+  "sun": { "colour": "#fff2e0", "power": 2.4, "at": [-40, 30, 60], "half": 30, "map": 2048 },
+  "camera": { "fov": 50, "near": 0.05, "far": 1000 },
+  "views": {
+    "feet": { "at": [3, 1.1, -6], "look": [3.5, 0.4, -2] },
+    "across": { "at": [-20, 1.7, -30], "look": [10, 0.8, 20] },
+    "wind": { "at": [8, 0.8, 6], "look": [30, 3, 40] },
+    "treader": { "at": [-5, 3.5, -8], "look": [0, 0.5, 0], "with": "treader" },
+    "above": { "at": [0, 60, -0.1], "look": [0, 0, 0] }
+  },
+  "grounds": {
+    "flat": { "hills": [], "bare": { "scale": 1, "below": 0, "edge": 0 } },
+    "rolling": { "hills": [{ "toward": 20, "length": 70, "height": 2.5 }, { "toward": 110, "length": 45, "height": 1.2 }], "bare": { "scale": 1, "below": 0, "edge": 0 } },
+    "steep": { "hills": [{ "toward": 0, "length": 60, "height": 7 }, { "toward": 75, "length": 26, "height": 1.5 }], "bare": { "scale": 1, "below": 0, "edge": 0 } },
+    "patchy": { "hills": [], "bare": { "scale": 9, "below": 0.42, "edge": 0.18 } },
+    "rough": { "hills": [{ "toward": 20, "length": 70, "height": 2.5 }, { "toward": 110, "length": 45, "height": 1.2 }], "bare": { "scale": 9, "below": 0.42, "edge": 0.18 } }
+  },
+  "treaders": {
+    "nothing": { "parts": [], "circle": 0, "speed": 0 },
+    "standing": { "parts": [{ "at": [0, 0, 0], "cylinder": { "radius": 0.3, "height": 1.8 } }], "circle": 0, "speed": 0 },
+    "walker": { "parts": [{ "at": [0, 0, 0], "cylinder": { "radius": 0.3, "height": 1.8 } }], "circle": 6, "speed": 1.4 },
+    "runner": { "parts": [{ "at": [0, 0, 0], "cylinder": { "radius": 0.3, "height": 1.8 } }], "circle": 10, "speed": 4.5 },
+    "car": {
+      "parts": [
+        { "at": [0, 0.85, 0], "box": { "half": [0.65, 0.35, 1.8] } },
+        { "at": [0.85, 0.42, 1.25], "box": { "half": [0.16, 0.42, 0.42] } },
+        { "at": [-0.85, 0.42, 1.25], "box": { "half": [0.16, 0.42, 0.42] } },
+        { "at": [0.85, 0.42, -1.25], "box": { "half": [0.16, 0.42, 0.42] } },
+        { "at": [-0.85, 0.42, -1.25], "box": { "half": [0.16, 0.42, 0.42] } }
+      ],
+      "circle": 14,
+      "speed": 8
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+ "jeep_tj": {
+  "body": [
+   {"kind": "modern/vehicles/jeep_tj/jeep", "name": "jeep", "Paint": "red", "Rim": "steel", "Steer": 0, "Doors": "on", "Hood": false, "Windshield": "up", "Tailgate": false, "Lit": false, "Driving": false, "Corners": false, "Steering": false},
+   {"kind": "modern/vehicles/jeep_tj/interior/steering", "name": "steer", "place": [-0.36, -0.138], "elevation": 1.182, "degrees": 90, "roll": 23}
+  ],
+  "wheels": {
+   "wheel-left": {"kind": "modern/vehicles/jeep_tj/wheels/wheel", "name": "wheel", "Rim": "steel", "Hand": -1, "Rolling": false},
+   "wheel-right": {"kind": "modern/vehicles/jeep_tj/wheels/wheel", "name": "wheel", "Rim": "steel", "Hand": 1, "Rolling": false}
+  }
+ },
+ "countach": {
+  "body": [
+   {"kind": "modern/vehicles/countach/countach", "name": "countach", "Paint": "red", "Trim": "black", "Wing": true, "Doors": "shut", "Headlamps": "down", "FrontLid": false, "EngineCover": false, "BootLid": false, "Lit": false, "Fog": false, "Reversing": false, "Wiping": false, "Steering": false, "Steer": 0, "Driving": false, "Corners": false},
+   {"kind": "modern/vehicles/countach/interior/steering", "name": "steer", "place": [-0.37, 0.36], "elevation": 0.655, "degrees": 90, "roll": 22}
+  ],
+  "wheels": {
+   "wheel-front-left": {"kind": "modern/vehicles/countach/wheels/wheel", "name": "wheel", "End": "front", "Hand": -1, "Rolling": false},
+   "wheel-front-right": {"kind": "modern/vehicles/countach/wheels/wheel", "name": "wheel", "End": "front", "Hand": 1, "Rolling": false},
+   "wheel-rear-left": {"kind": "modern/vehicles/countach/wheels/wheel", "name": "wheel", "End": "rear", "Hand": -1, "Rolling": false},
+   "wheel-rear-right": {"kind": "modern/vehicles/countach/wheels/wheel", "name": "wheel", "End": "rear", "Hand": 1, "Rolling": false}
+  }
+ },
+ "ferrari_f40": {
+  "body": [
+   {"kind": "modern/vehicles/ferrari_f40/ferrari_f40", "name": "ferrari f40", "Doors": "shut", "Headlamps": "down", "FrontLid": false, "Clamshell": false, "Lit": false, "Fog": false, "Reversing": false, "Wiping": false, "Steering": false, "Steer": 0, "Driving": false, "Corners": false},
+   {"kind": "modern/vehicles/ferrari_f40/interior/steering", "name": "steer", "place": [-0.33, 0.36], "elevation": 0.645, "degrees": 90, "roll": 24, "Turn": 0}
+  ],
+  "wheels": {
+   "wheel-front-left": {"kind": "modern/vehicles/ferrari_f40/wheels/wheel", "name": "wheel", "End": "front", "Hand": -1, "Rolling": false},
+   "wheel-front-right": {"kind": "modern/vehicles/ferrari_f40/wheels/wheel", "name": "wheel", "End": "front", "Hand": 1, "Rolling": false},
+   "wheel-rear-left": {"kind": "modern/vehicles/ferrari_f40/wheels/wheel", "name": "wheel", "End": "rear", "Hand": -1, "Rolling": false},
+   "wheel-rear-right": {"kind": "modern/vehicles/ferrari_f40/wheels/wheel", "name": "wheel", "End": "rear", "Hand": 1, "Rolling": false}
+  }
+ },
+ "porsche_911": {
+  "body": [
+   {"kind": "modern/vehicles/porsche_911/porsche_911", "name": "porsche 911", "Paint": "red", "Trim": "black", "Doors": "shut", "FrontLid": false, "EngineLid": false, "FillerFlap": false, "QuarterWindows": false, "SeatsTipped": false, "RearSeatsFolded": false, "Lit": false, "Fog": false, "Reversing": false, "Wiping": false, "Steering": false, "Steer": 0, "Driving": false, "Corners": false},
+   {"kind": "modern/vehicles/porsche_911/interior/steering", "name": "steer", "place": [-0.32, 0.218], "elevation": 0.782, "degrees": 90, "roll": 25}
+  ],
+  "wheels": {
+   "wheel-left": {"kind": "modern/vehicles/porsche_911/wheels/wheel", "name": "wheel", "Hand": -1, "Rolling": false},
+   "wheel-right": {"kind": "modern/vehicles/porsche_911/wheels/wheel", "name": "wheel", "Hand": 1, "Rolling": false}
+  }
+ },
+ "skyline_gtr": {
+  "body": [
+   {"kind": "modern/vehicles/skyline_gtr/skyline_gtr", "name": "skyline gt-r", "Paint": "bayside_blue", "Livery": true, "Doors": "shut", "Bonnet": false, "BootLid": false, "FuelFlap": false, "SeatsTipped": false, "Lit": false, "Braking": false, "Reversing": false, "Fog": false, "Wiping": false, "Steering": false, "Steer": 0, "Driving": false, "Corners": false},
+   {"kind": "modern/vehicles/skyline_gtr/interior/steering", "name": "steer", "place": [0.37, 0.24], "elevation": 0.86, "degrees": 90, "roll": 24, "Turn": 0}
+  ],
+  "wheels": {
+   "wheel-left": {"kind": "modern/vehicles/skyline_gtr/wheels/wheel", "name": "wheel", "Hand": -1, "Rolling": false},
+   "wheel-right": {"kind": "modern/vehicles/skyline_gtr/wheels/wheel", "name": "wheel", "Hand": 1, "Rolling": false}
+  }
+ },
+ "volvo_240": {
+  "body": [
+   {"kind": "modern/vehicles/volvo_240/volvo_240", "name": "volvo 240", "Paint": "red", "Trim": "blue", "Doors": "shut", "Hood": false, "Tailgate": false, "FuelFlap": false, "SeatsReclined": false, "RearSeatFolded": false, "Lit": false, "Braking": false, "Reversing": false, "Wiping": false, "Steering": false, "Steer": 0, "Driving": false, "Corners": false},
+   {"kind": "modern/vehicles/volvo_240/interior/steering", "name": "steer", "place": [-0.36, 0.23], "elevation": 0.941, "degrees": 90, "roll": 18.5, "Trim": "blue"}
+  ],
+  "wheels": {
+   "wheel-left": {"kind": "modern/vehicles/volvo_240/wheels/wheel", "name": "wheel", "Hand": -1, "Cover": true, "Rolling": false},
+   "wheel-right": {"kind": "modern/vehicles/volvo_240/wheels/wheel", "name": "wheel", "Hand": 1, "Cover": true, "Rolling": false}
+  }
+ }
+}

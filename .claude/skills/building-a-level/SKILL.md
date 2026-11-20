@@ -1,6 +1,6 @@
 ---
 name: building-a-level
-description: Use in core, or any clone of it, when laying out the place a game is played in: a level, map, stage, room, arena or dungeon, its ground, walls and collision. Covers a Tiled map (`.tmj`, `.tsj`) as a data file in `assets/` the scene names, the `tilemap` plugin (`world.tilemap`, `blocked`, `slide`, `sweep`, `clear`, `edits`) on render2d's world, the other plugins that hold ground and layout (`grid`, `terrain3d`, `scatter3d`, `solids`, `nav`, `mapgen`, the `interest` addon), placing actors and each seat's `start` on a level (`actors`, `<level>.actors.json`, `actorsFile`), levels generated from a seed, and a game of many levels. Also when the seat's `player` row walks through a wall, a start stands in one, part of a level cannot be reached, or the map does not draw.
+description: Use in core, or any clone of it, when laying out the place a game is played in: a level, map, stage, room, arena or dungeon, its ground, walls and collision. Covers a Tiled map (`.tmj`, `.tsj`) as a data file in `assets/` the scene names, the `tilemap` plugin (`world.tilemap`, `blocked`, `slide`, `sweep`, `clear`, `edits`) on render2d's world, the other plugins that hold ground and layout (`grid`, `terrain3d`, `lod3d`, `solids`, `nav`, `mapgen`, the `interest` addon), placing actors and each seat's `start` on a level (`actors`, `<level>.actors.json`, `actorsFile`), levels generated from a seed, and a game of many levels. Also when the seat's `player` row walks through a wall, a start stands in one, part of a level cannot be reached, or the map does not draw.
 ---
 
 # Building a level
@@ -93,11 +93,15 @@ Each one's header says what it reads and from where; read it before using the pl
   browser half draws with the look the game hands it (`plugins/grid/`).
 - `terrain3d`, 3D ground: a field file, the `json` entry `world.terrain3d.field` names, a height
   program, colour bands and painted layers. It has no row. Other plugins stand on it through its mods, `terrain3d.<p>.ts` beside it (walker,
-  box3d, scatter3d, solids, hitscan3d, ocean3d among them), named in `world.<p>.mods`. The whole of
+  box3d, lod3d, solids, hitscan3d, ocean3d among them), named in `world.<p>.mods`. The whole of
   it is `using-terrain3d`.
-- `scatter3d`, trees, grass and boulders, each where a hash of its cell puts it, from the packs of
-  `world.scatter3d`, on the ground its mods name; the solid ones are walked round
-  (`scatter3d.walker.ts`). No row.
+- `grass3d`, a meadow of grass blades on terrain3d's land wherever each grass's rules and the paint's
+  `cover` let it grow (a painted road's 0 keeps it off the road); nothing walks round it or is stopped by
+  it. No row. The whole of it is `using-grass3d`.
+- `lod3d`, trees, clumps and boulders, each where a hash of its cell puts it, from the layers of
+  `world.lod3d`, on the surfaces its mods name (terrain3d's `land`, shapes3d's shapes) or round
+  another layer's instances, drawn by instances3d (each layer's `mesh`); the instances of a row that
+  gives `solid` are walked round (`lod3d.walker.ts`). No row.
 - `solids`, still models: every row of a kind `world.solids.kinds` names is drawn from its model, a
   `json` entry, at the row's `pos` and `yaw`. A prop is an actor of such a kind, standing on the
   land `world.solids.mods: { land: 'terrain3d' }` names.
@@ -105,7 +109,8 @@ Each one's header says what it reads and from where; read it before using the pl
   cylinder, a box, a plane (flat, or tilted into a ramp) or another of its words, at the row's
   `pos` and `yaw`, over the ground its `world.shapes3d.mods.height` names (terrain3d's, or flat at
   0). It has no row of its own and draws nothing; solids draws a kind that gives a `look`, and
-  walker, box3d and the rest stand on it through its mods (`plugins/shapes3d/shapes3d.sim.ts`).
+  walker, box3d and the rest stand on it through its mods (`plugins/shapes3d/shapes3d.sim.ts`; the
+  `using-shapes3d` skill).
 - `walker`, kinematic bodies on any ground, through `world.walker.mods` (`height`, `depth`, `cell`,
   `solids`, `fixed`, `behaviors`).
 - `nav3d`, the way from place to place in 3D over a graph of shapes3d points, lines and splines, a

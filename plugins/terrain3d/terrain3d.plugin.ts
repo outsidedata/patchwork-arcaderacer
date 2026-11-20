@@ -18,6 +18,9 @@
 //   bake         optional: baked rings round the camera (Baked rings), `terrain3d.bake.ts` its keys.
 //   maps         optional: `{ near, reach, step, small }`, full maps only for the layers the ground
 //                near the camera hits and a small copy of every layer (Near maps).
+//   mods         `ready`, the plugins whose share of a prepared place must be done (Prepared
+//                places), and `behaviors`, the plugins that deliver the words a ground layer may be
+//                of beside `map` (Ground layers).
 //
 // Baked rings. With `bake`, the ground's look is rendered into square textures round the camera, its
 // albedo and its normal-mapped normal, from the rings drawn, with the ground's own material, a strip at
@@ -40,7 +43,7 @@
 // it go. `prepared()` is `{ at, done }`, or undefined with none in hand. A place is done when every ring
 // is built, every map the ground layers name has landed or failed, and every plugin
 // `world.terrain3d.mods.ready` names says its share of the place is done, `ready(plugins)` → boolean,
-// as scatter3d does once every cell in reach of the place is placed (`scatter3d.terrain3d.ts`). Each is
+// as lod3d does once every tile in reach of the place is worked (`lod3d.terrain3d.ts`). Each is
 // asked the frame after it ran, so it may be listed after terrain3d, and one the scene does not list
 // throws (`provided`).
 //
@@ -74,8 +77,8 @@
 // `task(url, input)` lends the workers to any plugin that reads the land: the module at `url`'s
 // `task(ground, input)` runs in the least busy worker on its land, `ground` the land as `ground` below
 // has it but for `ray`, `shown` and preparing, and hands back `{ out, transfer }`; `task` hands back a
-// promise of `out`, or undefined where there are no workers. scatter3d places its cells so
-// (`scatter3d.cells.ts`).
+// promise of `out`, or undefined where there are no workers. terrain3d presents its own ground so
+// (`terrain3d.present.ts`).
 //
 // The grid. The finest ring's cell, 2·reach/seg, is the lattice unit, and every place a ring puts
 // a vertex is a whole number of units across, so two rings that put one at the same place put it at
@@ -109,7 +112,9 @@
 // layers but for their rules on more than height and slope, or to the surfaces' colours, covers and
 // edges, changes what no vertex carries and rebuilds no ring, only the material; any other
 // change rebuilds every ring, which draw with the material the old look made until they swap in. A ring is also rebuilt where a layer's version has moved and its rect reaches ground
-// the ring draws, as when the brush strokes this client's `land`. The rings shown stay on the scene
+// the ring draws, as when the brush strokes this client's `land`. A ground layer or surface, or a
+// ring, bake or maps setting of `world.terrain3d`, changed in place deep inside it is seen too: each
+// is copied when it changes and the next frames walk it against the copy. The rings shown stay on the scene
 // until the rebuilt ones swap in, so the ground never goes. So this is listed before render3d,
 // whose `afterTick` draws.
 //
@@ -133,12 +138,34 @@
 // the weather and the lights too. Each layer's mask is its carried value at the pixel, times its
 // height and slope rules there (its height, and one minus its geometric normal's y), moved by its
 // noise at the warped point through its edge; the masks are composed into weights, and each layer
-// with a weight above 0.01 reads its map and its normal map at the warped point, with the unwarped
-// point's gradients, on the top plane or on all three; then the height blend, the sums, and each
-// surface's colour by its weight through its edge (an edge, `terrain3d.sim.ts`). The roughness is the
-// ground's one `roughness`; no map is read for it. A layer draws mid grey until every map has landed.
-// A map that is no `texture` entry of the catalogue throws. The GLSL reads only constants, but for
-// the arrays, so changing a layer's numbers makes a new program and changes no ring.
+// with a weight above 0.01 is read by its word (below) at the warped point, with the unwarped point's
+// gradients, for its colour, its normal, its roughness and its cavity; then the height blend, the
+// sums, and each surface's colour by its weight through its edge (an edge, `terrain3d.sim.ts`). The
+// roughness and the cavity are each layer's by its weight: a `map` layer's roughness is the ground's
+// one `roughness` and its cavity none. Past a bake's `far` the baked ring gives the colour and the
+// normal, and the roughness is the ground's and the cavity none. The GLSL reads only constants, but for the
+// arrays, so changing a layer's numbers makes a new program and changes no ring.
+//
+// A layer is of one word, the key it gives beside its own fields (`terrain3d.warp.ts`, `wordOf`), and
+// this keeps a table from a word to how a layer of it is read. `map` is its own: the layer's map and
+// its normal map, on the top plane or on all three, the layer drawn mid grey until every map has
+// landed, and a map that is no `texture` entry of the catalogue throws. Every other word is
+// delivered: the scene names the plugins in `world.terrain3d.mods.behaviors`, each exporting
+// `behaviors(plugins)`, `{ <word>: LayerWord }`, laid over the table in the list's order, a later
+// one's taking the place of an earlier one's; each is listed before terrain3d (`ahead`). A layer of a
+// word nothing delivers throws, naming the layer, the word and the key. A LayerWord is handed the
+// layers of its word, `[{ layer, k }]`, when the material is made, and hands back undefined while it
+// cannot read them yet (its own file has not landed), so no material is made that frame and the next
+// asks again, the rings drawn with none until the first is made; else `pars`, GLSL at the
+// fragment's top for those layers, after everything three declares (after
+// `clipping_planes_pars_fragment`); `read(k)`, the body of layer k's read, `tdRead<k>(vec3 p, vec3 n,
+// vec3 dpx, vec3 dpy, vec3 wv, float wt, out vec3 alb, out vec3 nrm, out float rough, out float ao)`,
+// handed the ground point, its geometric normal, the point's screen derivatives, the layer's warp and
+// its weight, and filling its colour (linear), its normal in the world, its roughness and its cavity
+// (1 for none); `uniforms`, bound to the material; `ready()`, whether what it draws with has landed,
+// which a prepared place and a bake wait on; and `patch(shader)`, optional, run on the program after
+// the dressing for a chunk no splice reaches (supershader3d's shadow in the directional light).
+// supershader3d delivers `look`, a material of the scene's one shader (`supershader3d.terrain3d.ts`).
 //
 // Near maps. Without `maps`, every layer's maps are drawn into two texture arrays, colour and normal,
 // layer k into slot k, at the largest colour map's size. With `maps: { near, reach, step, small }`:
@@ -169,26 +196,41 @@
 // the rebuild in hand has got, `{ done, total }` units, or undefined; `shown()`, whether the rings are
 // on the scene; `prepare(x, z)`, `prepared()` and `unprepare()` (Prepared places); `task(url, input)`
 // (Workers); `bake(meshes, x, z, cover)` and `baked()` (Baked rings); `focus(x, z)` (Near maps);
-// `carry(list)` (What the ground carries); and `ground`, once there is a land: `{ height, raw, depth, at, cover, spray, mark, ramp,
-// rules, edits, ray, mix, layers, rings, shown, prepare, prepared, unprepare, task }` over this client's
-// land, `at` its land record, `cover`, `spray` and `mark` its paint's, `rules` the land's own check,
+// `carry(list)` (What the ground carries); and `ground`, once there is a land: `{ height, raw, depth, at, cover, drivers, mark, ramp,
+// rules, edits, ray, mix, layers, shown, prepare, prepared, unprepare, task }` over this client's
+// land, `at` its land record, `cover`, `drivers` and `mark` its paint's, `rules` the land's own check,
 // which knows its biomes, `ray(origin, dir)` marched out to the camera's far plane and `mix(x, z)` each
-// biome's share there by name, `layers(x, z)` each ground layer's weight there by name, `rings()` each
-// ring's `reach`, finest first, which scatter3d draws its LODs on, `shown()`, `prepare(x, z)`, `unprepare()` and `task` as above, and
+// biome's share there by name, `layers(x, z)` each ground layer's weight there by name, `shown()`,
+// `prepare(x, z)`, `unprepare()` and `task` as above, and
 // `prepared()` the place in hand's `at`, or undefined. `close` takes the rings off the scene and disposes
 // every geometry and the material.
 import type * as THREE from 'three'
 import type { Plugins } from '#engine/browser.ts'
-import { modsOf, provided } from '#addons/scenemanager/scenemanager.addon.ts'
+import { ahead, modsOf, provided } from '#addons/scenemanager/scenemanager.addon.ts'
 import { land as landFrom, type Edge, type Field, type Land, type Rule } from './terrain3d.sim.ts'
 import { biomeNames, build as buildRing, finish, layoutOf, slotsOf, vertexRules, type Arrays, type Build, type Layout, type Slots } from './terrain3d.rings.ts'
-import { glsl } from './terrain3d.warp.ts'
+import { glsl, wordOf, type GroundLayer } from './terrain3d.warp.ts'
 import { baker, bakeUniforms, checkBake, type BakeSettings, type Baker } from './terrain3d.bake.ts'
 import { present, type Input as PresentInput } from './terrain3d.present.ts'
 
 // `world.terrain3d.maps` (Near maps).
 export type Maps = { near: number; reach: number; step: number; small: number }
 type Settings = { field: string; rings: { reach: number; seg: number }[]; shadowReach: number; budget: number; seabed: boolean; static?: boolean; preload?: boolean; bake?: BakeSettings; maps?: Maps }
+
+// A layer word's read (Ground layers): handed the layers of its word, what the ground's program
+// needs to read each one, or undefined while the word cannot be read yet (its file has not landed),
+// which makes no material this frame and asks again the next.
+export type Read = {
+  pars: string
+  read(k: number): string
+  uniforms: Record<string, THREE.IUniform>
+  ready(): boolean
+  patch?(shader: { vertexShader: string; fragmentShader: string }): void
+}
+export type LayerWord = (layers: { layer: GroundLayer; k: number }[]) => Read | undefined
+export type Behaviors = (plugins: Plugins) => Record<string, LayerWord>
+// The signature every layer's read has.
+export const READ = '(vec3 p, vec3 n, vec3 dpx, vec3 dpy, vec3 wv, float wt, out vec3 alb, out vec3 nrm, out float rough, out float ao)'
 
 // Throws for maps settings that cannot work.
 function checkMaps(m: Maps) {
@@ -203,7 +245,7 @@ function checkMaps(m: Maps) {
 // layer, and `put`, which draws layer k's maps into a slot of a pair of arrays.
 type Stock = {
   col: THREE.WebGLArrayRenderTarget; nr: THREE.WebGLArrayRenderTarget; small: { col: THREE.WebGLArrayRenderTarget; nr: THREE.WebGLArrayRenderTarget } | undefined
-  near: number; of: number[]; holds: number[]; uniforms: Record<string, THREE.IUniform>
+  near: number; of: number[]; holds: number[]; mapped: boolean[]; uniforms: Record<string, THREE.IUniform>
   put(col: THREE.WebGLArrayRenderTarget, nr: THREE.WebGLArrayRenderTarget, slot: number, k: number): void
   mips(rt: THREE.WebGLArrayRenderTarget): void
   dispose(): void
@@ -217,8 +259,45 @@ type Shown = { C: number[]; hole: number[] | undefined; land: Land; versions: nu
 // Everything of a field a vertex carries is made from: two fields that give the same make the same
 // rings, whatever else of their look differs.
 const carried = (f: Field) => JSON.stringify([Object.keys(f.surfaces ?? {}), f.ground.layers.map(vertexRules), biomeNames(f)])
-// Everything of a field the material is made from.
-const looked = (f: Field) => JSON.stringify([f.ground, f.surfaces ?? {}])
+// Whether two values are the same: the same number (NaN the same as NaN), string, boolean or null, or
+// arrays and plain objects of the same, item by item and field by field, a field holding undefined the
+// same as one not there. Read every frame against the copies kept of the settings and the look, so it
+// walks the two and makes nothing.
+function alike(a: unknown, b: unknown): boolean {
+  if (a === b || (a !== a && b !== b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a)) {
+    const c = b as unknown[]
+    if (a.length !== c.length) return false
+    for (let i = 0; i < a.length; i++) if (!alike(a[i], c[i])) return false
+    return true
+  }
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>
+  for (const k in x) if (!alike(x[k], y[k])) return false
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false
+  return true
+}
+// The settings the rings were laid out for, and those the baked rings and near maps were made for:
+// copies, taken when they change, since a dev page's panel edits `world.terrain3d` in place.
+type Laid = { rings: Settings['rings']; shadowReach: number; seabed: boolean }
+type Baking = { bake: BakeSettings | null; rings: Settings['rings']; maps: Maps | null }
+// Everything of a field the material is made from, copied when it is made, and the bake settings it
+// was made for. A field with no surfaces is drawn as one with none.
+type Looked = { ground: Field['ground']; surfaces: NonNullable<Field['surfaces']>; baking: Baking | undefined }
+const none: NonNullable<Field['surfaces']> = Object.freeze({})
+const looked = (f: Field, baking: Baking | undefined): Looked => ({ ground: structuredClone(f.ground), surfaces: structuredClone(f.surfaces ?? none), baking })
+// Whether the material made for `l` is the one field `f` makes under these bake settings.
+const looksAs = (l: Looked | undefined, f: Field, baking: Baking | undefined) =>
+  !!l && l.baking === baking && alike(f.ground, l.ground) && alike(f.surfaces ?? none, l.surfaces)
+// Whether the layer versions kept are land l's as it now is, number by number.
+const current = (kept: number[], l: Land) => {
+  const layers = l.edits().layers
+  if (layers.length !== kept.length) return false
+  for (let i = 0; i < kept.length; i++) if (layers[i].version !== kept[i]) return false
+  return true
+}
+const versionsOf = (l: Land) => l.edits().layers.map(e => e.version)
 
 // The colour the weights and biome views give the i-th of n: hues round the wheel, as linear GLSL.
 const pal = (i: number, n: number) => {
@@ -233,9 +312,9 @@ const NOISE = [
   '  return mix(mix(tdHash(i), tdHash(i + vec2(1.0, 0.0)), u.x), mix(tdHash(i + vec2(0.0, 1.0)), tdHash(i + vec2(1.0, 1.0)), u.x), u.y); }',
 ].join('\n')
 
-// The ground's look, as a render3d surface (Ground layers). `uniforms` gets the two texture arrays,
-// their size and each layer's switch.
-function look(f: Field, slots: Slots, THREE: typeof import('three'), uniforms: Record<string, THREE.IUniform>, bake: BakeSettings | undefined, maps: Maps | undefined, meshRings: number): { uniforms: Record<string, THREE.IUniform>; vertex: Record<string, string>; fragment: Record<string, string> } {
+// The ground's look, as a render3d surface (Ground layers), and each word's read of its layers.
+// `uniforms` gets the two texture arrays, their size, each layer's switch and every word's own.
+function look(f: Field, slots: Slots, THREE: typeof import('three'), uniforms: Record<string, THREE.IUniform>, bake: BakeSettings | undefined, maps: Maps | undefined, meshRings: number, words: Record<string, LayerWord>): { uniforms: Record<string, THREE.IUniform>; vertex: Record<string, string>; fragment: Record<string, string>; reads: Read[] } | undefined {
   const n6 = (v: number) => v.toFixed(6)
   const rgb = (c: string) => { const k = new THREE.Color(c); return `vec3(${n6(k.r)}, ${n6(k.g)}, ${n6(k.b)})` }
   const value = (s: number) => `tdVal[${s >> 2}].${'xyzw'[s & 3]}`
@@ -247,6 +326,22 @@ function look(f: Field, slots: Slots, THREE: typeof import('three'), uniforms: R
   }
   const g = f.ground, L = g.layers.length
   const surfaces = Object.keys(f.surfaces ?? {})
+  const rough = n6(g.roughness ?? 0.9)
+  // Each layer's word, and each delivered word's read of its layers (Ground layers).
+  const wordOfK = g.layers.map((l, k) => wordOf(l, k))
+  const byWord = new Map<string, { layer: GroundLayer; k: number }[]>()
+  g.layers.forEach((layer, k) => { if (wordOfK[k] !== 'map') byWord.set(wordOfK[k], [...(byWord.get(wordOfK[k]) ?? []), { layer, k }]) })
+  const reads: Read[] = []
+  const readOf = new Map<string, Read>()
+  for (const [word, layers] of byWord) {
+    const make = words[word]
+    if (!make) throw new Error(`terrain3d has no behavior for layer ${layers[0].layer.name}, of the word ${word}: no plugin world.terrain3d.mods.behaviors names delivers it`)
+    const r = make(layers)
+    if (!r) return undefined
+    Object.assign(uniforms, r.uniforms)
+    reads.push(r)
+    readOf.set(word, r)
+  }
   uniforms.tdVals = { value: null }
   uniforms.tdValRing = { value: Array.from({ length: meshRings }, () => new THREE.Vector4(0, 0, 1, -1)) }
   uniforms.tdCol = { value: null }
@@ -276,8 +371,9 @@ function look(f: Field, slots: Slots, THREE: typeof import('three'), uniforms: R
     '  else if (i == 0) { t.x *= sg.x; t = vec3(t.xy + n.zy, t.z * n.x); nrm += t.zyx * wt; }',
     '  else { t.x *= -sg.z; t = vec3(t.xy + n.xy, t.z * n.z); nrm += t.xyz * wt; } }',
   ].join('\n')
-  const reads = g.layers.map((l, k) => {
-    const sharp = n6(l.sharp ?? 4), st = n6(l.strength ?? 1)
+  const layerReads = g.layers.map((l, k) => {
+    if (wordOfK[k] !== 'map') return `void tdRead${k}${READ} {\n${readOf.get(wordOfK[k])!.read(k)}\n}`
+    const sharp = n6(l.sharp ?? 4), st = n6(l.strength ?? 1), scale = n6(l.scale!)
     // the far read is coarse, so it reads the small copy where there is one
     const farC = maps ? 'tdColS' : 'tdCol', farL = maps ? `${k}.0` : 'L'
     const far = g.far && g.far.amount > 0 ? [
@@ -286,11 +382,11 @@ function look(f: Field, slots: Slots, THREE: typeof import('three'), uniforms: R
       `    alb *= mix(vec3(1.0), clamp(fc / max(mean, vec3(0.02)), 0.0, 3.0), ${n6(g.far.amount)}); }`,
     ].join('\n') : ''
     return [
-      `void tdRead${k}(vec3 p, vec3 n, vec3 dpx, vec3 dpy, vec3 wv, out vec3 alb, out vec3 nrm) {`,
+      `void tdRead${k}${READ} {`,
       // the layer's full maps where the near arrays hold them, its small copy where they do not or a bake
       // asks for it
       `  float S = tdSlot[${k}]; bool sm = S < -0.5 || tdSmallOnly > 0.5; float L = sm ? ${k}.0 : S;`,
-      `  vec3 Q = (p + wv) / ${n6(l.scale)}, Dx = dpx / ${n6(l.scale)}, Dy = dpy / ${n6(l.scale)};`,
+      `  vec3 Q = (p + wv) / ${scale}, Dx = dpx / ${scale}, Dy = dpy / ${scale};`,
       '  vec3 sg = vec3(n.x < 0.0 ? -1.0 : 1.0, n.y < 0.0 ? -1.0 : 1.0, n.z < 0.0 ? -1.0 : 1.0);',
       l.tri ? `  vec3 a = pow(abs(n), vec3(${sharp})); a /= a.x + a.y + a.z;` : '  vec3 a = vec3(0.0, 1.0, 0.0);',
       '  alb = vec3(0.0); nrm = vec3(0.0);',
@@ -298,6 +394,7 @@ function look(f: Field, slots: Slots, THREE: typeof import('three'), uniforms: R
       l.tri ? `  if (a.x > 0.001) tdAdd(0, a.x, sm, L, Q, Dx, Dy, sg, n, ${st}, alb, nrm);\n  if (a.z > 0.001) tdAdd(2, a.z, sm, L, Q, Dx, Dy, sg, n, ${st}, alb, nrm);` : '',
       far,
       `  if (tdOn[${k}] < 0.5) alb = vec3(0.5);`,
+      `  rough = ${rough}; ao = 1.0;`,
       '  nrm = normalize(nrm); }',
     ].filter(Boolean).join('\n')
   })
@@ -340,16 +437,18 @@ function look(f: Field, slots: Slots, THREE: typeof import('three'), uniforms: R
     'float tdSlope = 1.0 - tdGeo.y;',
     'vec3 tdDx = dFdx(tdP), tdDy = dFdy(tdP);',
     A ? `vec4 tdVal[${A}]; tdValues(tdP.xz, tdVal);` : '',
-    'vec3 tdC = vec3(0.0); tdN = tdGeo;',
+    `vec3 tdC = vec3(0.0); tdN = tdGeo; tdRough = ${rough}; tdAO = 1.0;`,
     ...baked,
     // Live: every layer worked out, wherever the rings do not give the whole fragment.
     'if (tdVt < 0.999 || tdDebug > 0.5) {',
     ...masks,
     ...composed,
-    ...g.layers.map((_, k) => `vec3 tdAlb${k} = vec3(0.0), tdNrm${k} = tdGeo; if (tdW${k} > 0.01) tdRead${k}(tdP, tdGeo, tdDx, tdDy, tdWv${k}, tdAlb${k}, tdNrm${k});`),
+    ...g.layers.map((_, k) => `vec3 tdAlb${k} = vec3(0.0), tdNrm${k} = tdGeo; float tdRo${k} = ${rough}, tdAo${k} = 1.0; if (tdW${k} > 0.01) tdRead${k}(tdP, tdGeo, tdDx, tdDy, tdWv${k}, tdW${k}, tdAlb${k}, tdNrm${k}, tdRo${k}, tdAo${k});`),
     ...blended,
     `tdC = ${g.layers.map((_, k) => `tdAlb${k} * tdW${k}`).join(' + ')};`,
     `tdN = normalize(${g.layers.map((_, k) => `tdNrm${k} * tdW${k}`).join(' + ')});`,
+    `tdRough = ${g.layers.map((_, k) => `tdRo${k} * tdW${k}`).join(' + ')};`,
+    `tdAO = ${g.layers.map((_, k) => `tdAo${k} * tdW${k}`).join(' + ')};`,
     ...surfaces.filter(name => f.surfaces[name].colour).map((name, i) => `float tdS${L + i} = ${sharpen(value(slots.surfaces[name]), f.surfaces[name].edge)}; tdC = mix(tdC, ${rgb(f.surfaces[name].colour!)}, tdS${L + i});`),
     // The views (Views): what the fragment is drawn as instead of lit, kept in tdDbg.
     'if (tdDebug > 0.5) {',
@@ -357,7 +456,7 @@ function look(f: Field, slots: Slots, THREE: typeof import('three'), uniforms: R
     `  int tdTop = 0; float tdTopW = tdW0;`,
     ...g.layers.slice(1).map((_, j) => `  if (tdW${j + 1} > tdTopW) { tdTop = ${j + 1}; tdTopW = tdW${j + 1}; }`),
     `  vec3 tdTopWv = ${g.layers.map((_, k) => `tdTop == ${k} ? tdWv${k} : `).join('')}vec3(0.0);`,
-    `  float tdTopScale = ${g.layers.map((l, k) => `tdTop == ${k} ? ${n6(l.scale)} : `).join('')}1.0;`,
+    `  float tdTopScale = ${g.layers.map((l, k) => `tdTop == ${k} ? ${n6(l.scale ?? 1)} : `).join('')}1.0;`,
     `  if (tdDebug < 2.5) tdDbg = (${g.layers.map((_, k) => `${pal(k, L)} * tdW${k}`).join(' + ')}) * tdRelief;`,
     '  else if (tdDebug < 3.5) tdDbg = 0.5 + 0.5 * clamp(tdTopWv / 30.0, -1.0, 1.0);',
     '  else if (tdDebug < 4.5) { float l = clamp(log2(max(length(tdDx.xz), length(tdDy.xz)) / tdTopScale * tdRes) / 8.0, 0.0, 1.0);',
@@ -441,14 +540,19 @@ function look(f: Field, slots: Slots, THREE: typeof import('three'), uniforms: R
         ...values,
         'uniform highp sampler2DArray tdCol;', 'uniform highp sampler2DArray tdNR;', 'uniform float tdRes;', `uniform float tdOn[${L}];`,
         'uniform highp sampler2DArray tdColS;', 'uniform highp sampler2DArray tdNRS;', `uniform float tdSlot[${L}];`, 'uniform float tdSmallOnly;',
-        'vec3 tdN;', 'uniform float tdDebug;', 'vec3 tdDbg = vec3(0.0);',
-        NOISE, glsl(g), read, ...reads, ...rings,
+        'vec3 tdN; float tdRough; float tdAO;', 'uniform float tdDebug;', 'vec3 tdDbg = vec3(0.0);',
+        NOISE, glsl(g), read, ...rings,
       ]),
+      // each word's own, and every layer's read, after everything three declares
+      clipping_planes_pars_fragment: lines([...reads.map(r => r.pars), ...layerReads]),
       color_fragment: lines(colours),
+      roughnessmap_fragment: 'roughnessFactor = tdRough;',
       normal_fragment_maps: 'normal = normalize((viewMatrix * vec4(tdN, 0.0)).xyz);',
+      aomap_fragment: 'reflectedLight.indirectDiffuse *= tdAO;\nreflectedLight.indirectSpecular *= tdAO;',
       // a view is drawn as it is: no light, no fog, only the output's colour space
       fog_fragment: 'if (tdDebug > 0.5) gl_FragColor = linearToOutputTexel(vec4(tdDbg, 1.0));',
     },
+    reads,
   }
 }
 // A place prepared ahead of the camera (Prepared places): its point, the land and centres its rings
@@ -464,7 +568,7 @@ type Job = { land: Land; versions: number[]; builds: Build[]; total: number; don
 export type Ground = NonNullable<ReturnType<typeof terrain3d>['ground']>
 
 export function terrain3d() {
-  let settings = ''
+  let settings: Laid | undefined
   let layout: Layout | undefined
   let field: Field | undefined
   let seen: { parts: unknown[]; text: string } | undefined
@@ -473,11 +577,18 @@ export function terrain3d() {
   // for; a material replaced while a ring still draws with it waits in `retired` until none does.
   let material: THREE.MeshStandardMaterial | undefined
   let slots: Slots | undefined
-  let looks = '', carries = ''
+  let looks: Looked | undefined
+  let carries = ''
+  // each delivered word's read of the material's layers (Ground layers)
+  let reads: Read[] = []
+  const wordsReady = () => reads.every(r => r.ready())
   const retired = new Set<THREE.Material>()
   let shown: (Shown | undefined)[] = []
   let job: Job | undefined
   let scene: THREE.Scene | undefined
+  // render3d's `prepare`: a ring on the scene given a ground material it has not drawn with is compiled
+  // before it is drawn with it, out of the frame until then, so the frame that swaps it does not stall.
+  let prepare: ((o: THREE.Object3D) => void) | undefined
   // The ground layers' maps still on their way (one count for the whole set), and the texture arrays
   // they were last drawn into (Ground layers).
   let waiting = 0
@@ -503,12 +614,12 @@ export function terrain3d() {
   // Each task in flight under its id: what to call with its output, and the worker running it.
   const tasks = new Map<number, { done: (out: unknown) => void; on: { worker: Worker; asked: number } }>()
   let ids = 0
-  let sent: { land: Land; versions: string } | undefined
+  let sent: { land: Land; versions: number[] } | undefined
   // The baked rings (Baked rings): none without `bake` or a renderer; the settings they were made for;
   // and the land and stroke versions their bake is of.
   let bakes: Baker | undefined
-  let bakeKey = ''
-  let bakeOf: { land: Land; versions: string } | undefined
+  let baking: Baking | undefined
+  let bakeOf: { land: Land; versions: number[] } | undefined
   let bakeSettings: BakeSettings | undefined
   // three and the renderer, as render3d last handed them.
   let page3: typeof import('three') | undefined
@@ -548,9 +659,9 @@ export function terrain3d() {
     ground: undefined as undefined | {
       height(x: number, z: number): number; raw(x: number, z: number): number; depth(x: number, z: number): number
       at(x: number, z: number): ReturnType<Land['analyse']>; cover(x: number, z: number): number
-      spray(x: number, z: number): string | false | undefined; mark(x: number, z: number): number | undefined
+      drivers(x: number, z: number): Record<string, number> | undefined; mark(x: number, z: number): number | undefined
       ramp(rule: Rule, x: number, z: number): number; rules: Land['rules']; edits(): ReturnType<Land['edits']>
-      ray(origin: number[], dir: number[]): number[] | undefined; mix: Land['mix']; layers: Land['layers']; rings(): number[]; shown(): boolean
+      ray(origin: number[], dir: number[]): number[] | undefined; mix: Land['mix']; layers: Land['layers']; shown(): boolean
       prepare(x: number, z: number): void; prepared(): number[] | undefined; unprepare(): void
       task(url: string, input: unknown): Promise<unknown> | undefined
     },
@@ -588,15 +699,15 @@ export function terrain3d() {
       const b = bakeSettings
       if (!b || !renderer || !page3 || !material || !me.land || meshes.some(m => m.material !== material)) return
       bakes ??= baker(page3, renderer, b)
-      const versions = JSON.stringify(me.land.edits().layers.map(e => e.version))
-      if (!bakeOf || bakeOf.land !== me.land || bakeOf.versions !== versions) {
+      if (!bakeOf || bakeOf.land !== me.land || !current(bakeOf.versions, me.land)) {
         bakes.reset()
-        bakeOf = { land: me.land, versions }
+        bakeOf = { land: me.land, versions: versionsOf(me.land) }
       }
       const u = material.userData.terrain3d as Record<string, THREE.IUniform>
       // a ring whose texel is as wide as a small copy's bakes from the small copies (Near maps)
-      const fine = maps ? Math.min(...me.land.field.ground.layers.map(l => l.scale)) / maps.small : Infinity
-      bakes.update(meshes, x, z, cover, u, waiting === 0 && (u.tdOn.value as number[]).every(v => v === 1), fine)
+      const scales = me.land.field.ground.layers.flatMap((l, k) => (wordOf(l, k) === 'map' ? [l.scale!] : []))
+      const fine = maps && scales.length ? Math.min(...scales) / maps.small : Infinity
+      bakes.update(meshes, x, z, cover, u, waiting === 0 && wordsReady() && (u.tdOn.value as number[]).every(v => v === 1), fine)
     },
     // The near maps follow ground point (x, z) (Near maps). The plugin calls it with the camera's point;
     // a plugin drawing terrain3d's rings itself calls it with its own.
@@ -633,10 +744,9 @@ export function terrain3d() {
       if (!s.preload) onScene = true
       page3 = plugins.render3d.THREE as typeof import('three')
       renderer = plugins.render3d.renderer as THREE.WebGLRenderer | undefined
-      const key = JSON.stringify([s.rings, s.shadowReach, s.seabed])
-      if (key !== settings) {
+      if (!settings || !alike(s.rings, settings.rings) || !alike(s.shadowReach, settings.shadowReach) || !alike(s.seabed, settings.seabed)) {
         layout = layoutOf(s.rings)
-        settings = key
+        settings = { rings: structuredClone(s.rings), shadowReach: s.shadowReach, seabed: s.seabed }
         if (job) abandon(job.builds)
         job = undefined
         for (const b of shown) drop(b)
@@ -644,15 +754,14 @@ export function terrain3d() {
         me.rings = []
         if (place) place.land = undefined
       }
-      const bk = JSON.stringify([s.bake ?? null, s.rings, s.maps ?? null])
-      if (bk !== bakeKey) {
+      if (!baking || !alike(s.bake ?? null, baking.bake) || !alike(s.rings, baking.rings) || !alike(s.maps ?? null, baking.maps)) {
         if (s.bake) checkBake(s.bake, layout!)
         if (s.maps) checkMaps(s.maps)
         maps = s.maps
         bakes?.close()
         bakes = undefined
         bakeOf = undefined
-        bakeKey = bk
+        baking = { bake: structuredClone(s.bake ?? null), rings: structuredClone(s.rings), maps: structuredClone(s.maps ?? null) }
         bakeSettings = s.bake
       }
       const f = plugins.loader.get(s.field) as Field | undefined
@@ -662,9 +771,12 @@ export function terrain3d() {
       }
       const { THREE: three, scene: on, camera } = plugins.render3d as { THREE: typeof import('three'); scene: THREE.Scene; camera?: THREE.PerspectiveCamera }
       scene = on
+      prepare = o => plugins.render3d.prepare(o)
       const prior = seen?.text
-      if (changed(f) || (material && looks !== looked(f) + bakeKey)) remake(f, prior === undefined ? undefined : JSON.parse(prior), three, plugins)
-      if (!camera) return
+      if (changed(f) || (material && !looksAs(looks, f, baking))) remake(f, prior === undefined ? undefined : JSON.parse(prior), three, plugins)
+      // a word a layer is of was not ready when the land was made: the material is tried again
+      if (!material) clothe(f, three, plugins)
+      if (!material || !camera) return
       const x = s.static ? 0 : camera.position.x, z = s.static ? 0 : camera.position.z
       // A scene that preloads prepares the camera's own place first, and shows nothing until it is
       // done; until then the place follows the camera, keeping its rings while their middles stay.
@@ -736,10 +848,12 @@ export function terrain3d() {
       bakes?.close()
       bakes = undefined
       bakeOf = undefined
-      bakeKey = ''
+      baking = undefined
       for (const m of retired) m.dispose()
       retired.clear()
-      looks = carries = ''
+      looks = undefined
+      reads = []
+      carries = ''
     },
   }
 
@@ -836,9 +950,8 @@ export function terrain3d() {
   // sent whenever the land or a layer's version has moved since they were last sent.
   function sync() {
     const l = me.land!
-    const versions = JSON.stringify(l.edits().layers.map(e => e.version))
-    if (sent && sent.land === l && sent.versions === versions) return
-    sent = { land: l, versions }
+    if (sent && sent.land === l && current(sent.versions, l)) return
+    sent = { land: l, versions: versionsOf(l) }
     const unsaved = (l.field.layers ?? []).map((_, k) => l.unsaved(k))
     for (const p of pool!) p.worker.postMessage({ type: 'land', field: l.field, unsaved })
   }
@@ -860,7 +973,7 @@ export function terrain3d() {
     const on = plugins.wire.scene
     provided(on, 'terrain3d', 'ready')
     const whole = p.arrived ? p.swapped : p.builds.every(built)
-    p.done = whole && waiting === 0 && modsOf<(plugins: Plugins) => boolean>(on.world!, 'terrain3d', 'ready').every(f => f(plugins))
+    p.done = whole && waiting === 0 && wordsReady() && modsOf<(plugins: Plugins) => boolean>(on.world!, 'terrain3d', 'ready').every(f => f(plugins))
     if (!p.done || !p.arrived) return
     if (!onScene) {
       onScene = true
@@ -886,39 +999,14 @@ export function terrain3d() {
         if (b && b.land === was && !dirty.some(r => reaches(r, k, b.C, b.hole))) shown[k] = { ...b, land: l, versions }
       })
     }
-    if (!material || looked(f) + bakeKey !== looks) {
-      const s = slotsOf(f)
-      const uniforms: Record<string, THREE.IUniform> = {}
-      const made = plugins.render3d.dress(new three.MeshStandardMaterial({ roughness: f.ground.roughness ?? 0.9, metalness: 0 }), { surface: look(f, s, three, uniforms, bakeSettings, maps, layout!.rings.length) }) as THREE.MeshStandardMaterial
-      bind(f, uniforms, plugins, three, maps)
-      // the values the ground carries: kept from the old look when it carried the same, so the rings
-      // that stay draw with the new material at once; made anew, and filled as the rings swap in, when not
-      const v = valuesFor(three, s)
-      if (v) {
-        uniforms.tdVals.value = v.tex
-        uniforms.tdValRing.value = v.ring
-      }
-      values = v
-      made.userData.terrain3d = uniforms
-      made.userData.terrain3dValues = v
-      // the layers the ground round the camera hits are worked out again for the new look
-      focused = undefined
-      wanted = undefined
-      if (material) retired.add(material)
-      material = made
-      slots = s
-      looks = looked(f) + bakeKey
-      if (carried(f) === carries) for (const b of shown) if (b) b.mesh.material = made
-      carries = carried(f)
-      retire()
-    }
+    if (!material || !looksAs(looks, f, baking)) clothe(f, three, plugins)
     me.ground = {
       height: (x, z) => me.land!.height(x, z),
       raw: (x, z) => me.land!.raw(x, z),
       depth: (x, z) => me.land!.depth(x, z),
       at: (x, z) => me.land!.analyse(x, z),
       cover: (x, z) => me.land!.paint(x, z).cover,
-      spray: (x, z) => me.land!.paint(x, z).spray,
+      drivers: (x, z) => me.land!.paint(x, z).drivers,
       mark: (x, z) => me.land!.paint(x, z).mark,
       ramp: (rule, x, z) => me.land!.ramp(rule, x, z),
       rules: (list, what) => me.land!.rules(list, what),
@@ -926,13 +1014,59 @@ export function terrain3d() {
       ray: (origin, dir) => me.land!.ray(origin, dir, (plugins.render3d.camera as THREE.PerspectiveCamera).far),
       mix: (x, z) => me.land!.mix(x, z),
       layers: (x, z) => me.land!.layers(x, z),
-      rings: () => layout!.rings.map(r => r.reach),
       task: (url, input) => me.task(url, input),
       shown: () => onScene,
       prepare: (x, z) => me.prepare(x, z),
       prepared: () => place?.at,
       unprepare: () => me.unprepare(),
     }
+  }
+
+  // The material of the field's look (Ground layers), made from the table of layer words: nothing,
+  // and the old material kept, while a word a layer is of is not ready to be read yet, so the next
+  // frame tries again; the rings draw with no material until the first is made.
+  function clothe(f: Field, three: typeof import('three'), plugins: Plugins) {
+    const s = slotsOf(f)
+    const uniforms: Record<string, THREE.IUniform> = {}
+    // the table of layer words: each delivered word laid over the last
+    ahead(plugins.wire.scene, 'terrain3d', 'behaviors')
+    const words: Record<string, LayerWord> = {}
+    for (const b of modsOf<Behaviors>(plugins.wire.scene.world!, 'terrain3d', 'behaviors')) Object.assign(words, b(plugins))
+    const dressed = look(f, s, three, uniforms, bakeSettings, maps, layout!.rings.length, words)
+    if (!dressed) return
+    const { reads: got, ...surface } = dressed
+    const made = plugins.render3d.dress(new three.MeshStandardMaterial({ roughness: f.ground.roughness ?? 0.9, metalness: 0 }), { surface }) as THREE.MeshStandardMaterial
+    reads = got
+    const patches = got.filter(r => r.patch)
+    if (patches.length) {
+      const before = made.onBeforeCompile, key = made.customProgramCacheKey
+      made.onBeforeCompile = (shader, renderer) => {
+        before.call(made, shader, renderer)
+        for (const r of patches) r.patch!(shader)
+      }
+      made.customProgramCacheKey = () => `${key.call(made)}|${patches.map(r => r.pars).join('|')}`
+    }
+    bind(f, uniforms, plugins, three, maps)
+    // the values the ground carries: kept from the old look when it carried the same, so the rings
+    // that stay draw with the new material at once; made anew, and filled as the rings swap in, when not
+    const v = valuesFor(three, s)
+    if (v) {
+      uniforms.tdVals.value = v.tex
+      uniforms.tdValRing.value = v.ring
+    }
+    values = v
+    made.userData.terrain3d = uniforms
+    made.userData.terrain3dValues = v
+    // the layers the ground round the camera hits are worked out again for the new look
+    focused = undefined
+    wanted = undefined
+    if (material) retired.add(material)
+    material = made
+    slots = s
+    looks = looked(f, baking)
+    if (carried(f) === carries) for (const b of shown) if (b) dressAs(b.mesh, made)
+    carries = carried(f)
+    retire()
   }
 
   // Every ground layer's maps, asked of the loader and, once every one has landed, drawn into the
@@ -943,18 +1077,25 @@ export function terrain3d() {
   // there are no arrays and the layers stay off.
   function bind(f: Field, uniforms: Record<string, THREE.IUniform>, plugins: Plugins, three: typeof import('three'), mp: Maps | undefined) {
     const layers = f.ground.layers
+    // the layers that read maps: a layer of another word reads none, and holds no slot
+    const mapped = layers.map((l, k) => wordOf(l, k) === 'map')
     layers.forEach((l, k) => {
+      if (!mapped[k]) return
       for (const name of [l.map, l.normal]) {
         if (name !== undefined && plugins.loader.catalogued(name)?.type !== 'texture') throw new Error(`terrain3d ground layer ${k} names ${name}, which is no texture entry of the loader's catalogue`)
       }
     })
     const renderer = plugins.render3d.renderer as THREE.WebGLRenderer | undefined
     if (!renderer) return
+    if (!mapped.some(Boolean)) {
+      uniforms.tdOn.value = layers.map(() => 1)
+      return
+    }
     // The loader writes a failure to the console once itself, and the layers stay off.
     waiting++
-    Promise.all(layers.map(l => Promise.all([plugins.loader.load(l.map), l.normal ? plugins.loader.load(l.normal) : undefined]))).then(got => {
+    Promise.all(layers.map((l, k) => (mapped[k] ? Promise.all([plugins.loader.load(l.map!), l.normal ? plugins.loader.load(l.normal) : undefined]) : Promise.resolve(undefined)))).then(got => {
       const L = layers.length
-      const res = Math.max(...got.map(([c]) => ((c as THREE.Texture).image as { width: number }).width))
+      const res = Math.max(...got.flatMap(g => (g ? [((g[0] as THREE.Texture).image as { width: number }).width] : [])))
       // texture arrays are WebGL 2's, which three renders with alone
       const gl = renderer.getContext() as WebGL2RenderingContext
       const target = (size: number, depth: number, srgb: boolean) => {
@@ -987,7 +1128,7 @@ export function terrain3d() {
       // an orthographic eye: render3d's reversed-depth renderer projects every camera again
       const on = new three.Scene().add(quad), eye = new three.OrthographicCamera(-1, 1, 1, -1, 0, 1)
       const put = (tc: THREE.WebGLArrayRenderTarget, tn: THREE.WebGLArrayRenderTarget, slot: number, k: number) => {
-        const [c, n] = got[k]
+        const [c, n] = got[k]!
         const was = renderer.getRenderTarget()
         copy.uniforms.uMode.value = 0
         copy.uniforms.uA.value = c
@@ -1001,17 +1142,17 @@ export function terrain3d() {
       }
       const of = layers.map(() => -1), holds = Array.from({ length: near }, () => -1)
       if (small) {
-        for (let k = 0; k < L; k++) put(small.col, small.nr, k, k)
+        for (let k = 0; k < L; k++) if (mapped[k]) put(small.col, small.nr, k, k)
         mips(small.col)
         mips(small.nr)
       } else {
-        for (let k = 0; k < L; k++) { put(col, nr, k, k); of[k] = k; holds[k] = k }
+        for (let k = 0; k < L; k++) { if (!mapped[k]) continue; put(col, nr, k, k); of[k] = k; holds[k] = k }
         mips(col)
         mips(nr)
       }
       stock?.dispose()
       stock = {
-        col, nr, small, near, of, holds, uniforms, put, mips,
+        col, nr, small, near, of, holds, mapped, uniforms, put, mips,
         dispose() {
           col.dispose()
           nr.dispose()
@@ -1041,7 +1182,7 @@ export function terrain3d() {
     wanted = order
     const s = stock
     if (!s?.small) return
-    const want = order.slice(0, s.near), keep = new Set(want)
+    const want = order.filter(k => s.mapped[k]).slice(0, s.near), keep = new Set(want)
     s.holds.forEach((k, slot) => {
       if (k < 0 || keep.has(k)) return
       s.of[k] = -1
@@ -1169,6 +1310,14 @@ export function terrain3d() {
     return false
   }
 
+  // A ring given the ground material `m`: one on the scene that drew with another is handed to
+  // render3d's `prepare`, so it is compiled before it is drawn with it.
+  function dressAs(mesh: THREE.Mesh, m: THREE.Material) {
+    const was = mesh.material
+    mesh.material = m
+    if (was !== m && mesh.parent) prepare!(mesh)
+  }
+
   function swap(j: Job, three: typeof import('three'), s: Settings) {
     const { c0, rings } = layout!
     for (const b of j.builds) {
@@ -1183,7 +1332,7 @@ export function terrain3d() {
         mesh = was.mesh
         mesh.geometry.dispose()
         mesh.geometry = g
-        mesh.material = material!
+        dressAs(mesh, material!)
       } else {
         mesh = new three.Mesh(g, material)
         mesh.receiveShadow = true

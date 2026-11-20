@@ -12,6 +12,8 @@ yarn health                           # does this machine have what core needs: 
 yarn new-game <name>                  # games/<name>/: a game of one scene and a seat
 yarn dev                              # serves the repo: localhost:5173/games/<game>/index.html, dev.html or client.html; localhost:5173 lists every game and its pages
 yarn serve <game>                     # yarn dev, and games/<game>/<game>.server.ts on node, which client.html dials; started again on every change to a file it runs
+yarn workshop [ui|particles|poses|puppet3d|hair3d|grass3d|item3d] [<game>]   # starts the workshop's server and opens that workshop's page; particles also takes --effects <path>, --sheet <key>=<path>, --effect <name>, --file <repo path>
+yarn particle-views <views.json> <out>   # pictures of particle effects, each view a file, an effect, a camera, a target, a preroll and the layers off, in a headless Chrome
 yarn test                             # vitest run, but the game tests (`.game.test.ts`, `.predict.test.ts`)
 yarn test:game                        # the game tests only
 yarn vitest run <path>                # one file
@@ -23,7 +25,7 @@ Baking art reads `BLENDER`, `PATCHWORK_LIBRARY`, `GLTFPACK` and `MAGICK` from th
 `.env` at the root (copied from `.env.example`, which lists them and their defaults; `.env` is not
 committed). `yarn health` runs each one.
 
-A `.test.ts` runs in node; a `.test.tsx` runs in jsdom with Testing Library. A test outside `games/`
+A `.test.ts` runs in node; a `.test.tsx` runs in jsdom (`vitest.dom.ts`). A test outside `games/`
 never uses a game in `games/`: a clone of core has none.
 
 ## Where facts live

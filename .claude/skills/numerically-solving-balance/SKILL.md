@@ -26,7 +26,7 @@ game**, thousands of times, with no screen, and searching.
 
 ## The method
 
-Worked through on canyonracer (`games/canyonracer`, its `assets/open/corners.ts` and its journal).
+Worked through on canyonracer (`games/canyonracer` and its `assets/open/corners.ts`).
 Every piece below is a step a game's balance solver needs.
 
 ### 1. One round, played headless, the same every time

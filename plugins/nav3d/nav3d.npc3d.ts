@@ -1,6 +1,6 @@
 // nav3d's mod for npc3d (`addons/scenemanager`'s mods). A scene with `world.npc3d.mods: { route: 'nav3d' }` has its NPCs walk along nav3d's routes
-// over the scene's graph, the one `world.nav3d.graphs` names; a scene that names none, or more than
-// one, throws, naming them.
+// over the scene's graph, the one `world.nav3d.graphs` and its `graphs` mods name (`graphsOf`); a scene that names
+// none, or more than one, throws, naming them.
 //
 // `route(w, from, to)` is nav3d's `route` over that graph from `from` [x, y, z] to the place `to`
 // [x, y, z]: the place of each of its steps in turn, [x, y, z], each place's at its height in the graph,
@@ -10,11 +10,11 @@
 // end, so a person walks onto the ground of each place.
 import type { W } from '#engine/engine.ts'
 import type { Leg } from '#plugins/npc3d/npc3d.sim.ts'
-import { route as way, type Step } from '#plugins/nav3d/nav3d.sim.ts'
+import { graphsOf, route as way, type Step } from '#plugins/nav3d/nav3d.sim.ts'
 
 function graphOf(w: W): string {
-  const names = Object.keys(w.world.nav3d?.graphs ?? {})
-  if (names.length !== 1) throw new Error(`npc3d's routes walk the scene's one graph, and world.nav3d.graphs names ${names.join(', ') || 'none'}`)
+  const names = Object.keys(graphsOf(w.world))
+  if (names.length !== 1) throw new Error(`npc3d's routes walk the scene's one graph, and world.nav3d.graphs and its graphs mods name ${names.join(', ') || 'none'}`)
   return names[0]
 }
 

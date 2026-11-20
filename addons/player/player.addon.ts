@@ -2,7 +2,7 @@
 // connection takes the lowest slot below the scene's `seats` that no seat holds and no `player` row
 // sits in, and gets a `player` row holding that slot in its `seat` field; the seat possesses that row,
 // so a message names an act on the player and truth runs it there. A `player` row spawned by
-// something else, the editor fielding a side no seat plays, keeps its slot: a connection that comes
+// something else, a rule fielding a side no seat plays, keeps its slot: a connection that comes
 // after takes another.
 //
 // The slot is not the seat's number. The `seat` an act is handed is the truth's seat number, which
@@ -32,7 +32,7 @@
 // when its player row's `masks` list and the owner's hold the same `<group>/<name>`; `join` puts
 // `me/<row id>` in every player row's `masks`, so `me` is a group of one: `own(id, masks)` is what a
 // player row of that id holds of its own, its `owner` and its `masks`, which `join` writes, and so
-// does anything else that spawns a player row, the editor fielding a side through its recorder. Any server code may push
+// does anything else that spawns a player row. Any server code may push
 // onto a `masks` list, such as `team/red`, and each packet reads the lists as they are when it is
 // made. A row with no owner, and a field nobody listed, is sent to every seat, and so is every field
 // of a scene with no `security` block. A row whose owner has left is sent to every seat without its

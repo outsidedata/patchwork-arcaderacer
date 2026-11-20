@@ -1,5 +1,5 @@
 // cover3d on a wood the test writes: a manager and one child, `wood`, which `load` boots as a game's
-// would, so the mod `world.cover3d.mods.solids` names is loaded before the first step: scatter3d's
+// would, so the mod `world.cover3d.mods.solids` names is loaded before the first step: lod3d's
 // rocks, which stand `tall`, and trunks, which stand without end, on terrain3d's level ground. `spots`
 // behind every solid within reach from a threat, nearest first, the short ones left out by `low`, each
 // with the solid across every line from the threat to it under the solid's height. A scene that names
@@ -14,7 +14,8 @@ import { load } from '#addons/scenemanager/scenemanager.addon.ts'
 import { scenemanager } from '#plugins/scenemanager/scenemanager.sim.ts'
 import { written } from '#plugins/loader/loader.sim.ts'
 import type { Field } from '#plugins/terrain3d/terrain3d.sim.ts'
-import { placed, solids as over, type Scatter } from '#plugins/scatter3d/scatter3d.sim.ts'
+import type { Lod3d } from '#plugins/lod3d/lod3d.sim.ts'
+import { solids as over } from '#plugins/lod3d/lod3d.walker.ts'
 import { cylinder } from '#plugins/hitscan3d/hitscan3d.sim.ts'
 import { spots, type Solid } from './cover3d.sim.ts'
 
@@ -29,17 +30,19 @@ const field: Field = {
 const url = '/cover3d-test/wood.json'
 written(url, JSON.stringify(field))
 
-const scatter: Scatter & { mods: Record<string, string> } = {
-  cutout: 0.45, coverage: 0.25, budget: 1e9, remember: 100000, mods: { ground: 'terrain3d' },
-  packs: {
+const lod3d: Lod3d & { widest: number; remember: number } = {
+  mods: { surfaces: ['terrain3d'], seen: ['terrain3d'], behaviors: ['terrain3d', 'instances3d'] },
+  rings: [60, 100], budget: 2, remember: 100000, widest: 1.28,
+  layers: {
     trunks: {
-      asset: 'firs', rows: { fir: { weight: 2, solid: 0.35 }, fern: { weight: 1 } },
-      cell: 9, reach: 60, seed: 91, lods: [20, 40], shadow: 30, leaf: 0.5, density: 0.25, rules: [], clearing: 0, size: [0.8, 0.6], vary: 0.2,
+      on: ['land'], rows: { fir: { weight: 2, solid: 0.35 }, fern: { weight: 1 } },
+      cell: 9, spacing: 9, seed: 92, density: 0.25, size: [0.8, 0.6], vary: 0.2,
+      mesh: { asset: 'firs', lods: [0, 1], shadow: 30, leaf: 0.5 },
     },
     rocks: {
-      shape: { detail: 1, lumpy: [0.7, 0.3], squash: 0.7 }, colour: '#6a655e',
-      rows: { rock: { weight: 1, solid: 0.8, tall: 0.75 } },
-      cell: 14, reach: 100, seed: 7, lods: [40], shadow: 50, leaf: 0.5, density: 0.4, rules: [], clearing: 0, size: [1, 0.6], vary: 0.1,
+      on: ['land'], rows: { rock: { weight: 1, solid: 0.8, tall: 0.75 } },
+      cell: 14, spacing: 14, seed: 7, density: 0.4, size: [1, 0.6], vary: 0.1,
+      mesh: { shape: { detail: 1, lumpy: [0.7, 0.3], squash: 0.7 }, colour: '#6a655e', lods: [0], shadow: 50, leaf: 0.5 },
     },
   },
 }
@@ -53,8 +56,8 @@ const wood = {
   world: {
     loader: { assets: { land: { type: 'json', url, preload: true } } },
     terrain3d: { field: 'land' },
-    scatter3d: scatter,
-    cover3d: { mods: { solids: 'scatter3d' } },
+    lod3d,
+    cover3d: { mods: { solids: 'lod3d' } },
   },
   prefabs: { engine: { dt: DT }, scenemanager: { out: {} }, loader: {}, probe: {} },
   actors: [{ is: 'scenemanager' }, { is: 'loader' }, { is: 'probe' }],
@@ -78,7 +81,7 @@ async function booted() {
   child.step(DT)
   return { child, w: (globalThis as { cover3dWood?: W }).cover3dWood! }
 }
-const around = (w: W, x: number, z: number, r: number): Solid[] => over(w, x, z, r, placed(w))
+const around = (w: W, x: number, z: number, r: number): Solid[] => over(w, x, z, r)
 // A rock with no other solid within 12 m of its circle.
 function alone(w: W) {
   const all = around(w, 0, 0, 200)

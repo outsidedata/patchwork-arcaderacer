@@ -1,0 +1,42 @@
+{
+  "burnout": {
+    "model": "title",
+    "at": [0, 1.2, -12],
+    "scale": 1.15,
+    "select": true,
+    "word": {
+      "node": "name",
+      "face": { "colour": "#f2f4f8", "metalness": 1, "roughness": 0.08, "env": 1.2 },
+      "side": { "colour": "#a3060f", "metalness": 0.6, "roughness": 0.3, "env": 0.8, "clearcoat": 1 },
+      "env": { "sky": "#4f7fc4", "horizon": "#e8eef6", "ground": "#1a1416", "band": "#ffffff", "width": 0.12, "size": 50 }
+    },
+    "reveal": { "after": 0, "seconds": 1.4, "from": [0, 0, -34], "turn": 0.7 },
+    "sway": { "yaw": [0.07, 0.5], "pitch": [0.03, 0.37], "roll": [0.012, 0.29], "phase": 0, "after": 1.4 },
+    "particles": [
+      { "effect": "title_burnout", "at": [-6.6, -0.8, 0] },
+      { "effect": "title_burnout", "at": [6.6, -0.8, 0] },
+      { "effect": "title_floor", "at": [-6, -1, 0.3] },
+      { "effect": "title_floor", "at": [-4.5, -1, 0.3] },
+      { "effect": "title_floor", "at": [-3, -1, 0.3] },
+      { "effect": "title_floor", "at": [-1.5, -1, 0.3] },
+      { "effect": "title_floor", "at": [0, -1, 0.3] },
+      { "effect": "title_floor", "at": [1.5, -1, 0.3] },
+      { "effect": "title_floor", "at": [3, -1, 0.3] },
+      { "effect": "title_floor", "at": [4.5, -1, 0.3] },
+      { "effect": "title_floor", "at": [6, -1, 0.3] }
+    ]
+  },
+  "name": {
+    "model": "title",
+    "at": [0, 3.5, -12],
+    "scale": 1,
+    "word": {
+      "node": "name",
+      "face": { "colour": "#f2f4f8", "metalness": 1, "roughness": 0.08, "env": 1.2 },
+      "side": { "colour": "#a3060f", "metalness": 0.6, "roughness": 0.3, "env": 0.8, "clearcoat": 1 },
+      "env": { "sky": "#4f7fc4", "horizon": "#e8eef6", "ground": "#1a1416", "band": "#ffffff", "width": 0.12, "size": 50 }
+    },
+    "reveal": { "after": 0, "seconds": 0.8, "from": [0, 3, -10], "turn": 0 },
+    "sway": { "yaw": [0.07, 0.5], "pitch": [0.03, 0.37], "roll": [0.012, 0.29], "phase": 0, "after": 0.8 }
+  }
+}

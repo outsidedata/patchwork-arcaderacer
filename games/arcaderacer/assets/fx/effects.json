@@ -1,15 +1,70 @@
 {
   "cap": 6000,
   "ppm": 64,
+  "files": ["title.json"],
+  "flipbooks": [
+    {
+      "name": "smoke",
+      "clip": "billow",
+      "frames": 48,
+      "loop": 0,
+      "across": 8,
+      "cell": [128,128],
+      "plane": 2,
+      "samples": 6,
+      "fps": 30,
+      "pivot": [0.5,0.5],
+      "nodes": [
+        {"id":"coord","type":"ShaderNodeTexCoord"},
+        {"id":"grow","type":"ShaderNodeVectorMath","props":{"operation":"SCALE"},"inputs":{"0":{"link":"coord.Object"},"Scale":{"keys":[[0,2.4],[0.25,1.6],[1,1.3]]}}},
+        {"id":"rise","type":"ShaderNodeVectorMath","props":{"operation":"ADD"},"inputs":{"0":{"link":"grow.Vector"},"1":{"keys":[[0,[0,0,0]],[1,[0,-0.2,0]]]}}},
+        {"id":"warp","type":"ShaderNodeTexNoise","props":{"noise_dimensions":"4D","noise_type":"FBM"},"inputs":{"Vector":{"link":"rise.Vector"},"W":{"keys":[[0,0],[1,2.4]]},"Scale":1.3,"Detail":3,"Roughness":0.5,"Lacunarity":2,"Distortion":0}},
+        {"id":"centred","type":"ShaderNodeVectorMath","props":{"operation":"SUBTRACT"},"inputs":{"0":{"link":"warp.Color"},"1":[0.5,0.5,0.5]}},
+        {"id":"warped","type":"ShaderNodeVectorMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"centred.Vector"},"1":{"keys":[[0,[0.45,0.45,0.45]],[1,[1,1,1]]]},"2":{"link":"rise.Vector"}}},
+        {"id":"r2","type":"ShaderNodeVectorMath","props":{"operation":"DOT_PRODUCT"},"inputs":{"0":{"link":"warped.Vector"},"1":{"link":"warped.Vector"}}},
+        {"id":"ball","type":"ShaderNodeMath","props":{"operation":"SUBTRACT"},"inputs":{"0":1,"1":{"link":"r2.Value"}}},
+        {"id":"lobes","type":"ShaderNodeTexVoronoi","props":{"voronoi_dimensions":"4D","feature":"SMOOTH_F1"},"inputs":{"Vector":{"link":"warped.Vector"},"W":{"keys":[[0,1],[1,3.2]]},"Scale":1.9,"Smoothness":1,"Randomness":1}},
+        {"id":"domes","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"lobes.Distance"},"1":-1,"2":{"link":"ball.Value"}}},
+        {"id":"lobes2","type":"ShaderNodeTexVoronoi","props":{"voronoi_dimensions":"4D","feature":"SMOOTH_F1"},"inputs":{"Vector":{"link":"warped.Vector"},"W":{"keys":[[0,7],[1,10]]},"Scale":4.6,"Smoothness":1,"Randomness":1}},
+        {"id":"domes2","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"lobes2.Distance"},"1":-0.4,"2":{"link":"domes.Value"}}},
+        {"id":"billows","type":"ShaderNodeTexNoise","props":{"noise_dimensions":"4D","noise_type":"FBM"},"inputs":{"Vector":{"link":"warped.Vector"},"W":{"keys":[[0,3],[1,6]]},"Scale":5,"Detail":6,"Roughness":0.55,"Lacunarity":2.1,"Distortion":0}},
+        {"id":"body","type":"ShaderNodeMath","props":{"operation":"MULTIPLY_ADD"},"inputs":{"0":{"link":"billows.Fac"},"1":0.35,"2":{"link":"domes2.Value"}}},
+        {"id":"edge","type":"ShaderNodeMath","props":{"operation":"SUBTRACT"},"inputs":{"0":{"link":"body.Value"},"1":{"keys":[[0,-0.15],[0.2,-0.2],[0.6,-0.14],[1,0.02]]}}},
+        {"id":"density","type":"ShaderNodeMath","props":{"operation":"MULTIPLY","use_clamp":true},"inputs":{"0":{"link":"edge.Value"},"1":{"keys":[[0,1.8],[0.3,1.4],[1,0.8]]}}}
+      ],
+      "images": [
+        {
+          "file": "smoke.png",
+          "channels": [
+            {"field":"edge.Value","op":"volume","dir":"+x","depth":110,"slices":32,"through":"density.Value","absorb":7,"soften":3},
+            {"field":"edge.Value","op":"volume","dir":"+y","depth":110,"slices":32,"through":"density.Value","absorb":7,"soften":3},
+            {"field":"edge.Value","op":"volume","dir":"-x","depth":110,"slices":32,"through":"density.Value","absorb":7,"soften":3},
+            {"field":"edge.Value","op":"volume","dir":"hidden","depth":110,"slices":32,"through":"density.Value","absorb":7,"soften":3}
+          ]
+        }
+      ]
+    }
+  ],
+  "drivers": {
+    "speed": 30,
+    "skid": 1,
+    "burnout": 1,
+    "smokeTint": 14935014,
+    "racer": 1,
+    "paid": 1
+  },
   "effects": {
     "smoke": [
       {
-        "sheet": "fx",
-        "clip": "puff",
+        "sheet": "smoke",
+        "clip": "billow",
+        "start": [0, 0.15],
+        "blend": true,
+        "channels": { "value": [0.55, 0.45, 0, 0], "alpha": [0, 0, 0, 1], "hot": [0, 0, 0, 0] },
         "every": 0.022,
         "life": [1.4, 2.6],
         "skip": 0.05,
-        "size": [0.9, 1.5],
+        "size": [0.45, 0.75],
         "grow": 4,
         "dir": [0, 1, 0],
         "spread": 1.4,
@@ -20,13 +75,55 @@
         "a0": 0.34,
         "a1": 0,
         "spin": 0.25,
-        "origin": [0.5, 0.92]
+        "tint": "smokeTint"
+      }
+    ],
+    "burnout": [
+      {
+        "sheet": "smoke",
+        "clip": "billow",
+        "start": [0, 0.15],
+        "blend": true,
+        "channels": { "value": [0.55, 0.45, 0, 0], "alpha": [0, 0, 0, 1], "hot": [0, 0, 0, 0] },
+        "every": "0.018 / max(burnout, 0.2)",
+        "life": [1.2, 2.4],
+        "skip": 0.05,
+        "size": [0.4, 0.65],
+        "grows": [[0, 0.5], [0.15, 1.6], [1, 4.5]],
+        "spread": 0.9,
+        "speed": ["1 + 1.5 * burnout", "2 + 3 * burnout"],
+        "jitter": [0.2, 0.05, 0.2],
+        "drag": 1.8,
+        "g": -0.35,
+        "alphas": [[0, 0], [0.08, 0.5], [0.5, 0.3], [1, 0]],
+        "spin": 0.3,
+        "tint": "smokeTint"
+      },
+      {
+        "sheet": "smoke",
+        "clip": "billow",
+        "start": [0, 0.15],
+        "blend": true,
+        "channels": { "value": [0.55, 0.45, 0, 0], "alpha": [0, 0, 0, 1], "hot": [0, 0, 0, 0] },
+        "every": "0.04 / max(burnout, 0.2)",
+        "life": [0.6, 1.1],
+        "size": [0.22, 0.38],
+        "grow": 3,
+        "dir": [0, 0.1, 0],
+        "spread": 1.5,
+        "speed": [0.6, 1.6],
+        "jitter": [0.15, 0, 0.15],
+        "drag": 2.5,
+        "alphas": [[0, 0], [0.1, 0.5], [1, 0]],
+        "spin": 0.4,
+        "tint": "smokeTint"
       }
     ],
     "sparks": [
       {
         "sheet": "fx",
         "clip": "streak",
+        "every": 0.016,
         "n": [3, 6],
         "life": [0.12, 0.32],
         "size": [0.18, 0.42],
@@ -45,6 +142,7 @@
       {
         "sheet": "fx",
         "clip": "glow",
+        "every": 0.016,
         "life": [0.05, 0.08],
         "size": [0.45, 0.7],
         "add": true,
@@ -58,6 +156,7 @@
       {
         "sheet": "fx",
         "clip": "streak",
+        "every": 0.016,
         "n": [9, 18],
         "life": [0.12, 0.32],
         "size": [0.18, 0.42],
@@ -76,6 +175,7 @@
       {
         "sheet": "fx",
         "clip": "glow",
+        "every": 0.016,
         "life": [0.05, 0.08],
         "size": [0.45, 0.7],
         "add": true,

@@ -17,7 +17,7 @@ import { boot, type Scene, type Truth, type W } from '#engine/engine.ts'
 import { load } from '#addons/scenemanager/scenemanager.addon.ts'
 import { scenemanager } from '#plugins/scenemanager/scenemanager.sim.ts'
 import type { Static } from '#plugins/box3d/box3d.sim.ts'
-import { box3dvehicle, corners, loads, pedals, shift, turn, type Axle, type Fleet, type Vehicle } from './box3dvehicle.sim.ts'
+import { box3dvehicle, corners, independentParts, loads, pedals, shift, steerOf, turn, wheelAt, type Axle, type Fleet, type Independent, type Vehicle } from './box3dvehicle.sim.ts'
 import { kinds } from './box3dvehicle.box3d.ts'
 
 const DT = 1 / 60
@@ -90,8 +90,10 @@ const heading = (truth: Truth) => turn(chassis(truth).rot, [1, 0, 0])
 // The heading's angle about up, positive to the left (-z).
 const yaw = (truth: Truth) => { const h = heading(truth); return Math.atan2(-h[2], h[0]) }
 const speed = (truth: Truth) => Math.hypot(...(chassis(truth).vel as number[]))
-// How far the chassis leans to its right, radians: its up turned towards +z.
-const lean = (truth: Truth) => Math.asin(turn(chassis(truth).rot, [0, 1, 0])[2])
+// How far the chassis leans to its right, radians: its own right (+z) turned down, whichever way it
+// is heading. (Its up's world z is the lean only while it heads along x; a car 3 s into a turn has
+// turned 2 rad, and that reads its pitch as much as its lean.)
+const lean = (truth: Truth) => -Math.asin(turn(chassis(truth).rot, [0, 0, 1])[1])
 const settled = async (v = vehicle, flip = false) => { const y = await yard(v, 1, flip); run(y.truth, 120); return y }
 
 test('the car is made of box3d rows at its pos, the row keeps only what changes, and it reports each corner', async () => {
@@ -301,13 +303,16 @@ test('an automatic shifts up one gear at a time as it speeds up, never past its 
   expect(car(truth).data.gear).toBe(1)
 }, 30_000)
 
-test('pulling away at full throttle the engine starts at its launch rpm and climbs every step as the clutch bites, never held on one rpm', async () => {
+test('pulling away at full throttle the engine starts at its launch rpm and climbs every step as the clutch bites, never held on one rpm, until the clutch locks', async () => {
+  // The clutch slips below twice the launch rpm, 4400; there it locks, and from then on the engine
+  // turns with the driven wheels, which dip as a spinning tyre catches the ground.
   const { truth } = await settled(automaticCar)
   Object.assign(car(truth).data, { gear: 1, throttle: 1 })
-  const rpms: number[] = []
-  for (let i = 0; i < 30; i++) { truth.step(DT); rpms.push(car(truth).data.rpm) }
+  const lock = 2 * 2200, rpms: number[] = []
+  for (let i = 0; i < 60 && (rpms.at(-1) ?? 0) < lock; i++) { truth.step(DT); rpms.push(car(truth).data.rpm) }
   expect(rpms[0]).toBeGreaterThanOrEqual(2200)
   expect(rpms[0]).toBeLessThan(2400)
+  expect(rpms.at(-1)).toBeGreaterThanOrEqual(lock)
   rpms.slice(1).forEach((r, i) => expect(r, `step ${i + 1}: ${rpms.map(Math.round).join(' ')}`).toBeGreaterThan(rpms[i]))
 }, 30_000)
 
@@ -483,6 +488,85 @@ test('rolling resistance slows a car rolling free: a tyre with it loses more spe
   const free = await coast(0), dragged = await coast(0.05)
   expect(free).toBeLessThan(0.2)
   expect(dragged).toBeGreaterThan(free + 0.5)
+})
+
+// ---------------------------------------------------------------- independent suspension
+// A long-travel side-by-side on independent suspension (`look.independent`): double wishbones and a
+// rack at the front, trailing arms held by two radius rods at the rear, each corner with its coilover,
+// anti-roll bar link and half-shaft. The page calls `independentParts` every frame with where the
+// physics' wheels are, and draws what it hands back.
+const longTravel = (at: number, steered: boolean, travel: number, sag: number): Axle => ({
+  at, track: 1.72, mount: 0.3,
+  wheel: { radius: 0.406, width: 0.254, mass: 28, friction: 1.1, rollingResistance: 0 },
+  spring: { stiffness: 20000, length: 0.84, travel, sag },
+  damper: { bump: 1200, rebound: 2200 },
+  bumpStop: { length: 0.05, stiffness: 120000 },
+  antiRoll: 9000, driven: true, steered,
+})
+const coilover = (lower: [number, number, number], top: [number, number, number], body: [number, number], main: number, tender: number) => ({
+  lower, top, body, shaft: 0.011, eye: 0.018, seat: 0.055, perch: 0.05,
+  main: { radius: 0.038, wire: 0.0065, turns: 7, free: main, rate: 26000 },
+  tender: { radius: 0.038, wire: 0.005, turns: 9, free: tender, rate: 14000, cross: 0.1 },
+  ring: [0.046, 0.012] as [number, number],
+  reservoir: { radius: 0.028, length: 0.2, gap: -0.07 },
+})
+const hub = { hub: [0.045, 0.04, 0.1] as [number, number, number], brake: { radius: 0.13, thick: 0.02, at: 0.065, caliper: [0.025, 0.04] as [number, number] } }
+const INDEPENDENT: Independent = {
+  ball: 0.02,
+  axles: [
+    {
+      wishbones: {
+        ...hub,
+        lower: { pivots: [[-0.17, -0.29, 0.21], [0.2, -0.29, 0.21]], ball: [0, -0.46, 0.775], radius: 0.017, bush: [0.026, 0.05] },
+        upper: { pivots: [[-0.16, -0.05, 0.27], [0.3, -0.05, 0.27]], ball: [0.02, -0.195, 0.748], radius: 0.015, bush: [0.022, 0.045], elbows: [[-0.03, -0.17, 0.55], [0.06, -0.17, 0.55]] },
+        knuckle: 0.03,
+        steer: { arm: [-0.13, -0.33, 0.762], rod: 0.011, rack: { along: -0.13, y: -0.173, half: 0.239, housing: 0.14, radius: 0.025, boot: 0.027 } },
+        shock: coilover([0.065, -0.345, 0.45], [0.08, 0.25, 0.25], [0.033, 0.395], 0.36, 0.25),
+        sway: { bar: [0.34, -0.17], half: 0.3, radius: 0.012, lever: [-0.23, 0], on: [0.11, -0.31, 0.33], link: [0.008, 0.014] },
+        shaft: { from: [0, -0.2, 0.13], at: 0.1, radius: 0.014, cup: [0.035, 0.06], boot: [0.032, 0.08] },
+      },
+    },
+    {
+      trailing: {
+        ...hub,
+        pivot: [1.3, -0.27, 0.5], end: [0.1, -0.38, 0.66], radius: 0.035, bush: [0.04, 0.08], carrier: 0.03,
+        rods: [{ frame: [-0.06, -0.08, 0.2], on: [-0.06, -0.2, 0.72] }, { frame: [-0.06, -0.32, 0.2], on: [-0.06, -0.44, 0.7] }], rod: 0.015,
+        shock: coilover([0.4, -0.32, 0.62], [0.75, 0.4, 0.4], [0.035, 0.51], 0.44, 0.3),
+        sway: { bar: [1.08, -0.15], half: 0.44, radius: 0.012, lever: [-0.18, 0], on: [0.9, -0.26, 0.51], link: [0.008, 0.014] },
+        shaft: { from: [0, -0.2, 0.17], at: 0.1, radius: 0.015, cup: [0.038, 0.065], boot: [0.034, 0.085] },
+      },
+    },
+  ],
+}
+const sideBySide: Vehicle = {
+  ...vehicle,
+  axles: [longTravel(1.37, true, 0.635, 0.21), longTravel(-1.37, false, 0.66, 0.22)],
+  steering: { ...vehicle.steering, angle: 0.42 },
+  look: { ...vehicle.look, independent: INDEPENDENT },
+}
+
+test('a car on independent suspension is drawn on rigid arms through its whole travel and lock: each wheel at its physics wheel\'s height, the front steered as the physics\' wheels are, no arm stretched, and the same parts every frame', () => {
+  const cs = corners(sideBySide)
+  const span = (p: { a: number[]; b: number[] }) => Math.hypot(p.a[0] - p.b[0], p.a[1] - p.b[1], p.a[2] - p.b[2])
+  // the arms, rods and links, which keep their length however the wheel moves; the coilovers, boots
+  // and half-shafts stretch and squeeze
+  const rigid = /^(lower\.tube|upper\.tube|upper\.bend|knuckle|steerarm|tierod\.[LR]|trailing\.[LR]|rod[01]\.[LR]|link\.[LR]|lever)/
+  for (const [i, axle] of sideBySide.axles.entries()) {
+    const [l, r] = [cs.find(c => c.axle === axle && c.side < 0)!, cs.find(c => c.axle === axle && c.side > 0)!]
+    const { sag, travel } = axle.spring, lock = axle.steered ? sideBySide.steering.angle : 0
+    const rest = independentParts(sideBySide, i, wheelAt(l, sag), wheelAt(r, sag), 0, 0)
+    const lengths = new Map(rest.parts.filter(p => rigid.test(p.name)).map(p => [p.name, span(p)]))
+    expect(lengths.size).toBeGreaterThan(axle.steered ? 10 : 6)
+    // at rest, bump and droop, crossed both ways, and on the front at full lock both ways
+    for (const [cl, cr] of [[sag, sag], [travel, travel], [0, 0], [travel, 0], [0, travel]]) for (const steer of lock ? [0, lock, -lock] : [0]) {
+      const left = wheelAt(l, cl), right = wheelAt(r, cr), made = independentParts(sideBySide, i, left, right, steer, steer)
+      const state = `axle ${i} at ${cl}, ${cr} steered ${steer}`
+      made.wheels.forEach((w, k) => expect(w.centre[1], state).toBeCloseTo([left, right][k][1], 6))
+      if (axle.steered) expect((steerOf(made.wheels[0].turn) + steerOf(made.wheels[1].turn)) / 2, state).toBeCloseTo(steer, 6)
+      expect(made.parts.map(p => p.name), state).toEqual(rest.parts.map(p => p.name))
+      for (const p of made.parts) if (lengths.has(p.name)) expect(span(p), `${state}: ${p.name}`).toBeCloseTo(lengths.get(p.name)!, 6)
+    }
+  }
 })
 
 test('each wheel sits under its mount, at its axle and half the track out', async () => {

@@ -33,7 +33,7 @@
 // always. On a world no vision is attached to, a truth before `addons/player` first seats a seat on
 // it, it is true. What a
 // team is sent of any rows, with or without a seat, is `visible` over the grids `sight` makes of them,
-// which is what `show` asks, and what the editor's Vision panel shows (`vision.extension.tsx`).
+// which is what `show` asks.
 //
 // When. What a team sees through a step is what it saw as the step began: the grids are made once
 // a step, from the rows as they stood before any row of the step ran (the engine's `advance`, or the

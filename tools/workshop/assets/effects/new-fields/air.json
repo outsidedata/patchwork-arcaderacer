@@ -1,0 +1,31 @@
+{
+  "forceGenerators": {
+    "still-air": [{ "drag": 1.2 }],
+    "windy-air": [{ "drag": 1.2, "wind": [2.5, 0, 0] }],
+    "plain-drag": [{ "drag": 1.5 }],
+    "speed-drag": [{ "drag": 1.5, "dragBySpeed": 0.5 }]
+  },
+  "effects": {
+    "wind": [
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [-3.5, 0, 0, -3.5, 0, 0], "carry": "wind-off" },
+      { "n": [1, 1], "every": 4, "life": [4, 4], "size": [0, 0], "box": [1.5, 0, 0, 1.5, 0, 0], "carry": "wind-on" }
+    ],
+    "wind-off": [
+      { "n": [1, 2], "every": 0.04, "life": [3, 3.5], "shape": "puff", "size": [0.35, 0.5], "grow": 2.5, "dir": [0, 1, 0], "spread": 0.25, "speed": [2, 3], "spin": 0.5, "forces": { "still-air": 1 }, "tint": 10132122, "alphas": [[0, 0], [0.1, 0.8], [0.7, 0.6], [1, 0]] }
+    ],
+    "wind-on": [
+      { "n": [1, 2], "every": 0.04, "life": [3, 3.5], "shape": "puff", "size": [0.35, 0.5], "grow": 2.5, "dir": [0, 1, 0], "spread": 0.25, "speed": [2, 3], "spin": 0.5, "forces": { "windy-air": 1 }, "tint": 10132122, "alphas": [[0, 0], [0.1, 0.8], [0.7, 0.6], [1, 0]] }
+    ],
+
+    "dragBySpeed": [
+      { "n": [1, 1], "every": 2.5, "life": [2.5, 2.5], "size": [0, 0], "box": [-3.5, 1.5, 0, -3.5, 1.5, 0], "carry": "dragBySpeed-off" },
+      { "n": [1, 1], "every": 2.5, "life": [2.5, 2.5], "size": [0, 0], "box": [3.5, 1.5, 0, 3.5, 1.5, 0], "carry": "dragBySpeed-on" }
+    ],
+    "dragBySpeed-off": [
+      { "n": [200, 200], "life": [1.5, 2], "shape": "streak", "stretch": true, "size": [0.15, 0.3], "speed": [2, 16], "forces": { "plain-drag": 1 }, "tint": 16747038, "gain": 3, "a1": 0, "add": true }
+    ],
+    "dragBySpeed-on": [
+      { "n": [200, 200], "life": [1.5, 2], "shape": "streak", "stretch": true, "size": [0.15, 0.3], "speed": [2, 16], "forces": { "speed-drag": 1 }, "tint": 16747038, "gain": 3, "a1": 0, "add": true }
+    ]
+  }
+}

@@ -68,7 +68,7 @@ From the prime directive, where proving meets them:
   here, pages too: a `view` over the loopback runs in node, as
   `plugins/playtester/playtester.plugin.test.ts` and `addons/simulator/simulator.addon.test.ts`
   show.
-- `<name>.test.tsx` runs in jsdom with Testing Library.
+- `<name>.test.tsx` runs in jsdom (`vitest.dom.ts`).
 - `<name>.game.test.ts`, a test that boots a whole game and steps it, and `<game>.predict.test.ts`
   run in node too, but only in the `game` project, which exists only when `GAME` is set. Every other
   run leaves them out, `yarn test` and a bare `yarn vitest run <file>` among them: handed one of
@@ -165,9 +165,8 @@ seat (`addons/recorder/recorder.addon.ts`: it opens one, and its `link` is that 
 life), so a scene of several seats meets a piece core lacks: journal entries that carry the seat
 that sent them, and each rebuild opening the seats again in the order they were first opened. It is
 built in `addons/recorder/` when a job needs it, with its test beside it,
-`addons/recorder/recorder.addon.test.ts`, which does not exist yet, and the header saying it. A
-`player` row spawned by a recorder edit is never a seat: no connection possesses it, and nothing
-presses through it. Tell the person that a rule waiting for every seat, a race that starts when its
+`addons/recorder/recorder.addon.test.ts`, which does not exist yet, and the header saying it. Tell
+the person that a rule waiting for every seat, a race that starts when its
 grid is full, never starts in `index.html`, which is one seat.
 
 ## A page in a test
@@ -335,7 +334,7 @@ until that seat's next press reaches the page.
 ## The recorder
 
 `addons/recorder/recorder.addon.ts` holds a game's manager under a clock someone else holds. It boots and loads it, opens one seat over the loopback, and journals every envelope the
-seat sends and every edit made to a live row. One seat is all it holds; a scene of several meets
+seat sends. One seat is all it holds; a scene of several meets
 the piece built in `addons/recorder/` above (A kind's test, and a scene's). Any step is rebuilt by booting again and replaying the
 journal up to it. A game's scene test replays the game under it (A kind's test, and a scene's, above).
 

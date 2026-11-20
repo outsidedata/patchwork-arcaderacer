@@ -32,12 +32,13 @@
       // every pass's with the scene's, and the copies cull3d handed the GPU (`window.drawn` holds them
       // for a driver). At the top left, three's stats panel (the stats plugin).
       // At the top right, three's lil-gui: the network; the cpu driver, which drives this seat's car
-      // once the race goes, by the drive plugin's `pilot` with the rival's `ai` on the seat's grid
+      // once the race goes, by the drive plugin's `pilot` with the rival's `ai` on its car's grid
       // place, through the player as keys would (its `player` row passes them on to the car it holds), so the server takes its presses as this seat's, and
       // let go hands the car back with every control at 0; the look, the watched car's effects held on
       // whatever it does: the boost's trail on the road (and the rush), a drift's smoke and marks at least `slip`
-      // radians, sparks off whatever it is nearer, and one pop a press, all handed to the fx plugin alone
-      // in its copy of the frame's rows, so the car drives and the truth runs as they would; the renderer's tone mapping, exposure, pixel
+      // radians, sparks off whatever it is nearer, one pop a press, and a burnout (the throttle held
+      // standing), all handed to the fx and particle3d plugins alone in their copy of the frame's rows, so
+      // the car drives and the truth runs as they would; the renderer's tone mapping, exposure, pixel
       // ratio and shadows; dither3d on or off, its bits and its ratio; the AO's numbers, where a scene
       // has AO; the bloom's; every pass of the composer on or off; and every object in the scene shown
       // or hidden, listed again by `refresh`. The render3d folders are made again for each course's
@@ -148,15 +149,17 @@
       }
       gui.addFolder('driver').add(cpu, 'on').name('cpu driver')
 
-      // The look held on the watched car: the fx plugin of each client is handed the frame's rows with
-      // that car's boost, drift and scrape as `force` says, and nothing else sees them.
-      const force = { boost: false, drift: false, slip: 0.5, sparks: false, pop: false }
+      // The look held on the watched car: the fx and particle3d plugins of each client are handed the
+      // frame's rows with that car's boost, drift, scrape, throttle and speed as `force` says, and nothing
+      // else sees them.
+      const force = { boost: false, drift: false, slip: 0.5, sparks: false, pop: false, burnout: false }
       const look = gui.addFolder('look')
       look.add(force, 'boost').name('boost on')
       look.add(force, 'drift').name('drift on')
       look.add(force, 'slip', 0, 1.2, 0.01).name('drift slip at least')
       look.add(force, 'sparks').name('sparks on')
       look.add({ pop: () => { force.pop = true } }, 'pop').name('pop once')
+      look.add(force, 'burnout').name('burnout on (throttle, standing)')
       const forced = rows => {
         const it = watch === undefined ? holding(rows) : rows.find(r => r.kind === 'rival' && r.data.grid === watch)
         if (!it) return rows
@@ -171,14 +174,21 @@
           d.boost += 1
           force.pop = false
         }
+        if (force.burnout) {
+          d.throttle = 1
+          d.speed = 0
+        }
         return rows.map(r => (r === it ? { ...r, data: d } : r))
       }
       const looking = new WeakSet()
       const lookThrough = fx => {
         if (!fx || looking.has(fx)) return
         looking.add(fx)
-        const tick = fx.tick.bind(fx)
-        fx.tick = p => tick({ ...p, wire: { ...p.wire, rows: forced(p.wire.rows) } })
+        for (const hook of ['tick', 'afterTick']) {
+          if (!fx[hook]) continue
+          const run = fx[hook].bind(fx)
+          fx[hook] = p => run({ ...p, wire: { ...p.wire, rows: forced(p.wire.rows) } })
+        }
       }
 
       let looks = [], built
@@ -309,8 +319,7 @@
         if (plugins?.player && car) {
           const phase = rows.find(r => r.kind === 'race')?.data.phase
           if (cpu.on && car.data.seg >= 0 && phase !== 'grid' && phase !== 'count') {
-            const start = rows.find(r => r.kind === 'start' && r.data.slot === me.data.seat)
-            const wants = pilot(plugins.wire, car, def(plugins.wire, 'rival').ai, start.data.grid)
+            const wants = pilot(plugins.wire, car, def(plugins.wire, 'rival').ai, car.data.grid)
             for (const name of Object.keys(CONTROLS)) if (Math.abs(wants[name] - car.data[name]) > 0.01) plugins.player[name](wants[name])
             cpu.was = true
           } else if (!cpu.on && cpu.was) {
@@ -325,6 +334,7 @@
           r3.renderer.info.reset()
         }
         lookThrough(plugins?.fx)
+        lookThrough(plugins?.particle3d)
         // A frame that throws is shown, and the next frame goes on.
         try {
           page.input()

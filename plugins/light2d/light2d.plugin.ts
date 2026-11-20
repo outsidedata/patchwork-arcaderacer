@@ -26,13 +26,24 @@
 //            flickers, `flicker`, `true` or `{ rate?, depth? }`, either left out being the table's.
 //            An intensity of 0 gives no light.
 //   budget   the most lights drawn at once: those whose middles are drawn nearest the middle of the
-//            canvas, where the camera looks, and of two as near the one of the lower row id.
+//            canvas, where the camera looks, and of two as near the one of the lower row id, a row's
+//            before one a mod hands over, and of two a mod hands over the one of the earlier key.
 //   falloff  `{ size, core, power }`: a light's brightness at a fraction `d` of its radius from its
 //            middle is 1 out to `d` = `core`, then (1 − (d − core) / (1 − core))^power down to 0 at
 //            the radius. It is drawn once per client into a picture `size` pixels across, which
 //            every light is stretched from.
 //   flicker  `{ rate, depth }`: a flickering light's intensity is multiplied by 1 − depth × a
 //            smooth noise between 0 and 1 that takes a new value `rate` times a second.
+//   mods     `{ lights: [...] }`: the plugins that hand over lights of their own (below).
+//
+// Lights from other plugins. The plugins `world.light2d.mods.lights` lists (`addons/scenemanager`'s
+// mods), each exporting `lights(plugins)`, asked once a frame, each hand back their lights this frame,
+// a list of `{ key, at, colour, radius, intensity }`: what the light is, the same every frame it is
+// there; its middle, a point of the stage, where render2d's `place` puts things, rather than of the
+// world; its colour, its radius along the ground as a row's is, and how much of its colour it adds at
+// its middle, 0 to 1, as its plugin has flickered it, since light2d flickers none of them. particle2d's
+// (`particle2d.light2d.ts`) is every lamp of its effects. light2d reads what each made earlier that
+// frame, so each is listed before it, and one listed after it, or not listed, throws.
 //
 // A light stands on its row's `pos`, [x, y] on the ground or [x, y, h] at height h, drawn where
 // render2d draws that point (`place`), so a torch on a wall lights around its flame. Its radius is
@@ -51,12 +62,14 @@
 // the `multiply` blend). All of it is placed in `afterTick`, after every actor has ticked and moved
 // the camera, and so this plugin is listed before `render2d`, whose `afterTick` draws; listed after
 // it, the darkness would lag the camera by a frame, and that throws. `lights` is what was drawn last:
-// each light's row id and `pos`, its radius, colour and flickered intensity, and its sprite, which a
-// pass that shades lights (a shadow cast against the tilemap) masks. `close` frees every sprite, the
+// each light's row id and `pos` (or for one a mod handed over, its `key`, its plugin's name and its
+// own key), its middle on the stage `at`, its radius, colour and flickered intensity, and its sprite,
+// which a pass that shades lights (a shadow cast against the tilemap) masks. `close` frees every sprite, the
 // falloff picture and the filter, whole also after render2d's `close`, which the page runs first
 // (plugins close in the reverse of the scene's order) and which destroys the darkness with the stage.
 import type { Plugins } from '#engine/browser.ts'
 import { seeded } from '#engine/engine.ts'
+import { ahead, modsOf } from '#addons/scenemanager/scenemanager.addon.ts'
 
 type Flicker = { rate: number; depth: number }
 export type Light = { colour: number; radius: number; intensity: number; flicker?: true | Partial<Flicker> }
@@ -67,9 +80,13 @@ type Table = {
   budget: number
   falloff: { size: number; core: number; power: number }
   flicker: Flicker
+  mods?: { lights?: string | string[] }
 }
-// A light as drawn this frame.
-export type Lit = { id: number; pos: number[]; radius: number; colour: number; intensity: number; sprite: any }
+// A light a mod hands over (the header, Lights from other plugins), and what a `lights` mod exports.
+export type Handed = { key: string; at: number[]; colour: number; radius: number; intensity: number }
+export type Lights = (plugins: Plugins) => readonly Handed[]
+// A light as drawn this frame: a row's, by its id and `pos`, or a mod's, by its `key`.
+export type Lit = { id?: number; pos?: number[]; key?: string; at: number[]; radius: number; colour: number; intensity: number; sprite: any }
 
 const scale = (colour: number, k: number) => {
   const c = (s: number) => Math.round(((colour >> s) & 255) * k) << s
@@ -92,10 +109,11 @@ export function light2d() {
   let next: Table['ambient'] | undefined
   let falloff: any
   let checked = false
-  // Each lit row's sprite, by row id, kept while it stays lit: render2d draws a thing between where
-  // the last two steps put it and knows it by its sprite, so a sprite handed from one light to another
-  // would be drawn part way between the two.
-  let sprites = new Map<number, any>()
+  // Each lit row's sprite, by `#` and its row id, and each light a mod hands over's, by its plugin and
+  // key, kept while it stays lit: render2d draws a thing between where the last two steps put it and
+  // knows it by its sprite, so a sprite handed from one light to another would be drawn part way
+  // between the two.
+  let sprites = new Map<string, any>()
   let lit: Lit[] = []
 
   // The falloff picture: white, its opacity the light's brightness at each pixel, premultiplied.
@@ -169,32 +187,42 @@ export function light2d() {
       next = undefined
       ambient.tint = scale(colour, level)
 
-      const far = (pos: number[]) => {
-        const c = project(pos)
-        return Math.hypot(c.x - width / 2, c.y - height / 2)
-      }
-      const chosen = gather(plugins, table, plugins.wire.n * dt)
-        .map(l => ({ l, d: far(l.pos) }))
-        .sort((a, b) => a.d - b.d || a.l.id - b.l.id)
+      // Every light this frame, the rows' and each mod's, its middle on the stage and how far that is
+      // drawn from the middle of the canvas; a row's sprite known by its id, a mod's by its plugin and key.
+      const far = (x: number, y: number) => Math.hypot(x - width / 2, y - height / 2)
+      type Candidate = { id?: number; pos?: number[]; key?: string; name: string; at: number[]; colour: number; radius: number; intensity: number; d: number }
+      const rowed: Candidate[] = gather(plugins, table, plugins.wire.n * dt).map(l => {
+        const c = project(l.pos)
+        return { ...l, name: `#${l.id}`, at: place(l.pos), d: far(c.x, c.y) }
+      })
+      ahead(scene, 'light2d', 'lights')
+      const from = table.mods?.lights === undefined ? [] : typeof table.mods.lights === 'string' ? [table.mods.lights] : table.mods.lights
+      const handed: Candidate[] = modsOf<Lights>(scene.world!, 'light2d', 'lights').flatMap((f, i) =>
+        f(plugins).filter(l => l.intensity > 0).map(l => ({
+          key: `${from[i]}:${l.key}`, name: `${from[i]}:${l.key}`, at: l.at, colour: l.colour, radius: l.radius, intensity: Math.min(1, l.intensity),
+          d: far(o.x + zoom * l.at[0], o.y + zoom * l.at[1]),
+        })))
+      const chosen = [...rowed, ...handed]
+        .sort((a, b) => a.d - b.d || (a.id !== undefined && b.id !== undefined ? a.id - b.id : a.id !== undefined ? -1 : b.id !== undefined ? 1 : a.key! < b.key! ? -1 : a.key! > b.key! ? 1 : 0))
         .slice(0, table.budget)
-        .map(({ l }) => l)
 
       // Each light's sprite: the falloff picture, its middle on the light's point, its edge along
       // the ground `radius` from it.
       const k = (r: number) => r / (table.falloff.size / 2)
       for (const l of lit) l.sprite.removeFromParent()
-      const kept = new Map<number, any>()
+      const kept = new Map<string, any>()
       lit = chosen.map(l => {
-        const sprite = sprites.get(l.id) ?? new PIXI.Sprite({ texture: falloff, anchor: 0.5, blendMode: 'add' })
-        kept.set(l.id, sprite)
-        const [x, y] = place(l.pos), s = k(l.radius)
+        const sprite = sprites.get(l.name) ?? new PIXI.Sprite({ texture: falloff, anchor: 0.5, blendMode: 'add' })
+        kept.set(l.name, sprite)
+        const [x, y] = l.at, s = k(l.radius)
         sprite.setFromMatrix(new PIXI.Matrix(gx[0] * s, gx[1] * s, gy[0] * s, gy[1] * s, x, y))
         sprite.tint = l.colour
         sprite.alpha = l.intensity
         dark.addChild(sprite)
-        return { id: l.id, pos: l.pos, radius: l.radius, colour: l.colour, intensity: l.intensity, sprite }
+        const which = l.id !== undefined ? { id: l.id, pos: l.pos } : { key: l.key }
+        return { ...which, at: [x, y], radius: l.radius, colour: l.colour, intensity: l.intensity, sprite }
       })
-      for (const [id, s] of sprites) if (!kept.has(id)) s.destroy()
+      for (const [name, s] of sprites) if (!kept.has(name)) s.destroy()
       sprites = kept
     },
     close() {

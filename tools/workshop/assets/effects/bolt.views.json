@@ -1,0 +1,7 @@
+[
+  { "name": "bolt-a", "file": "bolt/boltConfig.json", "effect": "bolt", "sheets": { "bolt": "bolt/bolt.json" }, "camera": [0, 2.2, 6], "target": [0, 2.2, 0], "at": [0, 4.5, 0], "to": [0, 0, 0], "preroll": 0.02, "sky": 1052184 },
+  { "name": "bolt-b", "file": "bolt/boltConfig.json", "effect": "bolt", "sheets": { "bolt": "bolt/bolt.json" }, "camera": [0, 2.2, 6], "target": [0, 2.2, 0], "at": [0, 4.5, 0], "to": [0, 0, 0], "preroll": 0.12, "sky": 1052184 },
+  { "name": "bolt-c", "file": "bolt/boltConfig.json", "effect": "bolt", "sheets": { "bolt": "bolt/bolt.json" }, "camera": [0, 2.2, 6], "target": [0, 2.2, 0], "at": [0, 4.5, 0], "to": [0, 0, 0], "preroll": 0.3, "sky": 1052184 },
+  { "name": "bolt-side", "file": "bolt/boltConfig.json", "effect": "bolt", "sheets": { "bolt": "bolt/bolt.json" }, "camera": [4.5, 1.5, 4.5], "target": [0, 2.2, 0], "at": [0, 4.5, 0], "to": [0, 0, 0], "preroll": 0.02, "sky": 1052184 },
+  { "name": "bolt-day", "file": "bolt/boltConfig.json", "effect": "bolt", "sheets": { "bolt": "bolt/bolt.json" }, "camera": [0, 2.2, 6], "target": [0, 2.2, 0], "at": [0, 4.5, 0], "to": [0, 0, 0], "preroll": 0.02, "sky": 8102044 }
+]

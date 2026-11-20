@@ -8,7 +8,8 @@
 // `ybot` both `raider`, are two rows), so the rows add up to the step; what is left of the step is the
 // engine's own. Prints the steps' mean, 95% and most milliseconds, and each kind's pass's milliseconds a
 // step and share, most first. Node's CPU profiler samples the steps too, and each millisecond is given to
-// the file that ran it (owners.mjs): each kind's rules, each plugin's, each addon's, the engine's. All of
+// the file that ran it (owners.mjs): each kind's rules, each plugin's, each mod's, each addon's, the
+// engine's, and the call chains the time went down are printed after them. All of
 // it goes to `<out>/<scene>.ticks.json`, the profile beside it as `<out>/<scene>.ticks.cpuprofile`, for
 // benchmarkPage.ts; `<out>` is `--out`, else `benchmarks/<game>/<when>-ticks` at the repo's root. Run under `--cpu-prof` for the whole run's profile,
 // the boot with it:
@@ -21,6 +22,8 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { owned } from './owners.mjs'
 import { made, runFolder, write } from './testbed.mjs'
+
+type Chain = { chain: string; ms: number; self: number }
 
 const args = process.argv.slice(2)
 const acts: string[] = []
@@ -118,6 +121,9 @@ const own = owned(profile)
 console.log(`\nwho owns the CPU, by node's profiler`)
 console.log('ms a step  share  owner')
 for (const o of own.owners) if (o.ms / steps >= 0.001) console.log((o.ms / steps).toFixed(3).padStart(8), ((100 * o.ms) / own.ms).toFixed(1).padStart(5) + '%', ' ', o.who)
+console.log('\nwhere the time went, each call chain by what its last hop spent itself')
+console.log('ms a step  of which its own  chain')
+for (const c of own.chains) console.log((c.ms / steps).toFixed(3).padStart(8), (c.self / steps).toFixed(3).padStart(17), ' ', c.chain)
 {
   fs.mkdirSync(out, { recursive: true })
   fs.writeFileSync(path.join(out, `${name}.ticks.cpuprofile`), JSON.stringify(profile))
@@ -126,6 +132,6 @@ for (const o of own.owners) if (o.ms / steps >= 0.001) console.log((o.ms / steps
     game, scene: name, rows: truth.rows.length, steps, seconds: Number(seconds), wall: all / 1000,
     step: { mean: all / steps, p95: sorted[Math.floor(0.95 * (steps - 1))], most: sorted[steps - 1] },
     systems: [...totals].sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: k, ms: v / steps, share: (100 * v) / whole })),
-    owners: { busy: own.ms / steps, list: own.owners.map(o => ({ ...o, ms: o.ms / steps, via: Object.fromEntries(Object.entries(o.via).map(([k, v]) => [k, (v as number) / steps])), functions: o.functions.map((f: { name: string; ms: number }) => ({ ...f, ms: f.ms / steps })) })) },
+    owners: { busy: own.ms / steps, list: own.owners.map(o => ({ ...o, ms: o.ms / steps, via: Object.fromEntries(Object.entries(o.via).map(([k, v]) => [k, (v as number) / steps])), functions: o.functions.map((f: { name: string; ms: number }) => ({ ...f, ms: f.ms / steps })) })), chains: own.chains.map((c: Chain) => ({ ...c, ms: c.ms / steps, self: c.self / steps })) },
   })
 }

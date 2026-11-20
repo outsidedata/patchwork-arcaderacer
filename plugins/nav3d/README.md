@@ -9,8 +9,8 @@ from the shapes and the ground, and the game only searches it.
 
 Use nav3d when a thing has to get somewhere it cannot walk to in a straight line: round a wall, through
 a house to its kitchen, from one end of a castle to the other. All the work of reading the space is done
-once, offline, in the bake; while the game runs, a route is a search over a few points, on the server
-and on a page running ahead alike. nav3d moves nothing: whatever drives a body (an NPC's plugin) walks it
+once, offline, in the bake; while the game runs, a route is a search over a few points, or a lookup on a
+graph whose costs never change, on the server and on a page running ahead alike. nav3d moves nothing: whatever drives a body (an NPC's plugin) walks it
 along the route through the body's own plugin (walker, crowd3d).
 
 ## How it works
@@ -35,6 +35,8 @@ A graph file is `{ places, ways, blocks? }`:
   up of the ground there, for a graph walked on walls and ceilings; a place without one stands on
   `[0, 1, 0]`. Places along an edge whose ups step from one face's to the other's turn a person over the
   edge. `data.nav3d.tags` are names a route may be asked to reach ("kitchen").
+  `data.nav3d.moe`, metres, spreads the place over a square that wide across the ground: each route
+  to it goes to a spot of its own in that square, x and z each within moe / 2 of `at`, its height kept.
 - `ways` `[{ line: { from, to }, data? }]` or `[{ spline: { points }, data? }]`, each a way between the
   two places its ends stand on, within a millimetre of a place's `at`. A line is the straight way; a
   spline the curve through its points, first to last (a curved stair). Its data:
@@ -65,6 +67,12 @@ for the goal place), the way that reaches it with all its data (null for a step 
 points } }`), and, where the graph gives one, the up there (a place's own `normal`, the goal place's that
 of the place it joins from), or undefined when there is no way. A join costs its length in all three. A
 way whose behavior says it cannot be crossed now is not taken.
+
+On a graph with no blocks whose ways' words have no behavior in the scene, a way's cost never changes,
+so the cheapest way from a place to every other is worked out the first time a route sets out from that
+place and kept: every later route from there is a lookup, with no search. On pro-ng's town for
+demo_world3d (176 places, 178 ways) a route went from 90 µs to 3 µs that way, with the same steps. A graph with blocks or with behaviors is searched for each route, stopping once no place left can
+end cheaper.
 
 **The bake.** `graphOf(w, name)` makes a graph from the space by its `bake`: `area` `[x0, z0, x1, z1]`,
 the play area the graph stops at; `clearance` metres kept from every solid; `around`, the corners that

@@ -293,8 +293,8 @@ export function manager(truth: Truth): Row {
 
 // The list of `actors` entries in the file a scene's `actorsFile` names, from the url of the scene
 // file: read once per process, a `file:` url from the disk and any other fetched, and kept, so every
-// boot of the scene reads the one list, and whoever refills it in place (the editor, when the file
-// is written) changes what the next boot reads.
+// boot of the scene reads the one list, and whoever refills it in place changes what the next boot
+// reads.
 const lists = new Map<string, Promise<Scene['actors']>>()
 export function actorsOf(scene: URL, file: string): Promise<Scene['actors']> {
   if (!file.endsWith('.actors.json')) return Promise.reject(new Error(`the scene names ${file} as its actorsFile, not a .actors.json`))
@@ -369,13 +369,28 @@ async function extended(scene: Scene, at: URL): Promise<Scene> {
 // client of a child read this same scene, and so does a truth a page runs ahead (`addons/predict`).
 export async function child(top: Scene, name: string, e: Entry, base: string): Promise<{ scene: Scene; sim: Sim }> {
   const halved = await halves(name, e, base)
-  const sim = halved.sim
-  const scene = await extended(halved.scene, new URL(e.file, base))
+  return { scene: await settled(top, halved.scene, e, base), sim: halved.sim }
+}
+
+// The scene `child` boots, read from its scene file and not through its sim, so nothing of the game's
+// code is imported: what a tool that reads a game's files asks, as the bundle does for the page's
+// loading cover (`plugins/loader/loader.cover.ts`).
+export async function sceneOf(top: Scene, name: string, e: Entry, base: string): Promise<Scene> {
+  if (typeof e.suspend !== 'boolean') throw new Error(`scene ${name} declares no suspend`)
+  if (!e.file.endsWith('.scene.json')) throw new Error(`scene ${name} names ${e.file}, not a .scene.json`)
+  const url = new URL(e.file, base)
+  const text = url.protocol === 'file:' ? await (await import('node:fs/promises')).readFile(url, 'utf8') : await (await fetch(url)).text()
+  return settled(top, JSON.parse(text) as Scene, e, base)
+}
+
+// A child's own scene with its partial's and the manager's under it, and its actors.
+async function settled(top: Scene, own: Scene, e: Entry, base: string): Promise<Scene> {
+  const scene = await extended(own, new URL(e.file, base))
   const prefabs = { ...top.prefabs, ...scene.prefabs }
   if (scene.prefabs.scenemanager) prefabs.scenemanager = { ...scene.prefabs.scenemanager, names: Object.keys(top.prefabs.scenemanager.scenes) }
   const more = typeof scene.actorsFile === 'string' ? await actorsOf(new URL(e.file, base), scene.actorsFile) : []
   const actors = structuredClone([...scene.actors, ...more])
-  return { scene: { ...scene, world: { ...top.world, ...scene.world, scenemanager: { actors, home: new URL('./', base).href } }, prefabs, actors }, sim }
+  return { ...scene, world: { ...top.world, ...scene.world, scenemanager: { actors, home: new URL('./', base).href } }, prefabs, actors }
 }
 
 // Every child named by the row, booted, and the stepping registered. `base` is the url the file

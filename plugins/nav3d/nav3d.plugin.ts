@@ -1,6 +1,6 @@
 // nav3d, the browser half: a view of the scene's graphs on render3d's scene, on while its flag is true
 // (a testbed turns it on; it starts off):
-//   graphs  every graph `world.nav3d.graphs` names: its ways as lines, a line straight from its `from` to
+//   graphs  every graph `world.nav3d.graphs` and its `graphs` mods name (`graphsOf`): its ways as lines, a line straight from its `from` to
 //           its `to` and a spline along its curve as shapes3d draws it, LINK, and its places as points,
 //           NODE, each LIFT metres off the place along its up (its point's `normal`, or [0, 1, 0]), each
 //           way lifted with the place its end is nearer, and, in a graph whose places give a `normal`,
@@ -13,7 +13,7 @@
 import type * as THREE from 'three'
 import type { Plugins } from '#engine/browser.ts'
 import { json } from '#plugins/loader/loader.sim.ts'
-import { pointsOf, type Graph, type Way } from './nav3d.sim.ts'
+import { graphsOf, pointsOf, type Graph, type Way } from './nav3d.sim.ts'
 import { drawn as pieced } from '#plugins/shapes3d/shapes3d.kinematics3d.ts'
 
 // How far the lines and points are drawn off the places, and a place's up, metres; their colours; a
@@ -87,7 +87,7 @@ export function nav3d() {
     graphs: false,
     tick(plugins: Plugins) {
       if (!me.graphs) return clear(plugins)
-      const graphs = (plugins.wire.scene.world?.nav3d?.graphs ?? {}) as Record<string, { asset: string }>
+      const graphs = graphsOf(plugins.wire.scene.world ?? {})
       for (const [name, d] of drawn) if (!(name in graphs)) { gone(plugins, d); drawn.delete(name) }
       for (const [name, e] of Object.entries(graphs)) {
         const g = json(plugins.wire, e.asset) as Graph

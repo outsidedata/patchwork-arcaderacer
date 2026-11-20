@@ -19,6 +19,7 @@ The catalogue is the scene's `world.loader.assets`: name to entry `{ type, url, 
 nearest?, facing?, palette?, space?, wrap?, anisotropy? }`. It never changes, so no row carries it. A
 child scene takes the manager's `world.loader` unless it gives its own. A url is a plain path from the
 working directory, written as the file is named; a path a file names is read from that file's folder.
+Every entry is preloaded unless it says `preload: false`; one that says so starts only when asked for.
 
 **Server half (`loader.sim.ts`).** One empty `loader` row runs `before` and `prepare`. The process
 fetches each file once (a fetch in a tab, a read from disk in node) and decodes it once for every
@@ -28,7 +29,7 @@ truth's rules and every actor's `def`.
   0xRRGGBB), `tilemap` (a Tiled `.tmj` with its tilesets), `pixels` (a PNG read as data, every pixel's
   RGBA byte for byte plus its text chunks, never through a canvas) and `binary` (bytes: a ROM, a disk
   image, a module).
-- `prepare` resolves once every `preload` entry of those types has landed and decoded, and the
+- `prepare` resolves once every preloaded entry of those types has landed and decoded, and the
   scenemanager awaits it before booting a scene and before a page makes its client, so a broken file
   stops the scene before its first step.
 - Reads from a rule: `json(w, name)`, `sheet`, `palette`, `tiled`, `pixels`, `binary`, `def(w, kind)`
@@ -51,8 +52,8 @@ truth's rules and every actor's `def`.
 - `written(url, content)` refills every decoded copy of a file in place when it is rewritten while the
   game runs, so everything holding it reads the new content.
 
-**Browser half (`loader.plugin.ts`).** Each client's own tables: it starts every `preload` entry on
-its first tick and the rest on `load` or `on`. Images are decoded by the scene's renderer (three's
+**Browser half (`loader.plugin.ts`).** Each client's own tables: it starts every entry on its first
+tick but those that say `preload: false`, and those on `load` or `on`. Images are decoded by the scene's renderer (three's
 `TextureLoader` under render3d, `PIXI.Assets` under render2d, an `<img>` with neither); an entry with
 `for: "ui"` is decoded through the ui plugin's PixiJS.
 
@@ -69,8 +70,44 @@ its first tick and the rest on `load` or `on`. Images are decoded by the scene's
   and `fonts()` says whether every font of the catalogue has landed or failed; the ui waits on it
   before it draws. In node or jsdom nothing is installed and a font is `{ family }`, its name.
 - `model`: a self-contained `.glb` decoded with three's glTF loader and meshopt decoder (so gltfpack
-  output works); `model(name)` is `{ scene, animations }`, cloned with its skeleton per call.
+  output works); `model(name)` is `{ scene, animations }`, cloned with its skeleton per call, its
+  geometry and materials shared by every copy. In a page a meshopt glb's buffers are unpacked in
+  three workers, and at most four models fetch and decode at once, the rest queued in order.
+- Nothing lands the moment it decodes: each tick hands over what has decoded, in order, for four
+  milliseconds, sending each model's and texture's pictures to the GPU (`renderer.initTexture`)
+  before it lands, so a big batch of models arrives over several frames and the first frame that
+  draws one uploads nothing.
+- What the ui draws comes first: nothing else of any type starts until every font and every
+  preloaded entry `for: "ui"` has landed or failed, and those land ahead of anything else waiting, so a loading
+  screen is up within a frame or two.
 - `sound`: decoded through `plugins.audio.context`; `sound(name)` is the AudioBuffer.
+- `preloads()`: `{ done, of }`, how many of the first tick's entries (every preloaded entry and font) have
+  landed or failed.
+- `shaders()`: how many things are still having their shaders compiled, through the scene's
+  `world.loader.mods.shaders` (render3d's `render3d.loader.ts`); 0 when it names none.
+- `settled()`: whether every plugin the scene's `world.loader.mods.ready` names says the world it draws
+  is whole, each its `ready(plugins)` (terrain3d's `terrain3d.loader.ts`: its land where the camera
+  starts, and lod3d's tiles through terrain3d's own `mods.ready`); true when it names none.
+- The loading screen, `loader.ui.ts`: delivers the ui the word `loading`. A `world.ui` panel giving
+  `loading: { fill, pictures, bar, lines, shaders, fade }` covers the canvas with the game's art and
+  logo (`texture` entries `for: "ui"`, preloaded), a bar of `preloads()`, and tips one at a time; once
+  every file is in and while `shaders()` is above 0, its `shaders` line ("Compiling shaders") in place
+  of the tips and the bar filling as they finish; once `settled()`, then fades. The scene names it in `world.ui.mods.behaviors: ['loader']`, lists `loader`
+  before `ui`, and gives the panel `modal` and a high `layer`. Its header has a whole example.
+- The loading cover, `loader.cover.ts` and `loader.cover.js`: the entry scene's loading screen drawn in
+  the page's first bytes. The bundle (`scripts/bundle.ts`) writes it just inside the `<body>` of a
+  game's `index.html` and `client.html` when the entry scene has a `loading` panel, so it shows before
+  any of the game's code has come down. It draws the panel in the DOM where the ui will draw it, and
+  fetches every file the loader fetches first, for every scene: each entry not marked `preload: false`,
+  every font and every wad, the screen's pictures and fonts ahead of the rest. Both halves read a file
+  the cover fetched from its bytes (`Symbol.for('loader: cover')`), so nothing is fetched twice.
+  `loader.ui.ts` takes it off the page the frame after its own screen has drawn every picture under it,
+  and its bar never shows less than the cover's had. A scene with no loading screen takes it off on the
+  loader's first tick. On a published site it takes the place of `scripts/loading.html`.
+- A garment, `loader.fabric3d.ts`: delivers fabric3d the cut `garment`. A fabric giving `garment: {
+  model, file }` is cut from a garment a bake draped on a body the game draws (`scripts/garment.ts`): its
+  glb, a `model` entry with a mesh for each pattern piece, and its sidecar, a `json` entry with the frame
+  each of the body's bones stood in. The scene names it in `world.fabric3d.mods.behaviors: ['loader']`.
 - `beside(name, path)`: the bytes of a file an entry's file names but the catalogue does not (a music
   project's samples, a sound's stems), or undefined when missing.
 - `load(name)` never throws: a failure rejects, is written to the console once as `loader <name>: …`,
@@ -100,7 +137,7 @@ Nearly every plugin reads its files through the loader: **anim** (rigs and model
 images and bitmap fonts, and every `font`, which it waits on before it draws), **terrain3d** and **skydome3d** (their field and sky files), **cutscene**
 and **interact** (their files), **box2d** and **box3d** (chains, meshes and height fields as
 `{ asset }`), **flight3d** and **box3dvehicle** (models), **audiodaw**'s pages (song samples by
-`beside`).
+`beside`), **fabric3d** (the fabrics file, and a garment's glb and sidecar through `loader.fabric3d.ts`).
 
 ## Keywords
 

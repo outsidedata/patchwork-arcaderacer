@@ -3,11 +3,17 @@
 // an isometric one, and a stand-in loader that hands over the file, and each sheet once the test
 // says it has landed, cut the way the loader cuts one, and runs what waits on the file being written
 // when the test writes it. The stage's y grows down.
-import { expect, onTestFinished, test } from 'vitest'
+import { afterAll, expect, onTestFinished, test } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import * as PIXI from 'pixi.js'
+import { prepare } from '#addons/scenemanager/scenemanager.addon.ts'
 import { render2d } from '#plugins/render2d/render2d.plugin.ts'
 import { frameOf, read } from '#plugins/loader/loader.sim.ts'
-import { particle2d, type Effects } from './particle2d.plugin.ts'
+import { CELL, SHAPES } from '#plugins/particle3d/shapes.ts'
+import { particle2d, type Effects, type Source } from './particle2d.plugin.ts'
 import type { Entry } from './particle2d.sim.ts'
 
 const DT = 1 / 60
@@ -89,16 +95,19 @@ const page = (order = ['loader', 'particle2d', 'render2d'], sheetsLanded = true,
       get: (name: string) => (landed.has(name) ? decoded : undefined),
       load: () => {},
       onWritten: (name: string, f: () => void) => { if (name === 'effects') heard.push(f) },
+      // the files beside the effects file, the test's own, as the loader hands them
+      beside: async (name: string, p: string) => (name === 'effects' && p in besides ? new TextEncoder().encode(JSON.stringify(besides[p])).buffer : undefined),
     },
   }
+  const besides: Record<string, unknown> = {}
   // The effects file this page reads: the test's own, or a copy the test rewrites; and what the
-  // loader runs when the editor writes it.
+  // loader runs when the file is written.
   let effects = file
   const heard: (() => void)[] = []
   plugins.render2d.tick(plugins)
   const me = particle2d()
   return {
-    plugins, me, land: (name: string) => landed.add(name), frame: () => me.afterTick(plugins),
+    plugins, me, besides, land: (name: string) => landed.add(name), frame: () => me.afterTick(plugins),
     own: () => (effects = structuredClone(file)),
     written: () => { for (const f of heard) f() },
   }
@@ -664,11 +673,338 @@ test('a field the file, a layer or world.particle2d has that particle2d does not
     spoil(p.own(), p.plugins.wire.scene.world.particle2d)
     expect(() => p.frame()).toThrow(message)
   }
-  // Written by the editor, the file is checked again.
+  // Written while the game runs, the file is checked again.
   const p = page()
   const mine = p.own()
   p.frame()
   ;(mine.effects.rise[0] as any).sped = [1, 1]
   p.written()
   expect(() => p.frame()).toThrow('particle2d effect rise layer 0 has sped, which particle2d does not know')
+})
+
+// ---------------------------------------------------------------- drivers
+
+// A page whose file the test adds to: the page, and the file it reads.
+const adds = (more: (e: Effects) => void) => {
+  const p = page()
+  more(p.own())
+  return p
+}
+// The sprite drawn at stage x `x`.
+const atX = (plugins: any, x: number) => sprites(plugins).find((s: any) => Math.abs(s.position.x - x) < 1e-9)!
+
+test('a number written as an expression of the file\'s drivers is its value each frame, in the particles in the air too; a rule\'s drivers on the ledger row are over the file\'s, the page\'s own over them, and an effect\'s own over all of them for it alone', () => {
+  const p = adds(e => {
+    e.drivers = { fall: 0 }
+    e.effects.hang = [{ life: [5, 5], g: 'fall' }]
+  })
+  p.me.emit('hang', [0, 0])
+  p.me.emit('hang', [100, 0], { drivers: { fall: 0 } })
+  p.frame()
+  p.plugins.wire.rows = [{ id: 1, kind: 'particle2d', data: { live: [], drivers: { fall: 600 } } }]
+  for (let f = 0; f < 10; f++) p.frame()
+  expect(atX(p.plugins, 0).position.y).toBeGreaterThan(0)
+  expect(atX(p.plugins, 100).position.y).toBe(0)
+  // held at 0 by the page: no more fall, so it goes on at the speed it had
+  p.me.drive('fall', 0)
+  p.frame()
+  expect(p.me.drivers.fall).toBe(0)
+  const ys = [0, 1, 2].map(() => { p.frame(); return atX(p.plugins, 0).position.y })
+  expect(ys[1] - ys[0]).toBeGreaterThan(0)
+  expect(ys[2] - ys[1]).toBeCloseTo(ys[1] - ys[0], 9)
+})
+
+test('a stream whose every is driven to 0 throws nothing and runs on, and bursts the frame it is driven above 0 again; an effect emitted with an age opens as one that has run that long', () => {
+  const p = adds(e => {
+    e.drivers = { moving: 0 }
+    e.effects.dust = [{ every: 'moving > 0 ? 0.05 : 0', life: [1, 1] }]
+  })
+  p.me.emit('dust', [0, 0], { life: 10 })
+  for (let f = 0; f < 6; f++) p.frame()
+  expect([p.me.count, p.me.effects.length]).toEqual([0, 1])
+  p.me.drive('moving', 1)
+  p.frame()
+  expect(p.me.count).toBe(1)
+  for (let f = 0; f < 3; f++) p.frame()
+  expect(p.me.count).toBe(2)
+  // bursts every 0.05 living 0.075: at 0.2, those of 0.15 and 0.2 are in the air
+  const late = page()
+  late.me.emit('hose', [0, 0], { life: 10, age: 0.2 })
+  late.frame()
+  expect(late.me.count).toBe(2)
+})
+
+// ---------------------------------------------------------------- forces
+
+test('a layer in a force generator is moved by every entry of it, times the strength the layer names it by; an entry anchored to the effect pushes out from its point within its range', () => {
+  const p = adds(e => {
+    e.forceGenerators = { gravity: [{ direction: [0, 600] }], blast: [{ pull: -900, anchor: 'effect', range: 40, falloff: 1 }] }
+    e.effects.weighed = [{ life: [1, 1], forces: { gravity: 1 } }, { life: [1, 1], box: [50, 0, 50, 0], forces: { gravity: 0.5 } }]
+    e.effects.blown = [{ life: [1, 1], box: [10, 0, 10, 0], forces: { blast: 1 } }, { life: [1, 1], box: [60, 0, 60, 0], forces: { blast: 1 } }]
+  })
+  p.me.emit('weighed', [0, 0])
+  p.me.emit('blown', [200, 0])
+  for (let f = 0; f < 20; f++) p.frame()
+  const [full, half, near, far] = sprites(p.plugins)
+  expect(half.position.y).toBeGreaterThan(0)
+  expect(full.position.y).toBeCloseTo(2 * half.position.y, 6)
+  expect(near.position.x).toBeGreaterThan(215)
+  expect(far.position.x).toBe(260)
+})
+
+test('an entry\'s turbulence pushes each particle its own way through its noise, and its noiseScroll moves the noise under ones that stand still', () => {
+  const run = (scroll?: number[]) => {
+    const p = adds(e => {
+      e.forceGenerators = { churn: [{ turbulence: 300, noiseFrequency: 0.05, ...(scroll ? { noiseScroll: scroll } : {}) }] }
+      e.effects.row = Array.from({ length: 6 }, (_, i) => ({ life: [9, 9] as [number, number], box: [i * 20, 0, i * 20, 0], forces: { churn: 1 } }))
+    })
+    p.me.emit('row', [0, 0])
+    for (let f = 0; f < 31; f++) p.frame()
+    return sprites(p.plugins).map(at)
+  }
+  const still = run()
+  const moved = still.map((q, i) => [q[0] - i * 20, q[1]])
+  for (const m of moved) expect(Math.hypot(m[0], m[1])).toBeGreaterThan(1)
+  expect(Math.max(...moved.map(m => m[1])) - Math.min(...moved.map(m => m[1]))).toBeGreaterThan(1)
+  const scrolled = run([80, 0])
+  expect(Math.max(...scrolled.map((q, i) => Math.hypot(q[0] - still[i][0], q[1] - still[i][1])))).toBeGreaterThan(1)
+})
+
+test('a swirling particle is carried round the point it was thrown from, clockwise on the screen, its way of going turned with it', () => {
+  const p = adds(e => { e.effects.orbit = [{ life: [2, 2], box: [20, 0, 20, 0], swirl: Math.PI / 2 }] })
+  p.me.emit('orbit', [0, 0])
+  for (let f = 0; f < 31; f++) p.frame()
+  // half a second at a quarter turn a second: an eighth of a turn, down the screen from the right
+  const [s] = sprites(p.plugins)
+  expect(s.position.x).toBeCloseTo(20 * Math.cos(Math.PI / 4), 6)
+  expect(s.position.y).toBeCloseTo(20 * Math.sin(Math.PI / 4), 6)
+})
+
+test('outward throws a particle straight away from the effect\'s point; inherit starts it with its effect\'s speed on the stage', () => {
+  const p = adds(e => {
+    e.effects.apart = [{ n: [8, 8], life: [1, 1], box: [-5, -5, 5, 5], outward: [60, 60] }]
+    e.effects.riding = [{ every: 0.05, life: [1, 1], inherit: 1 }]
+  })
+  p.me.emit('apart', [0, 0])
+  p.frame()
+  const from = sprites(p.plugins).map(at)
+  for (let f = 0; f < 10; f++) p.frame()
+  sprites(p.plugins).map(at).forEach((q: number[], i: number) => {
+    const o = from[i], r = Math.hypot(o[0], o[1])
+    expect(q[0]).toBeCloseTo(o[0] + (o[0] / r) * 10, 6)
+    expect(q[1]).toBeCloseTo(o[1] + (o[1] / r) * 10, 6)
+  })
+  // a point moving 2 pixels a frame: what it throws once it is moving goes 2 pixels a frame with it
+  const r = page()
+  r.own().effects.riding = [{ every: 0.05, life: [1, 1], inherit: 1 }]
+  const fx = r.me.emit('riding', [0, 0], { life: 1 })
+  const xs: number[] = []
+  for (let f = 0; f < 8; f++) {
+    fx.at = [2 * f, 0]
+    r.frame()
+    const second = sprites(r.plugins)[1]
+    if (second) xs.push(second.position.x)
+  }
+  expect(xs.length).toBeGreaterThan(2)
+  for (let i = 1; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeCloseTo(2, 6)
+})
+
+// ---------------------------------------------------------------- what a particle carries
+
+test('a particle that carries an effect takes it along its flight, its point the particle\'s place on the stage and its dir the way it goes, its beam reaching back to where it was thrown from; it stops the frame the particle dies', () => {
+  const p = adds(e => {
+    e.effects.chunk = [{ life: [0.5, 0.5], dir: [1, 0], spread: 0, speed: [120, 120], carry: 'trail' }]
+    e.effects.trail = [{ every: 0.05, life: [0.2, 0.2] }, { life: [1, 1], beam: true, size: [2, 2] }]
+  })
+  p.me.emit('chunk', [10, 20])
+  for (let f = 0; f < 7; f++) p.frame()
+  const trail = p.me.effects.find(fx => fx.name === 'trail')!
+  // thrown at x 10 and six steps on at 120 a second
+  expect(trail.at[0]).toBeCloseTo(22, 9)
+  expect(trail.at[1]).toBeCloseTo(20, 9)
+  expect(trail.dir).toEqual([1, 0])
+  const beam = sprites(p.plugins).find((s: any) => s.anchor.x === 0)
+  expect([beam.position.x, beam.position.y]).toEqual([trail.at[0], 20])
+  expect(beam.width).toBeCloseTo(12, 9)
+  expect(beam.rotation).toBeCloseTo(Math.PI, 9)
+  for (let f = 0; f < 30; f++) p.frame()
+  expect(trail.life).toBeLessThanOrEqual(trail.age)
+  for (let f = 0; f < 70; f++) p.frame()
+  expect(p.me.effects).toEqual([])
+})
+
+// ---------------------------------------------------------------- how a particle looks
+
+test('a layer drawn as one of particle2d\'s own shapes is a pixel square times its size, cut from its cell of one texture of the shapes, with no sheet or catalogue entry', () => {
+  const p = adds(e => { e.effects.glowing = [{ life: [1, 1], shape: 'glow', size: [16, 16] }, { life: [1, 1], shape: 'spark', size: [4, 4] }] })
+  p.me.emit('glowing', [10, 20])
+  p.frame()
+  const [glow, spark] = sprites(p.plugins)
+  expect([glow.texture.frame.x, glow.texture.frame.width]).toEqual([SHAPES.indexOf('glow') * CELL, CELL])
+  expect([spark.texture.frame.x]).toEqual([SHAPES.indexOf('spark') * CELL])
+  expect(glow.texture.source).toBe(spark.texture.source)
+  expect([glow.width, glow.height, glow.anchor.x, glow.anchor.y, glow.position.x, glow.position.y]).toEqual([16, 16, 0.5, 0.5, 10, 20])
+})
+
+test('grows, tints and alphas are a particle\'s size, colour and opacity over its life, a straight line from each stop to the next', () => {
+  const p = adds(e => {
+    e.effects.cooling = [{ life: [1, 1], grows: [[0, 1], [0.5, 3], [1, 3]], tints: [[0, 0xffffff], [0.5, 0xff0000], [1, 0x000000]], alphas: [[0, 0], [0.25, 1], [1, 1]] }]
+  })
+  p.me.emit('cooling', [0, 0])
+  p.frame()
+  const [s] = sprites(p.plugins)
+  expect([s.width, s.tint, s.alpha]).toEqual([1, 0xffffff, 0])
+  for (let f = 0; f < 30; f++) p.frame()
+  expect(s.width).toBeCloseTo(3, 6)
+  expect(s.tint).toBe(0xff0000)
+  expect(s.alpha).toBe(1)
+})
+
+// ---------------------------------------------------------------- bounce
+
+test('a particle with a bounce goes back up off the floor with that much of its fall, lower each time, and comes to rest on it', () => {
+  const p = adds(e => { e.effects.ball = [{ life: [4, 4], g: 600, bounce: 0.5 }] })
+  // thrown from 20 above the ground drawn at y 100
+  p.me.emit('ball', [0, 100, 20], { floor: 0 })
+  const ys: number[] = []
+  for (let f = 0; f < 200; f++) {
+    p.frame()
+    ys.push(sprites(p.plugins)[0].position.y)
+  }
+  expect(Math.max(...ys)).toBe(100)
+  // the highest it gets between each time it reaches the floor, lower each time
+  const peaks: number[] = []
+  let top = Infinity
+  for (const y of ys) {
+    if (y === 100) {
+      if (top < 100) peaks.push(top)
+      top = Infinity
+    } else top = Math.min(top, y)
+  }
+  expect(peaks.length).toBeGreaterThan(1)
+  for (let i = 1; i < peaks.length; i++) expect(peaks[i]).toBeGreaterThan(peaks[i - 1])
+  expect(ys.slice(-20)).toEqual(Array(20).fill(100))
+})
+
+// ---------------------------------------------------------------- mods
+
+// A game's own plugins, whose mods for particle2d the tests below load: `wall`'s solids, an upright
+// wall at x 50 facing left; `dots`, delivering the word `dot`, whose Drawing keeps what it is handed;
+// and `beacon`'s sources, what the test puts on `globalThis.beacons` each frame.
+const home = mkdtempSync(join(tmpdir(), 'particle2d-mods-'))
+afterAll(() => rmSync(home, { recursive: true }))
+const shipped = (name: string, text: string) => {
+  mkdirSync(join(home, 'plugins', name), { recursive: true })
+  writeFileSync(join(home, 'plugins', name, `${name}.particle2d.ts`), text)
+}
+shipped('wall', 'export const solids = () => (from: number[], dir: number[], far: number) => { if (dir[0] <= 0) return undefined; const t = (50 - from[0]) / dir[0]; return t >= 0 && t <= far ? { t, normal: [-1, 0] } : undefined }\n')
+shipped('dots', [
+  'export const behaviors = () => ({ dot: {',
+  '  check(data: any, what: string) { if (typeof data.r !== "number") throw new Error(`${what} has no r`) },',
+  '  draw(data: any) { const d = { data, lists: [] as any[], disposed: false, put(l: any[]) { d.lists.push(l) }, dispose() { d.disposed = true } }; (globalThis as any).dots = d; return d },',
+  '} })\n',
+].join('\n'))
+shipped('beacon', 'export const sources = () => (globalThis as any).beacons\n')
+const beacons = (list: Source[]) => { (globalThis as any).beacons = list }
+// A page whose scene names `mods` for particle2d, each of them loaded.
+const modded = async (mods: Record<string, string[]>, more: (e: Effects, own: any) => void) => {
+  const p = page()
+  const world = p.plugins.wire.scene.world
+  more(p.own(), world.particle2d)
+  world.particle2d.mods = mods
+  world.shipped = { plugins: ['wall', 'dots', 'beacon'] }
+  world.scenemanager = { home: pathToFileURL(home + '/').href }
+  await prepare({} as any, [], world)
+  return p
+}
+
+test('a particle with a bounce bounces off every solid the solids mods hand over, its speed into it mirrored out; one with none passes through', async () => {
+  const p = await modded({ solids: ['wall'] }, e => {
+    e.effects.thrown = [{ life: [2, 2], dir: [1, 0], spread: 0, speed: [120, 120], bounce: 1 }, { life: [2, 2], dir: [1, 0], spread: 0, speed: [120, 120] }]
+  })
+  p.me.emit('thrown', [0, 0])
+  for (let f = 0; f < 61; f++) p.frame()
+  // a second on at 120 a second: 50 to the wall and 70 back, and the one with no bounce 120 on
+  const [bounced, through] = sprites(p.plugins)
+  expect(bounced.position.x).toBeCloseTo(-20, 2)
+  expect(through.position.x).toBeCloseTo(120, 6)
+})
+
+test('a word a mod delivers draws a layer\'s particles in place of sprites: its Drawing is handed each one\'s place, turn, size, pick and layer each frame, and let go on close; a word nothing delivers throws', async () => {
+  const p = await modded({ behaviors: ['dots'] }, e => { e.effects.dotted = [{ n: [3, 3], life: [1, 1], jitter: [4, 4], dot: { r: 2 } } as any] })
+  p.me.emit('dotted', [10, 20])
+  p.frame()
+  const d = (globalThis as any).dots
+  expect(d.data).toEqual({ r: 2 })
+  const [list] = d.lists
+  expect(list).toHaveLength(3)
+  for (const q of list) {
+    expect(Math.abs(q.at[0] - 10)).toBeLessThanOrEqual(4)
+    expect([q.size, q.rot, q.layer]).toEqual([1, 0, 'effects'])
+    expect(q.pick).toBeGreaterThanOrEqual(0)
+    expect(q.pick).toBeLessThan(1)
+  }
+  expect(sprites(p.plugins)).toEqual([])
+  p.me.close()
+  expect(d.disposed).toBe(true)
+  const bare = adds(e => { e.effects.dotted = [{ life: [1, 1], dot: { r: 2 } } as any] })
+  expect(() => bare.frame()).toThrow('particle2d effect dotted layer 0 has dot, which particle2d does not know, and no plugin world.particle2d.mods.behaviors names delivers it')
+})
+
+test('an attachment throws its effect from every source of its word, kept on it, its point, way and drivers the source\'s; a source gone stops it, its particles living on', async () => {
+  const p = await modded({ sources: ['beacon'] }, (e, own) => {
+    e.drivers = { load: 0 }
+    e.effects.dust = [{ every: 0.05, life: [0.2, 0.2], speed: ['load', 'load'], dir: [0, -1], spread: 0 }]
+    own.attach = [{ on: 'wheel', effect: 'dust' }]
+  })
+  beacons([{ key: 'a', on: 'wheel', at: [10, 20], drivers: { load: 60 } }, { key: 'b', on: 'pipe', at: [0, 0], drivers: {} }])
+  p.frame()
+  const [dust] = p.me.effects
+  expect(p.me.effects).toHaveLength(1)
+  expect([dust.at, dust.drivers, dust.life]).toEqual([[10, 20], { load: 60 }, Infinity])
+  beacons([{ key: 'a', on: 'wheel', at: [30, 20], dir: [1, 0], drivers: { load: 60 } }])
+  for (let f = 0; f < 3; f++) p.frame()
+  expect([p.me.effects, dust.at, dust.dir]).toEqual([[dust], [30, 20], [1, 0]])
+  expect(sprites(p.plugins).map(at)).toContainEqual([30, 20])
+  beacons([])
+  p.frame()
+  expect(dust.life).toBeLessThanOrEqual(dust.age)
+  expect(p.me.count).toBeGreaterThan(0)
+})
+
+// ---------------------------------------------------------------- the file
+
+test('the effects, force generators and drivers of each file the effects file lists are its own', async () => {
+  const p = page()
+  const e = p.own()
+  e.files = ['more.json']
+  p.besides['more.json'] = {
+    drivers: { lift: -600 },
+    forceGenerators: { up: [{ g: 'lift' }] },
+    effects: { rising: [{ life: [1, 1], forces: { up: 1 } }], both: [{ effect: 'rising' }, { effect: 'rise' }] },
+  }
+  p.frame()
+  await new Promise(r => setTimeout(r, 0))
+  expect(p.me.has('both')).toBe(true)
+  p.me.emit('both', [0, 0])
+  for (let f = 0; f < 10; f++) p.frame()
+  const [rising, rise] = sprites(p.plugins)
+  expect(rising.position.y).toBeLessThan(0)
+  expect(rise.position.y).toBeCloseTo(-60 * 9 * DT, 9)
+})
+
+test('a file that names a generator, a driver or an effect it has none of, carries itself, or gives a lamp what it cannot light by throws when it is read, naming it', () => {
+  const cases: [(e: any) => void, string][] = [
+    [e => { e.effects.rise[0].forces = { wind: 1 } }, 'particle2d effect rise layer 0 is in the force generator wind, which there is none of'],
+    [e => { e.effects.rise[0].speed = ['fast', 60] }, 'particle2d effect rise layer 0\'s speed is "fast", which names fast, and the effects file\'s drivers are none'],
+    [e => { e.effects.rise[0].carry = 'nothing' }, 'particle2d effect rise layer 0 carries "nothing", which there is none of'],
+    [e => { e.effects.rise[0].carry = 'rise' }, 'particle2d effect rise carries itself: rise > rise'],
+    [e => { e.effects.lit = [{ lamp: { intensity: 1.5, distance: 3 } }] }, 'particle2d effect lit layer 0 has a lamp whose intensity is 1.5, and it is a number from 0 to 1'],
+    [e => { e.forceGenerators = { air: [{ wind: [10, 0] }] } }, 'particle2d force generator air entry 0 has a wind and no drag, and a wind is the air its drag is in'],
+  ]
+  for (const [spoil, message] of cases) {
+    const p = page()
+    spoil(p.own())
+    expect(() => p.frame()).toThrow(message)
+  }
 })

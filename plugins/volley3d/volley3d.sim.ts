@@ -138,7 +138,7 @@ export function check(file: Patterns, own: Record<string, unknown>) {
   }
   checked.add(file.patterns)
 }
-// The `patterns` of each read of the file that has been checked: a file the editor writes is
+// The `patterns` of each read of the file that has been checked: a file written while the game runs is
 // refilled in place with a new `patterns`, so a new read is checked again.
 const checked = new WeakSet<object>()
 

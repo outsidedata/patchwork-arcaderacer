@@ -11,19 +11,11 @@
     "band": { "top": 250, "color": 1118481, "alpha": [0, 0.72], "steps": 24 },
     "camera": { "orbit": 0.06 },
     "model": "title",
-    "overlay": [0.1, 200],
     "env": { "sky": "#4f7fc4", "horizon": "#e8eef6", "ground": "#1a1416", "band": "#ffffff", "width": 0.12, "size": 50 },
     "key": { "colour": "#fff4e6", "power": 60, "at": [-4, 6, -6], "distance": 30 },
     "sweep": { "colour": "#ffffff", "power": 120, "from": [-9, 3.5, -10], "to": [9, 3.5, -10], "at": 1.2, "seconds": 1.6, "every": 5, "distance": 12 },
     "sway": { "yaw": [0.07, 0.5], "pitch": [0.03, 0.37], "roll": [0.012, 0.29] },
-    "name": {
-      "text": "ARCADE RACER",
-      "at": [0, 3.5, -12],
-      "scale": 1,
-      "reveal": { "seconds": 1.4, "from": [0, 3.5, -46], "turn": 0.7 },
-      "face": { "colour": "#f2f4f8", "metalness": 1, "roughness": 0.08, "env": 1.2 },
-      "side": { "colour": "#a3060f", "metalness": 0.6, "roughness": 0.3, "env": 0.8, "clearcoat": 1 }
-    },
+    "name": { "text": "ARCADE RACER", "look": "burnout", "top": "name" },
     "words": {
       "scale": 0.6,
       "side": { "colour": "#d8dce4", "metalness": 1, "roughness": 0.12, "env": 1.1 },
@@ -36,7 +28,22 @@
       { "scene": "tokyo", "word": "TOKYO", "at": [0, -1, -12], "face": { "colour": ["#0d3fae", "#4fc6ff"], "metalness": 0.3, "roughness": 0.25, "env": 0.9, "clearcoat": 1 } },
       { "scene": "paris", "word": "PARIS", "at": [6.8, -1, -12], "face": { "colour": ["#e8364f", "#ffb347"], "metalness": 0.3, "roughness": 0.25, "env": 0.9, "clearcoat": 1 } }
     ],
-    "button": "word"
+    "lineup": {
+      "kind": "car",
+      "at": [0, -1.6, -11],
+      "gap": 6,
+      "show": 1,
+      "scale": 1,
+      "spin": 0.35,
+      "slide": 8,
+      "reveal": { "after": 0.8, "seconds": 0.8, "from": [0, -3, -10] },
+      "name": {
+        "below": 0.9,
+        "scale": 0.45,
+        "face": { "colour": ["#c8102e", "#ff8a3d"], "metalness": 0.3, "roughness": 0.25, "env": 0.9, "clearcoat": 1 },
+        "side": { "colour": "#d8dce4", "metalness": 1, "roughness": 0.12, "env": 1.1 }
+      }
+    }
   },
   "player": {
     "camera": {
@@ -96,27 +103,25 @@
       "camLead": 0.35
     },
     "fx": {
-      "wheels": [[0.78, -1.25], [-0.78, -1.25]],
       "held": 0.2,
-      "marks": { "width": 0.36, "slip": 0.08, "sideways": 2.5, "brake": 12, "least": 2, "gap": 0.4, "segments": 8000, "life": 30, "fade": 8, "colour": "#050505", "opacity": 0.92, "ink": 0.6, "roughness": 0.75, "edge": 6, "lift": 0.03 },
+      "burnout": { "launch": 14 },
+      "marks": {
+        "width": 0.36, "gap": 0.4, "segments": 8000, "life": 30, "fade": 8, "colour": "#050505", "opacity": 0.92, "roughness": 0.75, "edge": 6, "lift": 0.03,
+        "lays": [
+          { "slip": 0.08, "sideways": 2.5, "brake": 12, "least": 2, "ink": 0.6, "most": 1 },
+          { "turn": 9, "least": 8, "ink": 0.08, "most": 0.3 },
+          { "burnout": 0.15, "least": 0.5, "ink": 0.55, "most": 1 }
+        ]
+      },
       "trail": { "width": 0.3, "least": 2, "gap": 0.4, "segments": 4000, "life": 1.2, "fade": 1, "colour": "#ff7a1a", "gain": 3, "opacity": 1, "edge": 4, "lift": 0.035 },
-      "smoke": { "effect": "smoke", "slip": 0.2, "sideways": 6, "brake": 24, "least": 4, "rise": 0.25 },
-      "sparks": { "effect": "sparks", "wall": "wallsparks", "least": 6, "within": 0.05, "at": [0.95, 0.35, 0.4], "throw": [0.7, 0.45] },
-      "pop": { "effect": "pop", "least": 0.05, "at": [0, 0.6, -1.6] },
+      "smoke": { "slip": 0.2, "sideways": 6, "brake": 24, "least": 4, "rise": 0.25 },
+      "sparks": { "least": 6, "within": 0.05, "at": [0.95, 0.35, 0.4], "throw": [0.7, 0.45] },
+      "pop": { "least": 0.05, "at": [0, 0.6, -1.6] },
       "rush": { "from": 0.45, "most": 0.09, "boosted": 0.06, "ease": 0.5, "samples": 10, "centre": [0.5, 0.48], "inner": 0.35, "outer": 1 }
     },
     "look": {
-      "model": "supercar",
-      "paint": "#c8102e",
-      "paintMaterial": "sc_paint",
-      "lamp": "sc_lens_red",
-      "heads": ["sc_lens_white", "sc_lens_clear"],
       "headGlow": { "colour": "#fff4dc", "intensity": 3 },
-      "glow": 4,
-      "hubs": { "fl": "carhub_fl", "fr": "carhub_fr", "rl": "carhub_rl", "rr": "carhub_rr" },
-      "wheels": { "fl": "carwheel_fl", "fr": "carwheel_fr", "rl": "carwheel_rl", "rr": "carwheel_rr" },
-      "tyre": 0.3,
-      "steer": 0.45
+      "glow": 4
     }
   },
   "rival": {
@@ -179,32 +184,33 @@
       "carve": 2.5
     },
     "fx": {
-      "wheels": [[0.78, -1.25], [-0.78, -1.25]],
       "held": 0.2,
-      "marks": { "width": 0.36, "slip": 0.08, "sideways": 2.5, "brake": 12, "least": 2, "gap": 0.4, "segments": 8000, "life": 30, "fade": 8, "colour": "#050505", "opacity": 0.92, "ink": 0.6, "roughness": 0.75, "edge": 6, "lift": 0.03 },
+      "burnout": { "launch": 14 },
+      "marks": {
+        "width": 0.36, "gap": 0.4, "segments": 8000, "life": 30, "fade": 8, "colour": "#050505", "opacity": 0.92, "roughness": 0.75, "edge": 6, "lift": 0.03,
+        "lays": [
+          { "slip": 0.08, "sideways": 2.5, "brake": 12, "least": 2, "ink": 0.6, "most": 1 },
+          { "turn": 9, "least": 8, "ink": 0.08, "most": 0.3 },
+          { "burnout": 0.15, "least": 0.5, "ink": 0.55, "most": 1 }
+        ]
+      },
       "trail": { "width": 0.3, "least": 2, "gap": 0.4, "segments": 4000, "life": 1.2, "fade": 1, "colour": "#ff7a1a", "gain": 3, "opacity": 1, "edge": 4, "lift": 0.035 },
-      "smoke": { "effect": "smoke", "slip": 0.2, "sideways": 6, "brake": 24, "least": 4, "rise": 0.25 },
-      "sparks": { "effect": "sparks", "wall": "wallsparks", "least": 6, "within": 0.05, "at": [0.95, 0.35, 0.4], "throw": [0.7, 0.45] },
-      "pop": { "effect": "pop", "least": 0.05, "at": [0, 0.6, -1.6] }
+      "smoke": { "slip": 0.2, "sideways": 6, "brake": 24, "least": 4, "rise": 0.25 },
+      "sparks": { "least": 6, "within": 0.05, "at": [0.95, 0.35, 0.4], "throw": [0.7, 0.45] },
+      "pop": { "least": 0.05, "at": [0, 0.6, -1.6] }
     },
     "look": {
-      "model": "supercar",
-      "paints": ["#1f5fd1", "#f2c200", "#1c9c4a", "#f07a12", "#e8e8ec"],
-      "paintMaterial": "sc_paint",
-      "lamp": "sc_lens_red",
-      "heads": ["sc_lens_white", "sc_lens_clear"],
       "headGlow": { "colour": "#fff4dc", "intensity": 3 },
-      "glow": 4,
-      "hubs": { "fl": "carhub_fl", "fr": "carhub_fr", "rl": "carhub_rl", "rr": "carhub_rr" },
-      "wheels": { "fl": "carwheel_fl", "fr": "carwheel_fr", "rl": "carwheel_rl", "rr": "carwheel_rr" },
-      "tyre": 0.3,
-      "steer": 0.45
+      "glow": 4
     }
   },
   "race": {
     "laps": 3,
     "countdown": 3,
     "hold": 1,
+    "wait": 45,
+    "grace": 20,
+    "results": 15,
     "hud": {
       "place": { "at": [28, 18], "text": "{place}/{of}", "style": "big" },
       "lap": { "at": [32, 88], "text": "LAP {lap}/{laps}", "style": "small" },
@@ -216,15 +222,41 @@
       "drift": { "at": [640, 560], "anchor": [0.5, 0], "text": "DRIFT {slide}", "style": "banner" },
       "count": { "at": [640, 230], "anchor": [0.5, 0.5], "style": "count", "go": "GO!", "goFor": 1 },
       "split": { "at": [640, 120], "anchor": [0.5, 0], "text": "CHECKPOINT {n}", "style": "banner", "for": 1.5 },
-      "finish": { "at": [640, 110], "anchor": [0.5, 0], "text": "FINISH", "style": "count" },
+      "finish": { "at": [640, 110], "anchor": [0.5, 0], "text": "FINISH", "style": "count", "waiting": { "at": [640, 260], "anchor": [0.5, 0], "text": "WAITING FOR THE OTHERS", "style": "banner" } },
+      "standings": { "at": [1252, 130], "anchor": [1, 0], "step": 28, "style": "small", "mine": "resultMine", "line": "{place}. {name}", "done": "{place}. {name}  {time}" },
       "map": { "at": [28, 520], "size": 170, "line": 15132390, "width": 3, "dot": 9, "you": 16769280, "them": 16724016 }
     }
   },
   "match": {
+    "cars": ["jeep_tj", "countach", "ferrari_f40", "porsche_911", "skyline_gtr", "volvo_240"],
     "button": "course",
     "messages": { "waiting": "WAITING FOR MATCH TO FINISH", "disconnected": "PLAYER 1 DISCONNECTED" },
     "message": { "at": [640, 490], "anchor": [0.5, 0.5], "style": "banner" },
-    "lobby": { "at": [640, 570], "anchor": [0.5, 0.5], "text": "WAITING FOR PLAYER 1 TO PICK A COURSE", "style": "tagline" },
+    "player": "PLAYER {n}",
+    "names": { "jeep_tj": "JEEP TJ", "countach": "COUNTACH", "ferrari_f40": "FERRARI F40", "porsche_911": "PORSCHE 911", "skyline_gtr": "SKYLINE GT-R", "volvo_240": "VOLVO 240" },
+    "lobby": {
+      "at": [640, 570],
+      "anchor": [0.5, 0.5],
+      "style": "tagline",
+      "text": {
+        "choosing": "{host} IS CHOOSING A COURSE",
+        "picking": "WAITING FOR {names} TO PICK A CAR",
+        "waiting": "WAITING FOR {host} TO START"
+      },
+      "roster": { "at": [40, 500], "step": 34, "style": "small", "mine": "resultMine", "line": "{name}{tags}  -  {car}", "host": "  HOST", "you": "  YOU", "picking": "PICKING A CAR" },
+      "course": { "at": [640, 520], "anchor": [0.5, 0.5], "text": "COURSE  {course}", "style": "banner" },
+      "start": { "at": [460, 590], "label": "START" }
+    },
+    "staging": {
+      "title": { "at": [640, 150], "anchor": [0.5, 0], "text": "WAITING FOR PLAYERS", "style": "banner" },
+      "at": [440, 220],
+      "step": 36,
+      "columns": [0, 200],
+      "style": "result",
+      "mine": "resultMine",
+      "ready": "READY",
+      "loading": "LOADING"
+    },
     "spectate": { "at": [460, 535], "label": "SPECTATE" },
     "watch": { "at": [900, 20], "step": 76, "free": "FREE CAMERA" },
     "free": { "speed": 30, "fast": 4, "turn": 0.004 },
@@ -233,7 +265,8 @@
       "at": [470, 216], "step": 36, "columns": [0, 60, 200], "place": "{place}.", "you": "YOU", "racing": "--:--.--",
       "style": "result", "mine": "resultMine",
       "back": { "at": [440, 200], "size": [400, 330], "radius": 10, "colour": 1118481, "alpha": 0.7 },
-      "exit": { "at": [460, 550], "label": "EXIT" }
+      "exit": { "at": [460, 550], "label": "EXIT" },
+      "countdown": { "at": [640, 640], "anchor": [0.5, 0.5], "text": "BACK TO THE LOBBY IN {seconds}", "style": "tagline" }
     }
   }
 }

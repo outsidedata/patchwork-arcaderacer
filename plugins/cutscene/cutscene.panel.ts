@@ -6,7 +6,7 @@
 //
 // `file` and `sim` the manager scene and its sim the page imports, `base` the page's url, `scene` the
 // scene whose cutscene is edited. The cue logic is `cutscene.cues.ts`, the timeline
-// `cutscene.timeline.ts`, both lifted from the editor's Cutscene panel; what a page cannot do, a save
+// `cutscene.timeline.ts`; what a page cannot do, a save
 // and the cue file's own check, is the dev server's (`cutscene.serve.ts`).
 //
 // The game. The game's manager scene is booted behind core's recorder (`addons/recorder`), its `entry`
@@ -24,13 +24,13 @@
 // Elapsed time. The cutscene's elapsed time `e` is step `start + e/dt`, `start` the step `e` counts
 // from, read off the cutscene row the first step it runs (`n − e/dt`). Scrubbing the ruler shows the
 // playhead and leaves the step where it is; letting go seeks the recorder there, forward by stepping,
-// on past the recording's end when it has to, and back by booting again and replaying (`rec.seek`), as
-// the editor's Cutscene panel does; so the scene plays as it does, bodies, bars, veil and line. Before
+// on past the recording's end when it has to, and back by booting again and replaying (`rec.seek`);
+// so the scene plays as it does, bodies, bars, veil and line. Before
 // the cutscene starts there is no elapsed time: the bar says the scene waits for its start, and the
 // clock plays on until it comes.
 //
 // The cue file, the scene's `world.cutscene.script`. It is read from the game's file once, `saved`, and
-// every change makes a new file, `current`, made by `cutscene.cues.ts` (the editor's edits) and
+// every change makes a new file, `current`, made by `cutscene.cues.ts`'s edits and
 // refused, with why in the bar, by its `refusal`; each change is put in the loader's copy of the file
 // (`written`), which the truth reads, and the recorder rebuilds the step it is at with it
 // (`rec.rerun`), so the scene starts over and plays the file as changed. Undo (the button, ⌘Z) puts back
@@ -62,8 +62,8 @@
 // nudged with ← and →, taken out with Delete, copied with ⌘C and pasted at the playhead with ⌘V,
 // duplicated with ⌘D; the end bracket is dragged.
 //
-// The form: the selected cue's fields by its kind, cutscene's own forms as the editor has them, and for
-// a kind the editor has no form for (`prepare`) or a step a game brings (mech's `land`), a field for each
+// The form: the selected cue's fields by its kind, cutscene's own forms, and for
+// a kind the panel has no form for (`prepare`) or a step a game brings (mech's `land`), a field for each
 // of its fields by the rule `check` holds it to; `do` makes it a cue of another kind; take the view (a
 // shot: the orbit's camera taken into it), pick in the view (a walk or a face: the next press on the
 // scene picks its target); with the end selected, the file's `end`, `go` and `arrive`; and the problems.
@@ -968,7 +968,7 @@ export async function edit({ file, sim, base, scene: name }: { file: Scene; sim:
       ],
       music: () => [row('name', textField('name', c.name, set('name')))],
     }
-    // A field of a kind the editor has no form for, a delivered step's among them, by its rule.
+    // A field of a kind the panel has no form for, a delivered step's among them, by its rule.
     const byRule = (field: string, spec: string): HTMLElement => {
       const rule = spec.replace(/\?$/, ''), optional = spec.endsWith('?')
       const v = c[field]
@@ -1096,7 +1096,7 @@ export async function edit({ file, sim, base, scene: name }: { file: Scene; sim:
   }
 }
 
-// The panel's styles, and the timeline's as the editor draws it (`editor/ui/ui.css`), in its colours.
+// The panel's styles, and the timeline's, in its colours.
 const CSS = `
 .cutscene-stage { position: fixed; background: #000 }
 .cutscene-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block }

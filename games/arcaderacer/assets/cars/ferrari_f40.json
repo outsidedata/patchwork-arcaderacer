@@ -1,0 +1,25 @@
+{
+  "name": "F40",
+  "form": "kit",
+  "turn": 3.141592653589793,
+  "body": { "glb": "ferrari_f40.body", "looks": "ferrari_f40.body.looks" },
+  "wheels": {
+    "fl": { "glb": "ferrari_f40.wheel-front-left", "looks": "ferrari_f40.wheel-front-left.looks", "at": [0.797, 0.314, 1.225], "radius": 0.314 },
+    "fr": { "glb": "ferrari_f40.wheel-front-right", "looks": "ferrari_f40.wheel-front-right.looks", "at": [-0.797, 0.314, 1.225], "radius": 0.314 },
+    "rl": { "glb": "ferrari_f40.wheel-rear-left", "looks": "ferrari_f40.wheel-rear-left.looks", "at": [0.803, 0.333, -1.225], "radius": 0.333 },
+    "rr": { "glb": "ferrari_f40.wheel-rear-right", "looks": "ferrari_f40.wheel-rear-right.looks", "at": [-0.803, 0.333, -1.225], "radius": 0.333 }
+  },
+  "steer": 0.45,
+  "steering": { "bone": "steer wheel", "lock": 3 },
+  "lamps": {
+    "brake": { "material": "ferrari_f40_lamp_red", "setting": "lpGlow", "off": [0.3, 0.01, 0.005], "on": [3, 0.1, 0.05] },
+    "heads": { "material": "ferrari_f40_headlamp", "setting": "lpGlow", "off": [0, 0, 0], "on": [3, 2.86, 2.58] }
+  },
+  "tracks": [[0.803, -1.225], [-0.803, -1.225]],
+  "paint": {
+    "material": "ferrari_f40_rosso_corsa",
+    "options": [
+      { "name": "rosso_corsa", "settings": { "apColour": [0.52, 0.018, 0.01], "apFlake": 0, "apFlakeColour": [0.9, 0.85, 0.8], "apFlakeSize": 0.00035, "apRough": 0.22, "apCoat": 1, "apCoatRough": 0.025, "apPeel": 180, "apPeelDepth": 0.00003, "apDust": 0.35, "apDustColour": [0.32, 0.27, 0.2], "apDustHeight": 0.55 } }
+    ]
+  }
+}

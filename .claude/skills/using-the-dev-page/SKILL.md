@@ -651,6 +651,24 @@ owed = clock.paused ? 0 : owed + Math.min((now - last) / 1000, 0.25) * clock.spe
 await page.frame(clock.paused ? 1 : owed / dt)
 ```
 
+**A cap on the frames a second, beside the pixel ratio** (demo_horse3d), so smoothness is looked at
+at any drawing rate and any resolution, on the person's own display: at 4 frames a second each drawn
+frame is 15 steps on, and whether every part agrees on each frame (bones with their body, a rider with
+its car, the camera with what it follows) is plain to see, where at 60 or 120 it is a blur. The truth
+still steps on its own clock; a frame under the cap is skipped whole, nothing stepped and nothing
+drawn, the time owed kept for the next:
+
+```js
+const drawing = { cap: 240 }
+const render = gui.addFolder('render')
+render.add({ get ratio() { return page.client?.plugins.render3d?.renderer?.getPixelRatio() ?? 1 }, set ratio(v) { page.client?.plugins.render3d?.ratio(v) } }, 'ratio', 0.5, 4, 0.25).name('pixel ratio').listen()
+render.add(drawing, 'cap', 1, 240, 1).name('frames a second, at most')
+…
+const loop = async now => {
+  if (now - last < 1000 / drawing.cap - 0.5) { requestAnimationFrame(loop); return }
+  owed = … // as before
+```
+
 farm runs faster with `?speed=<n>`: `owed += Math.min((now - last) / 1000, 0.25) * speed`. horde
 stops the sun with a slider on the skydome3d row's `rate`. `testbed.mjs` holds the page rather than
 the truth (section 3).

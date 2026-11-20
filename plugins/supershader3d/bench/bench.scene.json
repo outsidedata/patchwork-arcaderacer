@@ -1,0 +1,15 @@
+{
+  "world": {},
+  "prefabs": {
+    "engine": { "dt": 0.016666666666666666 },
+    "scenemanager": {
+      "scenes": { "floor": { "file": "floor.scene.json", "suspend": false } },
+      "dt": 0.016666666666666666,
+      "entry": "floor",
+      "port": 0
+    }
+  },
+  "actors": [{ "is": "scenemanager" }],
+  "plugins": ["scenemanager"],
+  "seats": 1
+}

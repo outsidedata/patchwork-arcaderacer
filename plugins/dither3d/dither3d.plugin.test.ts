@@ -37,6 +37,8 @@ vi.mock('three', async importOriginal => {
     render(scene: any) { gpu.draws.push({ scene, target: this.target }) }
     dispose() {}
     forceContextLoss() {}
+    // a GPU with no KHR_parallel_shader_compile, so render3d holds nothing back while it compiles
+    extensions = { get: () => null }
   }
   return { ...three, WebGLRenderer }
 })

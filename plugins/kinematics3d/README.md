@@ -72,7 +72,7 @@ m/s² and 1/s (`fallOf`). `relative(stick, yaw)`: the camera-relative stick.
 
 ## Using it
 
-1. Give `world.kinematics3d: { kinds: { <kind>: { triangles: { … }, move: { … }, jump: { jumpH },
+1. Give `world.kinematics3d: { kinds: { <kind>: { triangles: { … }, move: { … }, jump: { jumpH, jumpVelocityBoostMagnitude },
    fall: { gravity, airAccel } } }, mods: { behaviors: ['shapes3d', 'terrain3d', 'motion3d'], states:
    ['motion3d'], solids: ['shapes3d'], footprints: ['shapes3d'] } }`.
 2. In the kind's rule, each step: one `step(w, target, place, want, dt, me)` on the target it moves on

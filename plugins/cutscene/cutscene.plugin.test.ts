@@ -360,8 +360,8 @@ test('a driver that holds the camera keeps it through a shot, the shot takes it 
   t.step(DT)
   frame(sent(t))
   expect(plugins.render3d.claimed()).toBe(plugins.cutscene)
-  // The orbit takes it, as the editor's does: from whoever holds it.
-  const orbit = { editor: 'orbit' }
+  // The orbit takes it, as the cutscene panel's does: from whoever holds it.
+  const orbit = { panel: 'orbit' }
   plugins.render3d.release(plugins.render3d.claimed())
   plugins.render3d.claim(orbit)
   camera().position.set(7, 7, 7)

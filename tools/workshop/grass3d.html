@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>grass workshop</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "/three/build/three.module.js",
+    "three/addons/": "/three/examples/jsm/",
+    "#engine/": "/engine/",
+    "#plugins/": "/plugins/",
+    "#addons/": "/addons/",
+    "fflate": "/npm/fflate/esm/browser.js",
+    "fzstd": "/npm/fzstd/esm/index.mjs",
+    "box3d.js/inline": "/npm/box3d.js/dist/box3d.inline.mjs"
+  }
+}
+</script>
+<style>
+:root { --bg: #16171a; --panel: #1e2024; --line: #2c2f35; --text: #d6d8dc; --dim: #8a8f98; --accent: #e0a33a; --ok: #5bbf7a; --bad: #e0573a }
+* { box-sizing: border-box }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 -apple-system, system-ui, sans-serif }
+.app { display: grid; grid-template-columns: 300px 1fr 360px; grid-template-rows: 48px 1fr; height: 100vh }
+header { grid-column: 1 / 4; display: flex; align-items: center; gap: 6px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--line) }
+header .sp { flex: 1 }
+button, select, input { font: inherit; font-size: 12px; color: var(--text) }
+button { padding: 5px 12px; border: 1px solid var(--line); border-radius: 5px; background: #25282d; cursor: pointer }
+button:disabled { opacity: .4; cursor: default }
+button.go, button.on { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 600 }
+select, input { background: #15161a; border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px }
+input[type=number] { width: 64px }
+input[type=range] { accent-color: var(--accent); padding: 0; border: 0; background: none }
+input[type=color] { width: 44px; height: 24px; padding: 1px }
+#state { color: var(--dim); font-size: 12px }
+#state.ok { color: var(--ok) } #state.bad { color: var(--bad) } #state.dirty { color: var(--accent) }
+aside { background: var(--panel); overflow-y: auto; overflow-x: hidden; padding-bottom: 24px; border-right: 1px solid var(--line) }
+aside.right { border-right: 0; border-left: 1px solid var(--line) }
+h3 { margin: 0; padding: 14px 14px 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim) }
+.say { padding: 0 14px 8px; color: var(--dim); font-size: 12px }
+.picks { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 14px 8px }
+.picks button { padding: 3px 10px }
+.picks button.changed { border-color: var(--accent) }
+.line { display: flex; gap: 6px; align-items: center; padding: 3px 14px }
+.line .lab { flex: 0 0 118px; color: var(--dim) }
+.line.changed .lab { color: var(--accent) }
+.line input[type=range] { flex: 1; min-width: 0 }
+.line .unit { color: var(--dim); font-size: 11px; flex: 0 0 34px }
+aside:not(.right) .line .lab { flex-basis: 74px }
+aside:not(.right) input[type=number] { width: 54px }
+aside:not(.right) .line.tick .lab { flex: 1 }
+main { position: relative; overflow: hidden }
+main canvas { display: block }
+#views { position: absolute; top: 10px; right: 10px; display: flex; gap: 4px; z-index: 2 }
+#hud { position: absolute; top: 10px; left: 10px; font: 11px ui-monospace, monospace; color: #e8e8e8; background: #0009; padding: 4px 6px; border-radius: 4px; z-index: 2; white-space: pre }
+#error { position: absolute; bottom: 10px; left: 10px; right: 10px; font: 11px ui-monospace, monospace; color: #fff; background: #7a2a1d; padding: 6px 8px; border-radius: 4px; white-space: pre-wrap; display: none; z-index: 3 }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <select id="game"></select>
+    <select id="file"></select>
+    <span class="sp"></span>
+    <span id="state"></span>
+    <button id="revert">Revert</button>
+    <button id="save" class="go">Save to game</button>
+  </header>
+  <aside>
+    <h3>Grass</h3>
+    <div class="picks" id="grasses"></div>
+    <div class="line tick"><span class="lab">with the file's other grasses</span><input type="checkbox" id="together"></div>
+    <h3>Test ground</h3>
+    <div class="say">What the grass is grown on here. Where it grows in the game is the game's.</div>
+    <div class="picks" id="grounds"></div>
+    <h3>Trodden by</h3>
+    <div class="picks" id="treaders"></div>
+    <div id="treader"></div>
+  </aside>
+  <main id="view">
+    <div id="hud"></div>
+    <div id="views"></div>
+    <div id="error"></div>
+  </main>
+  <aside class="right" id="numbers"></aside>
+</div>
+<script type="module" src="/tools/workshop/grass3d.ts"></script>
+</body>
+</html>

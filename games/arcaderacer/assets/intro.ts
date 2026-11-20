@@ -3,7 +3,7 @@
 // `node --experimental-strip-types games/arcaderacer/assets/intro.ts`.
 //
 // The title's race is a pure function of its seed and its numbers: the circuit and the land are made
-// from Tokyo's seed and course file, the eight rivals drive by their pilots, and the curtain flags the
+// from Tokyo's seed and course file, the six rivals drive by their pilots, and the curtain flags the
 // race off on the step the intro starts. So the race the intro films is the same race every time, and
 // this script plays it here first. It boots the game as the server does, enters the title, sends the
 // curtain `ready` as a page would, and records every car on every step; then it lays the shots on what

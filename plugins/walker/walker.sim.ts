@@ -37,7 +37,7 @@
 // `walk`, `slide`, `carry` and `seek` look up `w.world.walker.kinds[me.kind]` (the kind a row's `as`
 // names, when it names one: a seat's `player` row that is an `xbot` walks as one), and a kind the table
 // does not name throws naming it. The table is checked by whichever of those four is asked first
-// whenever its content changes, compared as text since the editor edits the scene in place. `check` throws a sentence naming the kind for
+// whenever its content changes, compared as text since a dev page's panel edits the scene in place. `check` throws a sentence naming the kind for
 // a number that is not finite or out of range (jumpH and wade may be 0, the rest must be above it),
 // for `bodies` that is not a list of the table's kinds (or `player`, whose rows walk by their `as`),
 // and unless maxSlope·span·√2 < step: a span
@@ -51,16 +51,19 @@
 // element by element, since an actor entry's arrays are the loaded scene's own.
 //
 // The ground is handed in by the rule, never imported: `{ height(x, z), depth?(x, z),
-// solids(x, z, r), footing?(pos, yaw) }`. `height` is the ground a foot stands on, `depth` the water over
-// it (none when absent), and `solids` every solid reaching within r of (x, z) (Solids and their
-// footprints, below). `footing`, where given, is where a body standing at `pos` facing `yaw` is now that
-// the floor under it has moved (shapes3d's moved shapes), or undefined where it has not: `walk` puts a
-// grounded body there before it moves it, so a body stands still on a moving floor. A ground with no
+// solids(x, z, r), roof?(x, z, r), footing?(pos, yaw, me, grounded) }`. `height` is the ground a foot
+// stands on, `depth` the water over it (none when absent), and `solids` every solid reaching within r of
+// (x, z) (Solids and their footprints, below). `roof`, where given, is the lowest underside over the body
+// the ground was made for of what reaches within r of (x, z), Infinity where nothing is over it: a head
+// rising into it stops there (`walk`, step 4). `footing`, where given, is where the body `me` standing at
+// `pos` facing `yaw` is now that the floor under it has moved (shapes3d's moved shapes), or undefined
+// where it has not: `walk` asks it every step, with `grounded` whether the body stands on the ground,
+// and puts the body there before it moves it, so a body stands still on a moving floor. A ground with no
 // `footing`, terrain's, never moves.
 // A game builds it from terrain3d's `heightAt` (or `rawAt` on a flooded place) and `depthAt`, and
-// scatter3d's `solids`; a test writes its own. `groundOf(w)` is the ground the scene's mods make
+// lod3d's `solids`; a test writes its own. `groundOf(w)` is the ground the scene's mods make
 // (`addons/scenemanager`): `world.walker.mods: { height, depth?, cell?, solids?, fixed?, behaviors? }`
-// names the plugins that provide each (`terrain3d.walker.ts`, `scatter3d.walker.ts`,
+// names the plugins that provide each (`terrain3d.walker.ts`, `lod3d.walker.ts`,
 // `shapes3d.walker.ts`); with neither `solids` nor `fixed` there are none, and a scene that names no
 // `height` throws. Walker takes its feet itself, so the stand height means the same over any ground.
 // `slide`, `carry` and `seek` ask the ground's solids and, beside them, the bodies that reach within r
@@ -85,10 +88,10 @@
 //
 // The ground a truth keeps. `groundOf(w)` makes the ground once for each truth, the first time it is
 // asked, and hands back that same ground every step after, made again only when `world.walker.mods`
-// changes (the editor edits the scene in place): every mod is found once. On a ground with a `cell`,
+// changes (a dev page's panel edits the scene in place): every mod is found once. On a ground with a `cell`,
 // every corner of the lattice is asked of `height` (and `depth`) once for the truth, at (i·cell,
 // j·cell), and kept, so a body stands on the same triangles as on a ground asked each call. Solids are
-// two kinds: `fixed`, every solid that never moves (a level's walls, scatter3d's trunks, shapes3d's
+// two kinds: `fixed`, every solid that never moves (a level's walls, lod3d's trunks, shapes3d's
 // shapes), and `solids`, what moves. `world.walker.mods.fixed` names one plugin or a list, each
 // `fixed(w, x, z, r)` (`Fixed`) handing back its solids reaching within r of (x, z), as `solids` does;
 // the ground's `solids` is every `fixed` plugin's solids, then the `solids` mod's. An agent's map asks `fixed` once a tile
@@ -167,11 +170,17 @@
 //      gravity and the body leaves it. So a ledge lets go and the body falls by the exact gravity sum,
 //      and a jump of jumpH 0.9 at gravity 20 and 60 Hz peaks at the sum Σ(6 − n/3)/60 = 0.85 m. A body
 //      that ends the step on the ground is `grounded` unless the ground there is steep (past
-//      maxSlope, or past maxSlope − slopeBand for a body sliding).
+//      maxSlope, or past maxSlope − slopeBand for a body sliding). A body rising, its head past the
+//      ground's `roof` over where it stands, is put back under it, no lower than it started the step,
+//      and rises no more (vy at most 0): a jump under a ceiling bumps its head.
 //   5. `vel` and `speed` are read back from the horizontal motion `slide` made, so a wall and a
-//      reversal both show as `vel` easing toward a `want` it did not reach. On an axis the move went
-//      where it was asked, to the rounding of the position, the eased speed is kept, so an
-//      unobstructed body's `vel` is the eased velocity exactly and not a rounding of it; and since a
+//      reversal both show as `vel` easing toward a `want` it did not reach. Where the move went
+//      where it was asked on both axes, to the rounding of the position, the eased velocity is kept, so an
+//      unobstructed body's `vel` is the eased velocity exactly and not a rounding of it; else the
+//      velocity the move went at, its part back against the eased velocity taken off and no faster than
+//      it (`kept`): a wall or a slope slid along leaves the body going along it at the speed it went,
+//      and a correction, a push out of a solid or a move back, is never a speed, so no body is flung by
+//      one. And since a
 //      move shorter than the tolerance is not made, a body let go of stops rather than creeping on
 //      by a rounding a step.
 //
@@ -179,11 +188,18 @@
 // returns the move it made. It leaves pos.y to `walk`. The limits run as rounds on the point the
 // round before left, up to 6. Each round the point is pushed out of the solids, and then the limits
 // are asked in turn, wading, step and slope, the first that refuses being the answer:
-//   Solids.  The point is pushed out of every footprint it is within `radius` of, to `radius` clear:
-//            out of one of one corner along the line from that corner, out of any other from the
-//            nearest point of its outline along the way out there, so solids are slid round. Solids are
-//            asked again each round, so a push onto a second solid, or onto ground a limit refuses, is
-//            caught, and a point is taken only once no solid holds it.
+//   Solids.  The move is swept against every footprint along it: where the body stands `radius` clear
+//            of one as the move begins and the move passes through it, ending beyond its reach or so
+//            deep that the push below would put it out on the far side, the move stops where the body's
+//            circle first meets it, and the rest goes on along it, its part into the footprint taken
+//            off, so no wall is passed through however fast the body goes. Then the point is pushed
+//            out of every footprint it is still within `radius` of, to `radius` clear: out of one of one
+//            corner along the line from that corner, out of any other from the nearest point of its
+//            outline along the way out there, so solids are slid round. A footprint that held the
+//            body's middle as the move began is over or under it, not beside it, and is neither swept
+//            against, pushed out of nor counted. Solids are asked again each round, so a push onto a
+//            second solid, or onto ground a limit refuses, is caught, and a point is taken only once no
+//            solid holds it.
 //   Wading.  A move into water deeper than `wade`, and deeper than the footprint already stood in, is
 //            refused, across the depth's gradient at that point (central differences a thousandth
 //            of a span wide, or one span wide where that is flat), which projects it onto the
@@ -294,14 +310,18 @@ export type Ground = {
   depth?(x: number, z: number): number
   solids(x: number, z: number, r: number): (Solid | Worded)[]
   cell?: number
-  // Where a body standing at `pos`, facing `yaw`, is now that the floor under it has moved, or undefined
-  // where that floor has not moved (`walk`).
-  footing?(pos: number[], yaw: number): { pos: number[]; yaw: number } | undefined
+  // The lowest underside over a body whose head is where the ground was made for, of what reaches within
+  // r of (x, z), or Infinity where nothing is over it (`walk`).
+  roof?(x: number, z: number, r: number): number
+  // Where the body `me` standing at `pos`, facing `yaw`, is now that the floor under it has moved, or
+  // undefined where that floor has not moved; asked every step, `grounded` whether the body stands on the
+  // ground at all (`walk`).
+  footing?(pos: number[], yaw: number, me: Row, grounded: boolean): { pos: number[]; yaw: number } | undefined
 }
 // The ground's heights and water, what the footprint stands on, without its solids.
 type Heights = Omit<Ground, 'solids'>
 // A plugin's `fixed` (`world.walker.mods.fixed`): every solid that never moves reaching within r of
-// (x, z), from the walls of a level, the trunks and boulders scatter3d places, anything that stands
+// (x, z), from the walls of a level, the trunks and boulders lod3d places, anything that stands
 // where it stands for the life of the truth.
 export type Fixed = (w: W, x: number, z: number, r: number) => (Solid | Worded)[]
 
@@ -356,16 +376,36 @@ type Made = Ground & { [KEPT]: Kept }
 // A square (i, j) of a grid, or a corner of the lattice, as one number.
 const keyOf = (i: number, j: number) => (i + 1048576) * 2097152 + (j + 1048576)
 
+// Whether two values of the scene file are the same: the same number (NaN the same as NaN), string,
+// boolean or null, or arrays and plain objects of the same, item by item and field by field, a field
+// holding undefined the same as one not there. Read on every `groundOf`, so it walks the two and makes
+// nothing.
+function same(a: unknown, b: unknown): boolean {
+  if (a === b || (a !== a && b !== b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a)) {
+    const c = b as unknown[]
+    if (a.length !== c.length) return false
+    for (let i = 0; i < a.length; i++) if (!same(a[i], c[i])) return false
+    return true
+  }
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>
+  for (const k in x) if (!same(x[k], y[k])) return false
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false
+  return true
+}
+
 // The ground the scene's mods make, made once for each truth and kept until `world.walker.mods`
-// changes (the editor edits the scene in place).
-const grounds = new WeakMap<W, { mods: string; ground: Made }>()
+// changes: kept beside a copy of the mods it was made from, as a dev page's panel edits the scene in place.
+const grounds = new WeakMap<W, { mods: unknown; ground: Made }>()
 
 export function groundOf(w: W): Ground {
-  const mods = JSON.stringify(w.world.walker?.mods ?? null)
+  const mods = w.world.walker?.mods ?? null
   const was = grounds.get(w)
-  if (was && was.mods === mods) return was.ground
+  if (was && same(was.mods, mods)) return was.ground
   const ground = make(w)
-  grounds.set(w, { mods, ground })
+  grounds.set(w, { mods: structuredClone(mods), ground })
   return ground
 }
 
@@ -559,6 +599,7 @@ function read(ground: Ground | Read, x: number, z: number, reach: number, foot: 
     height: c ? lattice(ground.height, c, kept?.height) : ground.height,
     ...(ground.depth && { depth: c ? lattice(ground.depth, c, kept?.depth) : ground.depth }),
     solids: (qx, qz, r) => (held && math.hypot(qx - x, qz - z) + r <= reach ? near(held, qx, qz, r) : asked(qx, qz, r).map(foot)),
+    ...(ground.roof && { roof: ground.roof }),
     ...(c && { cell: c }),
   }
 }
@@ -789,12 +830,55 @@ function limits(k: Numbers, ground: Heights, p: number[], y: number, q: number[]
   return wading(k, ground, p, q) ?? stepping(k, ground, p, y, q) ?? sloping(k, ground, p, y, q)
 }
 
-// The point pushed out of every solid it is within the body's radius of: a round one along the line
-// from its middle, one with corners from the nearest point of its outline, along the way out there.
+// Whether a footprint holds the point (x, z) itself: within its outline, or within a round one's
+// rounding of its one corner. A body whose middle a footprint held as its move began has that thing over
+// or under it, not beside it, and is not got out of it across the ground.
+function holds(s: Footprint, x: number, z: number): boolean {
+  if (s.points.length === 1) return math.hypot(x - s.points[0][0], z - s.points[0][1]) < s.round
+  return nearest(s.points, x, z).inside
+}
+
+// The way a point within a footprint's reach is pushed out of it: from its one corner, or from the
+// nearest point of its outline (that side's outward normal from within it).
+function outOf(s: Footprint, x: number, z: number): number[] {
+  if (s.points.length === 1) return [x - s.points[0][0], z - s.points[0][1]]
+  const near = nearest(s.points, x, z)
+  return near.inside ? near.n ?? [0, 0] : [x - near.at[0], z - near.at[1]]
+}
+
+// The move from `from` to `q` against every solid along it. Where the body stands clear of a solid as
+// the move begins and the move passes through it, ending beyond its reach or so deep that pushing the
+// point out would put it on the far side from where it came, the move stops where the body's circle
+// first meets the footprint on the way (`enter`), and the rest goes on along the footprint there, its
+// part into it taken off: no wall is passed through however long the move. Then the point is pushed out
+// of every solid it is still within the body's radius of: a round one along the line from its middle,
+// one with corners from the nearest point of its outline, along the way out there, so a post or a corner
+// is slid round. A solid that held the body's middle as the move began (`holds`) is left out of both.
 function push(k: Numbers, ground: Read, q: number[], from: number[]): number[] {
   let [x, z] = q
-  for (const s of ground.solids(x, z, k.radius)) {
+  const half = math.hypot(x - from[0], z - from[1]) / 2
+  for (const s of ground.solids((from[0] + x) / 2, (from[1] + z) / 2, half + k.radius)) {
     const reach = s.round + k.radius
+    if (holds(s, from[0], from[1])) continue
+    const dx = x - from[0], dz = z - from[1]
+    const start = s.points.length === 1 ? math.hypot(from[0] - s.points[0][0], from[1] - s.points[0][1]) : gap(s, from[0], from[1])
+    if (start >= reach - TOLERANCE && (dx !== 0 || dz !== 0)) {
+      const t = enter(s.points, reach, from[0], from[1], dx, dz)
+      const out = outOf(s, x, z)
+      const end = s.points.length === 1 ? math.hypot(out[0], out[1]) : gap(s, x, z)
+      const through = !(end < reach) || out[0] * (from[0] - x) + out[1] * (from[1] - z) < 0
+      if (t < 1 && through) {
+        const cx = from[0] + dx * t, cz = from[1] + dz * t
+        const near = nearest(s.points, cx, cz)
+        const off = math.hypot(cx - near.at[0], cz - near.at[1])
+        const n = off > 0 ? [(cx - near.at[0]) / off, (cz - near.at[1]) / off] : near.n ?? [-dx / math.hypot(dx, dz), -dz / math.hypot(dx, dz)]
+        let rx = dx * (1 - t), rz = dz * (1 - t)
+        const into = rx * n[0] + rz * n[1]
+        if (into < 0) { rx -= into * n[0]; rz -= into * n[1] }
+        x = cx + rx
+        z = cz + rz
+      }
+    }
     if (s.points.length === 1) {
       const [sx, sz] = s.points[0]
       let dx = x - sx, dz = z - sz
@@ -816,10 +900,12 @@ function push(k: Numbers, ground: Read, q: number[], from: number[]): number[] {
   return [x, z]
 }
 
-const clear = (k: Numbers, ground: Read, q: number[]) =>
-  ground.solids(q[0], q[1], k.radius).every(s => s.points.length === 1
+// Whether the point stands the body's radius clear of every solid, but those that held its middle at
+// `from` (`push`).
+const clear = (k: Numbers, ground: Read, q: number[], from: number[]) =>
+  ground.solids(q[0], q[1], k.radius).every(s => holds(s, from[0], from[1]) || (s.points.length === 1
     ? math.hypot(q[0] - s.points[0][0], q[1] - s.points[0][1]) >= s.round + k.radius - TOLERANCE
-    : gap(s, q[0], q[1]) >= s.round + k.radius - TOLERANCE)
+    : gap(s, q[0], q[1]) >= s.round + k.radius - TOLERANCE))
 
 export function slide(me: Row, w: W, delta: number[], on: Ground): number[] {
   const k = numbers(me, w)
@@ -841,7 +927,7 @@ function slideOn(me: Row, k: Numbers, ground: Read, delta: number[]): number[] {
     d = [q[0] - px, q[1] - pz]
     const refused = limits(k, ground, p, y, q)
     if (!refused) {
-      if (clear(k, ground, q)) return take(q)
+      if (clear(k, ground, q, p)) return take(q)
       continue
     }
     const { n } = refused
@@ -876,7 +962,7 @@ function slideOn(me: Row, k: Numbers, ground: Read, delta: number[]): number[] {
     for (let h = 0; h < FRACTION; h++) {
       const t = (lo + hi) / 2
       const c = push(k, ground, [px + d[0] * t, pz + d[1] * t], p)
-      if (!limits(k, ground, p, y, c) && clear(k, ground, c)) lo = t
+      if (!limits(k, ground, p, y, c) && clear(k, ground, c, p)) lo = t
       else hi = t
     }
     if (lo * math.hypot(d[0], d[1]) <= TOLERANCE) break
@@ -963,16 +1049,33 @@ function turn(b: Body, k: Numbers, dt: number) {
   b.yaw = wrap(b.yaw + Math.max(-most, Math.min(most, wrap(aim - b.yaw) * (1 - math.exp(-k.turnRate * dt)))))
 }
 
-// The eased speed where the move went where it was asked, to the rounding of the position.
-const eased = (m: number, ask: number, v: number, from: number, to: number, dt: number) =>
-  Math.abs(m - ask) <= 2 * Number.EPSILON * Math.max(Math.abs(from), Math.abs(to)) ? v : m / dt
+// Whether a move on one axis went where it was asked, to the rounding of the position.
+const went = (m: number, ask: number, from: number, to: number) => Math.abs(m - ask) <= 2 * Number.EPSILON * Math.max(Math.abs(from), Math.abs(to))
+
+// The velocity across after a move: the eased velocity `v` where the move went where it was asked on both
+// axes; else the velocity the move went at, `u`, as a body going at `v` can go (`kept`).
+const eased = (made: number[], asked: number[], v: number[], from: number[], to: number[], dt: number): number[] =>
+  went(made[0], asked[0], from[0], to[0]) && went(made[1], asked[1], from[1], to[1]) ? v : kept([made[0] / dt, made[1] / dt], v)
+
+// A velocity read back from a move, `u`, as a body that was going at `v` can go: its part back against
+// `v` taken off, and no faster than `v`. So a wall or a slope a body is slid along leaves it going along
+// at the speed it went, and a correction (a push out of a solid, a move back) is never a speed: no body is
+// flung backwards, sideways or onwards by one.
+export function kept(u: number[], v: number[]): number[] {
+  let r = u
+  const uv = u[0] * v[0] + u[1] * v[1], vv = v[0] * v[0] + v[1] * v[1]
+  if (uv < 0 && vv > 0) r = [u[0] - (v[0] * uv) / vv, u[1] - (v[1] * uv) / vv]
+  const m = math.hypot(r[0], r[1]), most = Math.sqrt(vv)
+  return m > most ? (most > 0 ? [(r[0] * most) / m, (r[1] * most) / m] : [0, 0]) : r
+}
 
 export function walk(me: Row, w: W, dt: number, at: Ground) {
   const k = numbers(me, w)
   if (k.agent !== undefined) return stride(me, w, dt, at, k)
   const b = me.data as Body
-  // A body standing on a floor that has moved is first put where the floor took it.
-  const borne = b.grounded ? at.footing?.(b.pos, b.yaw) : undefined
+  // A body standing on a floor that has moved is first put where the floor took it. The ground is asked
+  // every step, so it knows a body that has left its floor.
+  const borne = at.footing?.(b.pos, b.yaw, me, b.grounded)
   if (borne) Object.assign(b, { pos: borne.pos, yaw: borne.yaw })
   const [px, py, pz] = b.pos
   // The farthest this step can move it: its speed eases between `vel` and `want`, steep ground's slide
@@ -1020,11 +1123,18 @@ export function walk(me: Row, w: W, dt: number, at: Ground) {
       following = true
     }
   }
+  // A head rising into the underside of what is over it stops there, and rises no more.
+  const roof = ground.roof?.(x, z, k.radius) ?? Infinity
+  if (ny > y && ny + k.height > roof) {
+    ny = Math.max(y, roof - k.height)
+    vy = Math.min(vy, 0)
+  }
   b.pos = [x, ny, z]
   b.sliding = following && !!steep(k, ground, x, z, b.sliding || up ? k.maxSlope - k.slopeBand : k.maxSlope)
   b.grounded = following && !b.sliding
 
-  b.vel = [eased(made[0], asked[0], vx, px, x, dt), vy, eased(made[1], asked[1], vz, pz, z, dt)]
+  const [ex, ez] = eased(made, asked, [vx, vz], [px, pz], [x, z], dt)
+  b.vel = [ex, vy, ez]
   b.speed = math.hypot(b.vel[0], b.vel[2])
 }
 
@@ -1212,7 +1322,8 @@ function stride(me: Row, w: W, dt: number, ground: Ground, k: Numbers) {
   const y = (hh(i, j) * (1 - fx) + hh(i + 1, j) * fx) * (1 - fz) + (hh(i, j + 1) * (1 - fx) + hh(i + 1, j + 1) * fx) * fz
 
   b.pos = [to[0], y, to[1]]
-  b.vel = [eased(to[0] - px, asked[0], vx, px, to[0], dt), 0, eased(to[1] - pz, asked[1], vz, pz, to[1], dt)]
+  const [ex, ez] = eased([to[0] - px, to[1] - pz], asked, [vx, vz], [px, pz], to, dt)
+  b.vel = [ex, 0, ez]
   b.speed = math.hypot(b.vel[0], b.vel[2])
   b.grounded = true
   b.sliding = false

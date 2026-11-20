@@ -142,7 +142,12 @@ test('a look that names a map is drawn with the loader\'s picture laid on it', a
   expect(painted[0].geometry.getAttribute('uv')).toBeDefined()
 })
 
+test('a look that names a look of the scene\'s one shader is a paint of that look alone', () => {
+  const plugins = { wire: { rows: [], scene: { world: { shapes3d: { kinds: { block: { shape: { box: { size: [1, 1, 1] } }, look: { look: 'sandstone', roughness: 0.5 } } } } } } } } as any
+  expect(models(plugins).models.block.paints).toEqual({ look: { look: 'sandstone' } })
+})
+
 test('a cylinder\'s look with no sides throws, naming the kind', () => {
-  const plugins = { wire: { scene: { world: { shapes3d: { kinds: { pole: { shape: { cylinder: { radius: 0.2, height: 2 } }, look: { colour: '#ffffff' } } } } } } } } as any
+  const plugins = { wire: { rows: [], scene: { world: { shapes3d: { kinds: { pole: { shape: { cylinder: { radius: 0.2, height: 2 } }, look: { colour: '#ffffff' } } } } } } } } as any
   expect(() => models(plugins)).toThrow('shapes3d kind pole is drawn as a cylinder, and its look gives no sides')
 })

@@ -9,8 +9,7 @@
 // row's shot at the row's `e` over the rows as they stand and the ground (`heightOf`), a follow or
 // a look at a cast member read again every frame, so it is the same on every seat and every frame
 // the same rows are drawn; nothing eases, and no clock of the page's is read. It takes the camera
-// from nobody: while another driver holds the claim, the editor's orbit while a tool is active say,
-// it places nothing, and it claims the camera again the first frame it is free. It places nothing
+// from nobody: while another driver holds the claim, a game's own camera say, it places nothing, and it claims the camera again the first frame it is free. It places nothing
 // on a frame whose rows lack a member the shot names. When the shot has ended with the scene, done
 // or skipped, it releases the claim and gives the camera back the fov it had when it took it; a
 // scene that ends while another driver holds the camera gives the fov back the first frame the

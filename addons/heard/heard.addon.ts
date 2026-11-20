@@ -19,18 +19,38 @@ import { reach, rewinding } from '#addons/rewind/rewind.addon.ts'
 
 export type Heard = { at: number; seat: number; msg: Msg }
 
+// Whether two messages say the same: the same number (NaN the same as NaN), string, boolean or null, or
+// arrays and plain objects of the same, item by item and field by field, a field holding undefined the
+// same as one not there.
+function same(a: unknown, b: unknown): boolean {
+  if (a === b || (a !== a && b !== b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (Array.isArray(a)) {
+    const c = b as unknown[]
+    if (a.length !== c.length) return false
+    for (let i = 0; i < a.length; i++) if (!same(a[i], c[i])) return false
+    return true
+  }
+  const x = a as Record<string, unknown>, y = b as Record<string, unknown>
+  for (const k in x) if (!same(x[k], y[k])) return false
+  for (const k in y) if (!(k in x) && y[k] !== undefined) return false
+  return true
+}
+
 export function heard(truth: Truth): Heard[] {
   const list: Heard[] = []
-  // What was written down at each step a rewind may still run again, to know it again.
-  const written = new Map<number, Set<string>>()
+  // What was written down at each step a rewind may still run again, to know it again: each message
+  // copied as it arrived, before the act it asks for runs, which may write into its args.
+  const written = new Map<number, { seat: number; msg: Msg }[]>()
   truth.attach({
     show: () => true,
     hide: () => [],
     accept: (seat, msg) => {
-      const said = JSON.stringify([seat, msg])
-      const at = written.get(truth.n) ?? new Set<string>()
-      if (rewinding(truth) && at.has(said)) return true
-      written.set(truth.n, at.add(said))
+      const at = written.get(truth.n) ?? []
+      if (rewinding(truth) && at.some(e => e.seat === seat && e.msg.seq === msg.seq && same(e.msg, msg))) return true
+      at.push({ seat, msg: structuredClone(msg) })
+      written.set(truth.n, at)
       for (const n of written.keys()) if (n < reach(truth)) written.delete(n)
       list.push({ at: truth.n, seat, msg })
       return true

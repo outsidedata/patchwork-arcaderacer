@@ -5,7 +5,9 @@
 import { expect, test, vi } from 'vitest'
 import * as THREE from 'three'
 import { render3d } from '#plugins/render3d/render3d.plugin.ts'
-import { lights3d, type Settings } from './lights3d.plugin.ts'
+import { fogNoise, lights3d, type Settings } from './lights3d.plugin.ts'
+import { ROW, TEXELS } from './lights3d.glsl.ts'
+import { rectReach, type Areas } from './lights3d.areas.ts'
 
 const SET: Settings = { grid: [16, 9], slices: 24 }
 const W = 1280, H = 720
@@ -60,13 +62,22 @@ function looped(me: ReturnType<typeof lights3d>, p: THREE.Vector3, cam: THREE.Pe
   return [...index.slice(start, start + count)]
 }
 
-// Light `k`'s place in view space, its reach, colour and fall off, read off the lights texture.
+// Light `k`'s place in view space, its reach, colour, fall off and cone, read off the lights texture; its kind, and a
+// rectangle's half width and half height.
 function light(me: ReturnType<typeof lights3d>, k: number) {
   const data = (me.uniforms.uLights3dLights.value as THREE.DataTexture).image.data as Float32Array
-  const row = Math.floor(k / 1024) * 2, col = k % 1024
-  const a = (row * 1024 + col) * 4, b = ((row + 1) * 1024 + col) * 4
-  return { at: new THREE.Vector3(data[a], data[a + 1], data[a + 2]), distance: data[a + 3], colour: [data[b], data[b + 1], data[b + 2]], decay: data[b + 3] }
+  const row = Math.floor(k / ROW) * TEXELS, col = k % ROW
+  const [a, b, s, q, e, h] = [0, 1, 2, 3, 4, 5].map(t => ((row + t) * ROW + col) * 4)
+  return {
+    at: new THREE.Vector3(data[a], data[a + 1], data[a + 2]), distance: data[a + 3],
+    colour: [data[b], data[b + 1], data[b + 2]], decay: data[b + 3],
+    aim: new THREE.Vector3(data[s], data[s + 1], data[s + 2]), cone: data[s + 3], penumbra: data[q],
+    tiles: data[q + 2], kind: data[e + 3],
+    halfHeight: new THREE.Vector3(data[h], data[h + 1], data[h + 2]),
+  }
 }
+
+const AREAS: Areas = { size: 64, levels: 4, blur: 0.5, cutoff: 0.002, angle: 1.2, near: 0.05 }
 
 // `n` lamps strewn over the view, each `reach` metres or of no reach where the roll says
 function strew(scene: THREE.Scene, n: number, seed: number, endless = 0) {
@@ -124,7 +135,7 @@ test('a light of no reach is in every cell, and past 1024 lights the lights and 
   const cam = camera()
   draw(cam)
   expect(me.count).toBe(2600)
-  expect((me.uniforms.uLights3dLights.value as THREE.DataTexture).image.height).toBeGreaterThanOrEqual(6)
+  expect((me.uniforms.uLights3dLights.value as THREE.DataTexture).image.height).toBeGreaterThanOrEqual(15)
   const endless = Array.from({ length: me.count }, (_, k) => k).filter(k => light(me, k).distance === 0)
   expect(endless.length).toBeGreaterThan(0)
   const index = (me.uniforms.uLights3dIndex.value as THREE.DataTexture).image
@@ -133,6 +144,18 @@ test('a light of no reach is in every cell, and past 1024 lights the lights and 
   expect(me.entries).toBeGreaterThanOrEqual(me.cells * endless.length)
   const { checked } = covered(me, cam, 5)
   expect(checked).toBeGreaterThan(4000)
+})
+
+test('a camera of a field of view of -90°, as a cube camera draws its faces through, finds every light reaching a point in its cell', () => {
+  const { me, scene, draw } = page()
+  strew(scene, 400, 13)
+  const cube = new THREE.PerspectiveCamera(-90, 1, 0.1, 400)
+  cube.position.set(100, 10, 100)
+  cube.lookAt(100, 10, 0)
+  cube.updateMatrixWorld()
+  draw(cube)
+  const { checked } = covered(me, cube, 17)
+  expect(checked).toBeGreaterThan(200)
 })
 
 test('the cells follow the camera the scene is drawn through, and the size of the target it draws into', () => {
@@ -150,7 +173,7 @@ test('the cells follow the camera the scene is drawn through, and the size of th
   covered(me, cam, 2)
 })
 
-test('the point lights it clusters are taken off three\'s own loop; a shadow\'s, a hidden one and one the camera does not see are not', () => {
+test('the point and spot lights it clusters are taken off three\'s own loop; a shadow\'s, a hidden one and one the camera does not see are not', () => {
   const { me, scene, draw, after } = page()
   const [lit, shadow, hidden, unseen] = [0, 1, 2, 3].map(() => scene.add(new THREE.PointLight(0xffffff, 10, 20)).children.at(-1) as THREE.PointLight)
   shadow.castShadow = true
@@ -160,9 +183,9 @@ test('the point lights it clusters are taken off three\'s own loop; a shadow\'s,
   scene.add(spot)
   const cam = camera()
   draw(cam)
-  expect(me.count).toBe(1)
-  expect(lit.layers.mask).toBe(0)
-  expect([shadow.layers.mask, hidden.layers.mask, unseen.layers.mask, spot.layers.mask]).toEqual([1, 1, 1 << 3, 1])
+  expect(me.count).toBe(2)
+  expect([lit.layers.mask, spot.layers.mask]).toEqual([0, 0])
+  expect([shadow.layers.mask, hidden.layers.mask, unseen.layers.mask]).toEqual([1, 1, 1 << 3])
   expect(me.uniforms.uLights3dOn.value).toBe(1)
   // after the scene is drawn the splice is off, so the overlay is lit by its own lights alone
   after(cam)
@@ -170,7 +193,26 @@ test('the point lights it clusters are taken off three\'s own loop; a shadow\'s,
   // a light made to cast a shadow is three's again, its layers given back
   lit.castShadow = true
   draw(cam)
-  expect([me.count, lit.layers.mask]).toEqual([0, 1])
+  expect([me.count, lit.layers.mask]).toEqual([1, 1])
+})
+
+test('a spot is handed on with three\'s own cone: its direction from its target in view space and the cosines of its angle and penumbra; a point light\'s cone takes in every direction', () => {
+  const { me, scene, draw } = page()
+  const lamp = new THREE.PointLight(0xffffff, 10, 20)
+  const spot = new THREE.SpotLight(0xffffff, 10, 30, 0.6, 0.3, 2)
+  lamp.position.set(60, 4, 10)
+  spot.position.set(70, 9, 20)
+  spot.target.position.set(75, 0, 28)
+  scene.add(lamp, spot, spot.target)
+  const cam = camera()
+  draw(cam)
+  const [p, s] = [light(me, 0), light(me, 1)]
+  expect([p.cone, p.penumbra]).toEqual([-2, -1])
+  // with no `shadows`, no light has tiles
+  expect([p.tiles, s.tiles]).toEqual([0, 0])
+  const aim = spot.position.clone().sub(spot.target.position).transformDirection(cam.matrixWorldInverse)
+  expect(s.aim.toArray().map(x => +x.toFixed(5))).toEqual(aim.toArray().map(x => +x.toFixed(5)))
+  expect([s.cone, s.penumbra]).toEqual([Math.fround(Math.cos(0.6)), Math.fround(Math.cos(0.6 * 0.7))])
 })
 
 test('the scene\'s own hooks still run, and closing gives back the hooks, every light\'s layers and the textures', () => {
@@ -210,6 +252,7 @@ test('every dressed material that lights loops over its cell\'s lights after thr
     const after = s.fragmentShader.slice(s.fragmentShader.indexOf('#include <lights_fragment_begin>'))
     expect(after.indexOf('RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );')).toBeLessThan(after.indexOf('#include <lights_fragment_maps>'))
     expect(after).toContain('getDistanceAttenuation( length( l3V ), l3A.w, l3B.w )')
+    expect(after).toContain('getSpotAttenuation( l3S.w, l3P.x, dot( directLight.direction, l3S.xyz ) )')
     expect(s.fragmentShader).toContain('uniform highp sampler2D uLights3dLights;')
     for (const k of Object.keys(me.uniforms)) expect(s.uniforms[k]).toBe(me.uniforms[k])
   }
@@ -219,11 +262,96 @@ test('every dressed material that lights loops over its cell\'s lights after thr
   expect(s.fragmentShader).not.toContain('RE_Direct')
 })
 
+test('with areas, a rectangle is taken off three\'s loop, handed on as kind 1 with its middle, reach, light and half sizes in view space, and found in the cell of every point it reaches; without, it is three\'s', () => {
+  const { me, scene, draw } = page({ lights3d: { ...SET, areas: AREAS } })
+  const panel = new THREE.RectAreaLight(0xff8040, 6, 4, 2)
+  panel.position.set(80, 5, 40)
+  panel.lookAt(80, 5, 0)
+  const lamp = new THREE.PointLight(0xffffff, 10, 20)
+  lamp.position.set(60, 4, 10)
+  scene.add(panel, lamp)
+  const cam = camera()
+  draw(cam)
+  expect(me.count).toBe(2)
+  expect(panel.layers.mask).toBe(0)
+  const k = [0, 1].find(i => light(me, i).kind === 1)!
+  const r = light(me, k)
+  const view = cam.matrixWorldInverse
+  expect(r.at.toArray().map(x => +x.toFixed(3))).toEqual(panel.position.clone().applyMatrix4(view).toArray().map(x => +x.toFixed(3)))
+  expect(r.distance).toBeCloseTo(rectReach(panel, AREAS), 2)
+  expect(r.colour).toEqual([panel.color.r, panel.color.g, panel.color.b].map(c => Math.fround(c * 6)))
+  // its half width (where a spot's aim goes) along its own x, its half height along its own y, turned into the view as three's own are
+  const turn = new THREE.Matrix4().extractRotation(new THREE.Matrix4().multiplyMatrices(view, panel.matrixWorld))
+  expect(r.aim.toArray().map(x => +x.toFixed(4))).toEqual(new THREE.Vector3(2, 0, 0).applyMatrix4(turn).toArray().map(x => +x.toFixed(4)))
+  expect(r.halfHeight.toArray().map(x => +x.toFixed(4))).toEqual(new THREE.Vector3(0, 1, 0).applyMatrix4(turn).toArray().map(x => +x.toFixed(4)))
+  // no picture: its picture's first layer is −1
+  expect(r.decay).toBe(-1)
+  expect(light(me, 1 - k).kind).toBe(0)
+  const { checked } = covered(me, cam, 23)
+  expect(checked).toBeGreaterThan(100)
+  // a scene with no areas leaves a rectangle to three, as it was
+  const plain = page()
+  const other = new THREE.RectAreaLight(0xffffff, 6, 4, 2)
+  plain.scene.add(other)
+  plain.draw(camera())
+  expect([plain.me.count, other.layers.mask]).toEqual([0, 1])
+})
+
+test('with areas, the lit materials take the rectangles\' light where three\'s LTC code is, and the glow\'s cells in every one', () => {
+  const { plugins, me } = page({ lights3d: { ...SET, areas: AREAS } })
+  for (const lib of ['standard', 'physical', 'lambert'] as const) {
+    const m = plugins.render3d.dress(new THREE.MeshStandardMaterial())
+    const s = shader(lib)
+    m.onBeforeCompile(s, undefined as never)
+    // the area lights' code goes in after three's LTC functions, inside `#ifdef STANDARD`, so a lambert
+    // program has it written and compiled out
+    expect(s.fragmentShader).toContain('lights3dRect( geometryNormal, geometryViewDir, geometryPosition, l3Inv, l3Rect, l3B.w )')
+    expect(s.fragmentShader).toContain('for ( int j = 0; j < uLights3dGlowCells.y; j ++ )')
+    if (lib !== 'lambert') expect(s.fragmentShader.indexOf('vec3 lights3dRect(')).toBeGreaterThan(s.fragmentShader.indexOf('vec3 LTC_Evaluate('))
+    for (const k of ['uLights3dPictures', 'uLights3dLtc', 'uLights3dGlowmap']) expect(s.uniforms[k]).toBe(me.uniforms[k])
+  }
+  // without areas, none of it
+  const plain = page()
+  const m = plain.plugins.render3d.dress(new THREE.MeshStandardMaterial())
+  const s = shader('standard')
+  m.onBeforeCompile(s, undefined as never)
+  expect(s.fragmentShader).not.toContain('lights3dRect')
+  expect(s.fragmentShader).not.toContain('uLights3dGlowmap')
+})
+
+test('the fog\'s noise is the same on every page, spans the whole of 0 to 255, and repeats with no seam along each axis', () => {
+  const a = fogNoise(32), b = fogNoise(32)
+  expect(a.bytes).toEqual(b.bytes)
+  expect(Math.min(...a.bytes)).toBe(0)
+  expect(Math.max(...a.bytes)).toBe(255)
+  // across the wrap, neighbours differ no more than neighbours inside do
+  const n = a.size, at = (x: number, y: number, z: number) => a.bytes[(z * n + y) * n + x]
+  let inside = 0, across = 0
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    inside = Math.max(inside, Math.abs(at(0, i, j) - at(1, i, j)), Math.abs(at(i, 0, j) - at(i, 1, j)), Math.abs(at(i, j, 0) - at(i, j, 1)))
+    across = Math.max(across, Math.abs(at(n - 1, i, j) - at(0, i, j)), Math.abs(at(i, n - 1, j) - at(i, 0, j)), Math.abs(at(i, j, n - 1) - at(i, j, 0)))
+  }
+  expect(across).toBeLessThanOrEqual(inside * 1.5 + 1)
+})
+
+test('a fog noise or height it cannot draw throws on the first tick, naming the number', () => {
+  const fog = { density: 0.05, colour: '#000000', steps: 32, g: 0.3, far: 50, resolution: 0.5, blend: 0.1 }
+  const bad = (more: object) => () => page({ lights3d: { ...SET, fog: { ...fog, ...more } } })
+  expect(bad({ blend: 0 })).toThrow('lights3d fog blend 0 is not above 0 and no more than 1')
+  expect(bad({ noise: { size: 0, layers: 2, strength: 1, wind: [0, 0, 0] } })).toThrow('lights3d fog noise size 0 is not above 0')
+  expect(bad({ noise: { size: 10, layers: 5, strength: 1, wind: [0, 0, 0] } })).toThrow('lights3d fog noise layers 5 is not a whole number from 1 to 4')
+  expect(bad({ noise: { size: 10, layers: 2, strength: 2, wind: [0, 0, 0] } })).toThrow('lights3d fog noise strength 2 is not from 0 to 1')
+  expect(bad({ noise: { size: 10, layers: 2, strength: 1, wind: [0, 0] } })).toThrow('lights3d fog noise wind [0,0] is not [x, y, z]')
+  expect(bad({ height: { floor: 0, thinning: 0 } })).toThrow('lights3d fog height thinning 0 is not above 0')
+})
+
 test('a lights3d it cannot cut the frame by throws on its first tick, naming what is wrong', () => {
   const bad = (s: unknown) => () => page({ lights3d: s })
   expect(bad(undefined)).toThrow('the scene names lights3d but gives no world.lights3d')
   expect(bad({ grid: [16], slices: 24 })).toThrow('lights3d grid [16] is not [across, up], two whole numbers above 0')
   expect(bad({ grid: [16, 0.5], slices: 24 })).toThrow('lights3d grid [16,0.5] is not [across, up], two whole numbers above 0')
   expect(bad({ grid: [16, 9], slices: 0 })).toThrow('lights3d slices 0 is not a whole number above 0')
+  expect(bad({ grid: [16, 9], slices: 24, shadows: { atlas: 4096, tile: 300, bias: 0, normalBias: 0 } })).toThrow('lights3d shadows atlas 4096 is not a whole number of tiles of 300')
+  expect(bad({ grid: [16, 9], slices: 24, shadows: { atlas: 4096, tile: 256, bias: -1, normalBias: 0 } })).toThrow('lights3d shadows bias -1 and normalBias 0 are not numbers of 0 or more')
   expect(() => lights3d().tick({ wire: { scene: { world: { lights3d: SET } } } } as never)).toThrow('lights3d needs render3d, which this scene does not name')
 })

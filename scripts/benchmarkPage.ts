@@ -30,11 +30,12 @@ export type Made = { tool: string; at: string; core: Repo; games: Repo; machine:
 export type Fn = { name: string; ms: number }
 export type Owner = { who: string; group: string; name: string; side: string; ms: number; via: Record<string, number>; functions: Fn[] }
 export type System = { name: string; ms: number; share: number; rows?: number }
+export type Chain = { chain: string; ms: number; self: number }
 export type Cpu = Made & {
   game: string; scene: string; drawn: string; others: string[]; threw: { count: number; first?: string }
   frames: number; seconds: number; rate: number; work: number; times: number[]
   systems: System[]; slow: { frame: number; top: Fn[] }[]
-  owners: { busy: number; idle: number; list: Owner[] }
+  owners: { busy: number; idle: number; list: Owner[]; chains?: Chain[] }
 }
 export type Taken = { label: string; kind: string; fps: number; ms: number; saved: number; least: number; most: number; meshes?: number; threw: number; first?: string }
 export type Gpu = Made & {
@@ -45,7 +46,7 @@ export type Gpu = Made & {
 export type Ticks = Made & {
   game: string; scene: string; rows: number; steps: number; seconds: number; wall: number
   step: { mean: number; p95: number; most: number }
-  systems: System[]; owners: { busy: number; list: Owner[] }
+  systems: System[]; owners: { busy: number; list: Owner[]; chains?: Chain[] }
 }
 export type Scene = { scene: string; ticks?: Ticks; cpu?: Cpu; gpu?: Gpu }
 export type Run = { dir: string; game: string; made?: Made; mode: string; scenes: Scene[] }
@@ -136,8 +137,8 @@ const pct = (v: number) => `${(100 * v).toFixed(v < 0.1 ? 1 : 0)}%`
 const signed = (v: number, unit = ' ms') => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${num(Math.abs(v))}${unit}`
 
 // The owners' groups, in the order their colours are given, and the names they are read by.
-const GROUPS = ['plugin', 'kind', 'addon', 'engine', 'playtester', 'browser', 'page'] as const
-const NAMED: Record<string, string> = { plugin: 'Plugins', kind: 'Kinds', addon: 'Addons', engine: 'Engine', playtester: 'Playtester', browser: 'Browser', page: 'The page' }
+const GROUPS = ['plugin', 'mod', 'kind', 'addon', 'engine', 'playtester', 'browser', 'page'] as const
+const NAMED: Record<string, string> = { plugin: 'Plugins', mod: 'Mods', kind: 'Kinds', addon: 'Addons', engine: 'Engine', playtester: 'Playtester', browser: 'Browser', page: 'The page' }
 const groupOf = (g: string) => (GROUPS as readonly string[]).includes(g) ? g : 'browser'
 
 // A change shown: worse (more time) or better, or none when it is within `real`.
@@ -342,9 +343,20 @@ function cpuOwners(s: Scene, was?: Scene) {
   const groups = GROUPS.filter(g => list.some(w => groupOf(w.group) === g))
   return `<div class="part">
   <h3>Who eats the CPU</h3>
-  <p class="note">Every millisecond of a frame Chrome's profiler sampled, ${ms(busy)} a frame in all, given to the kind, plugin, addon or engine whose file ran it. Time spent inside a library such as three or pixi counts for whoever called it. Open a row for what it is made of and its costliest functions.</p>
+  <p class="note">Every millisecond of a frame Chrome's profiler sampled, ${ms(busy)} a frame in all, given to the kind, plugin, mod, addon or engine whose file ran it. Time spent inside a library such as three, pixi or core's math counts for whoever called it. Open a row for what it is made of and its costliest functions.</p>
   ${legend(groups, was ? '<span><i class="sw wask"></i>Before</span>' : '')}
   ${bars(rows, { compared: !!was, keep: kept(rows) })}
+</div>${chains(s.cpu.owners.chains)}`
+}
+
+// Where the time went: each call chain, owner by owner from the outermost in, by what its last hop spent itself.
+function chains(list: Chain[] | undefined) {
+  if (!list?.length) return ''
+  return `<div class="part">
+  <h3>Where the time went</h3>
+  <p class="note">Each call chain the sampled time went down, owner by owner from the outermost in, each hop named by the function it was entered by. A row's own milliseconds are what its last hop spent itself; its whole is that and everything it called.</p>
+  <table class="fns"><thead><tr><th class="n">its own</th><th class="n">whole</th><th>Chain</th></tr></thead><tbody>${list.map(c =>
+    `<tr><td class="n">${num(c.self)}</td><td class="n">${num(c.ms)}</td><td><code>${esc(c.chain)}</code></td></tr>`).join('')}</tbody></table>
 </div>`
 }
 
@@ -536,7 +548,7 @@ const STYLE = `
 :root {
   --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
   --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10); --wash: rgba(11,11,11,0.035);
-  --plugin: #2a78d6; --kind: #eb6834; --addon: #1baf7a; --engine: #eda100; --playtester: #e87ba4;
+  --plugin: #2a78d6; --kind: #eb6834; --addon: #1baf7a; --engine: #eda100; --playtester: #e87ba4; --mod: #8a5cd6;
   --browser: #a9a79f; --gpu: #6250d6; --was: #c3c2b7; --spare: #e9e8e2; --waiting: #c9c7bf;
   --worse: #d03b3b; --better: #0c7a0c; --budget: #52514e;
   --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -545,13 +557,13 @@ const STYLE = `
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
   --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.04);
-  --plugin: #3987e5; --kind: #d95926; --addon: #199e70; --engine: #c98500; --playtester: #d55181;
+  --plugin: #3987e5; --kind: #d95926; --addon: #199e70; --engine: #c98500; --playtester: #d55181; --mod: #9b72e8;
   --browser: #6e6d68; --gpu: #9085e9; --was: #4a4a46; --spare: #262624; --waiting: #4a4945;
   --worse: #e66767; --better: #0ca30c; --budget: #c3c2b7; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
   --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.04);
-  --plugin: #3987e5; --kind: #d95926; --addon: #199e70; --engine: #c98500; --playtester: #d55181;
+  --plugin: #3987e5; --kind: #d95926; --addon: #199e70; --engine: #c98500; --playtester: #d55181; --mod: #9b72e8;
   --browser: #6e6d68; --gpu: #9085e9; --was: #4a4a46; --spare: #262624; --waiting: #4a4945;
   --worse: #e66767; --better: #0ca30c; --budget: #c3c2b7; color-scheme: dark; }
 * { box-sizing: border-box; }
@@ -584,7 +596,7 @@ section { background: var(--surface); border-radius: 10px; box-shadow: 0 0 0 1px
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
 .g-plugin { background: var(--plugin); } .g-kind { background: var(--kind); } .g-addon { background: var(--addon); } .g-engine { background: var(--engine); }
-.g-playtester { background: var(--playtester); } .g-browser, .g-page { background: var(--browser); } .g-gpu { background: var(--gpu); }
+.g-playtester { background: var(--playtester); } .g-mod { background: var(--mod); } .g-browser, .g-page { background: var(--browser); } .g-gpu { background: var(--gpu); }
 .was, .sw.wask { background: var(--was); }
 .rest, .rest.none, .sw.rest.none { background: var(--spare); } .rest.gpu, .sw.rest.gpu { background: var(--waiting); } .rest.cpu { background: var(--spare); }
 .sw.rest { background: var(--waiting); } .legend .sw.rest.none { box-shadow: inset 0 0 0 1px var(--ring); }

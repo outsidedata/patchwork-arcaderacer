@@ -98,9 +98,6 @@
 //   new sound from its start, 0 s.
 // - The volume is the store's, 0 while muted, on the one gain every sound goes out through.
 //
-// `audition(plugins, what)` is the editor's: a catalogue sound by name, or a cue, played once and
-// unplaced, the cue's sound and rate picked as an entry's are, by a hash of a count of auditions.
-//
 // `hold(plugins, buffer, { rate, gain, at?, range? })` is a sound another plugin keeps going for as
 // long as something it draws is there, as box3dvehicle keeps each car's engine, through audio's mod for
 // it (`audio.box3dvehicle.ts`): `buffer` repeated whole from now, at playback rate `rate` and gain
@@ -492,21 +489,6 @@ export function audio() {
     loops.set(name, { source, gain, target })
   }
 
-  // What the editor plays when asked: a catalogue sound, or a cue as an entry of it would sound, once,
-  // unplaced, now. Asked from a press, it resumes the context the press has unlocked.
-  let auditions = 0
-  async function audition(p: Plugins, what: string | Cue) {
-    if (!context) return
-    const cue: Cue = typeof what === 'string' ? { sounds: [what], gain: 1 } : what
-    const die = seeded(++auditions)
-    const name = cue.sounds[Math.floor(die() * cue.sounds.length)]
-    const rate = cue.rate ? cue.rate[0] + (cue.rate[1] - cue.rate[0]) * die() : 1
-    if (name === undefined) return
-    const buffer: AudioBuffer = await p.loader.load(name)
-    await context.resume()
-    play(buffer, gainInto(cue.gain), false, rate).start()
-  }
-
   function hold(p: Plugins, buffer: AudioBuffer, { rate, gain, at, range }: Holding): Held | undefined {
     if (!context) return undefined
     const space = at ? spatial(p, p.wire.scene.world!.audio as Table, { range }) : undefined
@@ -562,7 +544,6 @@ export function audio() {
 
   return {
     context,
-    audition,
     hold,
     once,
     stream,

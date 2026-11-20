@@ -2,7 +2,7 @@
 // `gun` kind whose tick emits on the step its row says to, and moves or stops what it emitted.
 import { expect, test } from 'vitest'
 import { boot, type Scene, type Sim } from '#engine/engine.ts'
-import { emit, entry, particle3d, type Entry } from './particle3d.sim.ts'
+import { drive, emit, entry, particle3d, type Entry } from './particle3d.sim.ts'
 
 const DT = 1 / 60
 const HOLD = 0.1
@@ -18,6 +18,7 @@ const gun: Sim[string] = {
     const mine = entry(w, d.id)
     if (mine && d.moveTo) mine.at = d.moveTo
     if (mine && d.stop) mine.life = mine.age
+    for (const [name, value] of d.drives[d.step - 1] ?? []) drive(w, name, value ?? undefined)
   },
 }
 
@@ -25,7 +26,8 @@ const scene = (guns: Record<string, unknown>[], ledger = true): Scene => ({
   world: { seed: 1, particle3d: { effects: 'effects', hold: HOLD } },
   prefabs: {
     particle3d: { next: 1, live: [] },
-    gun: { step: 0, at: 0, effect: 'puff', from: [1, 2, 3], spawn: {}, id: 0, shift: false, moveTo: null, stop: false },
+    // `drives`: for each step, the drivers the gun writes on it, [name, value], a value of null let go
+    gun: { step: 0, at: 0, effect: 'puff', from: [1, 2, 3], spawn: {}, id: 0, shift: false, moveTo: null, stop: false, drives: [] },
   },
   actors: [...(ledger ? [{ is: 'particle3d' }] : []), ...guns.map(g => ({ is: 'gun', ...g }))],
 })
@@ -107,6 +109,19 @@ test('with fly, an entry\'s life is the seconds its point takes to reach its to,
   truth.step(DT)
   expect(live(truth)).toEqual([{ id: 1, effect: 'puff', at: [1, 2, 3], age: 0, life: 1, to: [4, 6, 3], fly: 5, land }])
   expect(() => boot(scene([{ spawn: { fly: 5 } }]), sim).step(DT)).toThrow('particle3d effect puff flies and was spawned with no to')
+})
+
+test('a rule drives a driver of the effects file on the ledger row, by name, and lets it go; one driven to no finite number throws', () => {
+  const truth = boot(scene([{ drives: [[['amplitude', 2], ['wind', 7]], [], [['amplitude', null]]] }]), sim)
+  const row = () => truth.rows.find(r => r.kind === 'particle3d')!.data
+  expect(row()).not.toHaveProperty('drivers')
+  truth.step(DT)
+  expect(row().drivers).toEqual({ amplitude: 2, wind: 7 })
+  truth.step(DT)
+  expect(row().drivers).toEqual({ amplitude: 2, wind: 7 })
+  truth.step(DT)
+  expect(row().drivers).toEqual({ wind: 7 })
+  expect(() => boot(scene([{ drives: [[['amplitude', Infinity]]] }]), sim).step(DT)).toThrow('particle3d\'s driver amplitude is driven to Infinity, and a driver is a finite number')
 })
 
 test('a field of the ledger row particle3d does not know throws, naming it', () => {

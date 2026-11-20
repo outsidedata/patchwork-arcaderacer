@@ -82,8 +82,9 @@ drew by row. `drop(id)` stops following.
 
 - **terrain3d**: the mod `terrain3d.box3d.ts` (`world.box3d.mods: { ground: 'terrain3d' }`) hands each
   chunk of the land as a height field of terrain3d's `heightAt`.
-- **scatter3d**: the mod `scatter3d.box3d.ts` (`mods: { props: ['scatter3d'] }`) makes trunks and
-  boulders fixed capsules and balls, so the tree a car hits is the tree a seat sees.
+- **lod3d**: the mod `lod3d.box3d.ts` (`mods: { props: ['lod3d'] }`) makes the instances of every
+  lod3d row that gives `solid`, the trunks and boulders, fixed capsules and balls, each as tall as its
+  row's `tall`, so the tree a car hits is the tree a seat sees.
 - **shapes3d**: the mod `shapes3d.box3d.ts` (`mods: { fixed: ['shapes3d'] }`) makes every shapes3d
   box, cylinder and plane a thing in the world that never moves, the solid solids draws of it, named
   by its row.
@@ -94,6 +95,11 @@ drew by row. `drop(id)` stops following.
 - **ragdoll3d**: the mod `ragdoll3d.box3d.ts` (`mods: { kinds: 'ragdoll3d' }`) makes each `bone` row a
   capsule and each `bonejoint` row its joint, for ragdoll3d's physics mode.
 - **dismember3d**: a severed piece is a row of a kind box3d moves, drawn through box3d's `follow`.
+- **instances3d**: box3d's mod `box3d.instances3d.ts` (`world.instances3d.mods: { instances: ['box3d'],
+  behaviors: ['box3d'] }`) draws every row of a kind `world.instances3d.kinds` names as one instance of
+  its body, where box3d has it, with no look of the game's: a look that gives `body` is the kind's
+  shapes as Box3D holds them (boxes, spheres, capsules, and hulls, cylinders, cones and rocks as Box3D's
+  hulls). demo_box3d draws every moving body so.
 - **render3d**: reports what it drew by the `userData.row` box3d tags on followed objects.
 - **loader**: a `mesh` or `heightField` given as `{ asset }` is read through the loader's `json`.
 - **math**: vector maths.

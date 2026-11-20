@@ -3,10 +3,11 @@
 // exits 1 when any fails. Nothing is changed or installed.
 //
 // Playing and testing need node at the version `engines` names and every package of package.json
-// installed. Baking art needs four more, each found the way the bakes find it: `BLENDER`,
-// `PATCHWORK_LIBRARY`, `GLTFPACK` and `MAGICK` from the shell, else from the root's `.env`
+// installed. Baking art needs five more, each found the way the bakes find it: `BLENDER`,
+// `PATCHWORK_LIBRARY`, `GLTFPACK`, `MAGICK` and `BASISU` from the shell, else from the root's `.env`
 // (`.env.example` lists them), else their defaults: the macOS application's Blender,
-// ~/patchwork-library, and `gltfpack` and `magick` on the PATH.
+// ~/patchwork-library, and `gltfpack`, `magick` and `basisu` on the PATH. basisu (Basis Universal) must
+// write a KTX2 file, the GPU-compressed pictures a looks bake writes.
 //
 // A tool is run, not looked for. Blender must answer `--version`. gltfpack must pack a glTF with a
 // texture under `-tw` into a glb whose texture is WebP (`EXT_texture_webp`): the npm build in
@@ -109,16 +110,18 @@ export const resolve = (root: string, shell: Record<string, string | undefined>)
     library: (env.PATCHWORK_LIBRARY || '~/patchwork-library').replace(/^~(?=$|\/)/, os.homedir()),
     gltfpack: which(env.GLTFPACK || 'gltfpack', root, env),
     magick: which(env.MAGICK || 'magick', root, env),
+    basisu: which(env.BASISU || 'basisu', root, env),
   }
 }
 
 export const checks = (root: string, shell: Record<string, string | undefined>): Check[] => {
-  const { env, blender, library, gltfpack, magick } = resolve(root, shell)
+  const { env, blender, library, gltfpack, magick, basisu } = resolve(root, shell)
   const scratch = () => fs.mkdtempSync(path.join(os.tmpdir(), 'core-health-'))
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
   const absent = (name: string, fix: string): Result => ({ ok: false, detail: `no ${name} on the PATH`, fix })
   const gltfpackFix = 'download the native gltfpack 1.3 or later for this platform from https://github.com/zeux/meshoptimizer/releases, and put it on the PATH or set GLTFPACK in .env to it'
   const magickFix = 'install ImageMagick 7 built with libwebp (brew install imagemagick), and put magick on the PATH or set MAGICK in .env to it'
+  const basisuFix = 'install Basis Universal (brew install basis_universal), and put basisu on the PATH or set BASISU in .env to it'
   return [
     {
       name: 'node', for: 'play', run: async () => {
@@ -186,6 +189,22 @@ export const checks = (root: string, shell: Record<string, string | undefined>):
               detail: `${magick} cannot write WebP: ${first(r.out) || 'its file is not WebP'}`,
               fix: magickFix,
             }
+        } finally { fs.rmSync(dir, { recursive: true, force: true }) }
+      },
+    },
+    {
+      name: 'basisu', for: 'bake', run: async () => {
+        if (!basisu) return absent('basisu', basisuFix)
+        if (!magick) return { ok: false, detail: 'needs magick to draw its probe picture', fix: magickFix }
+        const dir = scratch()
+        try {
+          const png = path.join(dir, 'probe.png'), out = path.join(dir, 'probe.ktx2')
+          await run(magick, ['-size', '8x8', 'xc:red', `PNG32:${png}`], env)
+          const r = await run(basisu, ['-etc1s', '-linear', '-mipmap', '-ktx2', '-output_file', out, png], env)
+          const ktx2 = fs.existsSync(out) && fs.readFileSync(out).subarray(1, 7).toString('latin1') === 'KTX 20'
+          return r.code === 0 && ktx2
+            ? { ok: true, detail: `${basisu} writes KTX2` }
+            : { ok: false, detail: `${basisu} cannot write KTX2: ${first(r.out) || 'its file is not KTX2'}`, fix: basisuFix }
         } finally { fs.rmSync(dir, { recursive: true, force: true }) }
       },
     },

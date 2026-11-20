@@ -10,6 +10,8 @@
 //            `plugins/player`), and nothing while it holds none. A page running the course ahead
 //            (`addons/predict`) runs them on its copy, so the car answers the keys on the next frame.
 //   watch(target)  a spectator's choice: the free camera (−1) or a car a racer holds, to follow.
+//   ready()  the seat's page, once the course's art is in and the loading screen is done with: the race
+//            stays on its staging phase until every racer has said so (`race.sim.ts`).
 import type { Kind } from '#engine/engine.ts'
 import { relay } from '#plugins/player/player.sim.ts'
 import { watch } from './plugins/match/match.sim.ts'
@@ -18,5 +20,6 @@ export const player: Kind = {
   acts: {
     ...relay({ car: ['steer', 'throttle', 'brake', 'handbrake'] }),
     watch: (me, w, _seat, target) => watch(me, w, target),
+    ready(me) { me.data.ready = true },
   },
 }

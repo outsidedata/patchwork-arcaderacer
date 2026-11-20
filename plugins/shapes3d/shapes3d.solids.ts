@@ -4,7 +4,9 @@
 //
 // `models(plugins)` is, for each such kind, a solids model of one node and one paint, the look's
 // `colour` and `roughness`, and its `map` laid at its `scale` when it names one (a texture entry of the
-// loader's catalogue, `scale` metres to a span of it: solids' Paints), its part by its word (`drawn`):
+// loader's catalogue, `scale` metres to a span of it: solids' Paints), or, when the look names a
+// `look`, that alone: a material of the scene's one shader, which solids draws through the plugin
+// `world.solids.mods.looks` names (supershader3d's); its part by its word (`drawn`):
 // a cylinder a prism of the look's `sides`
 // sides, each standing `radius` from its middle, and `height` tall; a box a loft `x` across, `z` long and `y` tall; a plane
 // a slab the look's `thick` metres deep under its surface, `x` across and as long as its surface runs
@@ -12,9 +14,10 @@
 // `thick` metres deep under its face, `x` across and `z` long; each standing on its row's `pos`, which
 // solids turns by the row's `yaw`, or a hyperplane's by its `rot`. A cylinder's look with no `sides`,
 // and a plane's or a hyperplane's with no `thick`, throws, naming the kind.
+import type { Row, W } from '#engine/engine.ts'
 import type { Plugins } from '#engine/browser.ts'
 import type { Model, Part } from '#plugins/solids/solids.plugin.ts'
-import { wordOf, type Kind } from './shapes3d.sim.ts'
+import { shapes, wordOf, type Kind } from './shapes3d.sim.ts'
 
 // Each word's part, from its kind's numbers and look.
 const drawn: Record<string, (n: any, look: NonNullable<Kind['look']>, kind: string) => Part> = {
@@ -37,15 +40,26 @@ const drawn: Record<string, (n: any, look: NonNullable<Kind['look']>, kind: stri
   },
 }
 
-export function models(plugins: Plugins): Record<string, Model> {
-  const kinds = (plugins.wire.scene.world?.shapes3d?.kinds ?? {}) as Record<string, Kind>
+export function models(plugins: Plugins): { models: Record<string, Model>; rows: Row[] } {
+  const wire = plugins.wire
+  const kinds = (wire.scene.world?.shapes3d?.kinds ?? {}) as Record<string, Kind>
   const out: Record<string, Model> = {}
   for (const [kind, k] of Object.entries(kinds)) {
     if (!k.look) continue
     const { word } = wordOf(kind, k)
-    const { colour, roughness, map, scale } = k.look
-    const paints = { look: { colour, ...(roughness === undefined ? {} : { roughness }), ...(map === undefined ? {} : { map, scale }) } }
+    const { colour, look, roughness, map, scale } = k.look
+    const paints = { look: look === undefined ? { colour, ...(roughness === undefined ? {} : { roughness }), ...(map === undefined ? {} : { map, scale }) } : { look } }
     out[kind] = { paints, nodes: { body: { at: [0, 0, 0] } }, parts: [drawn[word](k.shape[word], k.look, kind)] }
   }
-  return out
+  const w = {
+    world: wire.scene.world ?? {},
+    all: (kind: string) => wire.rows.filter(r => r.kind === kind),
+    get: (id: number) => wire.rows.find(r => r.id === id),
+    find: (kind: string, pred: (r: Row) => boolean = () => true) => wire.rows.find(r => r.kind === kind && pred(r)),
+  } as unknown as W
+  const rows = shapes(w).filter(p => out[p.kind]).map(p => {
+    const s = p.shape[p.word]
+    return { id: p.id, kind: p.kind, data: { pos: s.pos, yaw: s.yaw ?? 0, ...(s.rot ? { rot: s.rot } : {}) } } as Row
+  })
+  return { models: out, rows }
 }

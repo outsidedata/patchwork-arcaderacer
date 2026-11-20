@@ -28,7 +28,12 @@ brings the world back up to as drawn and never past. It is drawn on the render2d
 - A light stands on its row's `pos`, `[x, y]` or `[x, y, h]` at a height, drawn where render2d's
   `place` draws that point, so a torch on a wall lights round its flame. Its radius is laid along the
   ground as render2d lays the world: a circle seen from above, an ellipse in isometric.
-- `budget` lights are drawn at most: those nearest the middle of the canvas, ties to the lower row id.
+- `budget` lights are drawn at most: those nearest the middle of the canvas, ties to the lower row id,
+  a row's before a mod's.
+- `mods: { lights: [...] }`: plugins that hand over lights of their own each frame, each exporting
+  `lights(plugins)` → `{ key, at, colour, radius, intensity }[]`, its middle `at` a point of the stage
+  and its intensity already flickered as its plugin wants. particle2d's (`particle2d.light2d.ts`) is
+  every `lamp` of its effects. Each is listed before light2d, which throws otherwise.
 - `falloff: { size, core, power }`: brightness is 1 out to `core` of the radius, then falls as
   `(1 − (d − core) / (1 − core))^power`, drawn once per client into a picture `size` pixels across.
 - `flicker: { rate, depth }`: a flickering light's intensity is multiplied by 1 − depth × a smooth
@@ -45,14 +50,16 @@ Everything is placed in `afterTick`, after every actor moved the camera, so ligh
 2. Give each light-giving kind an entry in `kinds`, and a `light` field on rows whose light changes.
 3. From an actor's tick, `plugins.light2d.ambient({ colour, level })` sets another ambient for the
    next draw alone (a dark room the seat stands in, every frame it is there).
-4. `plugins.light2d.lights` is what was drawn last (each light's row id, `pos`, radius, colour,
-   flickered intensity and sprite), for a pass that masks lights, such as shadows cast by walls.
+4. `plugins.light2d.lights` is what was drawn last (each light's row id and `pos`, or a mod's light's
+   `key`, its middle on the stage `at`, radius, colour, flickered intensity and sprite), for a pass
+   that masks lights, such as shadows cast by walls.
 
 ## Plugins it works with
 
 - **render2d**: the layer the darkness is drawn on, and `place`, which stands each light where its
   point is drawn.
 - **tilemap**, **sprite2d** and **grid** draw the world it darkens.
+- **particle2d**: `particle2d.light2d.ts` hands over every lamp of its effects, a torch's flame lit.
 
 ## Keywords
 

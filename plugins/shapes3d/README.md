@@ -4,7 +4,8 @@ Shapes standing in a 3D world, held on the server: cylinders, boxes, planes and 
 places as rows and may move,
 which block shots and sight (hitscan3d), are walked round and stood on (walker, kinematics3d), are
 hidden behind (cover3d), are baked round (nav3d), stand in box3d's world for its bodies and cars (box3d)
-and can be drawn as plain shapes (solids), all from one entry each. A kind that lists `activities` is a
+are bounced off by particles (particle3d) and can be drawn as plain shapes (solids), all from one entry
+each. A kind that lists `activities` is a
 space instead: it stands in nothing's way, and offers motion3d what a body does there. Its points,
 lines, splines and planes are the targets kinematics3d moves a body along, and its lines and splines
 the courses crowd3d and npc3d walk people on.
@@ -46,9 +47,31 @@ footprint reaches within r of a point; `along(w, from, dir, far)` those a line m
 answers for its own top: a cylinder and a box flat at their top, a plane at its height, risen along its
 length by its tilt.
 
-A kind that lists `activities` is a space (motion3d, below): `shapes` and every mod but motion3d's and
-solids' leave it out, so it is only where its activities are offered. A thing in the way there is a
-kind of its own.
+## Static shapes from a file
+
+Shapes that never move can come from a file instead of rows, beside any that must be rows. The file is
+a `json` entry of the scene's loader catalogue, with `preload`, and `world.shapes3d.shapes` lists the
+entries' names:
+
+```json
+"loader": { "assets": { "yardShapes": { "type": "json", "url": "/games/<game>/assets/yard.shapes3d.json", "preload": true } } },
+"shapes3d": { "shapes": ["yardShapes"] }
+```
+
+A place world3d draws hands its shapes file through the `shapes` mod instead,
+`"shapes3d": { "mods": { "shapes": ["world3d"] } }` (`plugins/world3d/world3d.shapes3d.ts`), read after the
+files `shapes` lists.
+
+Each file is `{ kinds, shapes }`: `kinds` as `world.shapes3d.kinds` gives them, and `shapes` a list of
+`{ kind, pos, yaw }`, each one placed as a row of that kind would stand. shapes3d reads each file once
+per truth through the loader's `json`, and `shapes(w)` hands its shapes out after the rows', so every
+plugin that asks reads them as it reads the rows' shapes. Their ids count down from -1, so none is a
+row's: walker and kinematics3d never take one for a shape that moved. A scene with no `shapes` has none.
+
+A kind that lists `activities` is a space (motion3d, below): `shapes` leaves it out, and so does every
+mod that reads `shapes`, so it is not in the way and not drawn; only motion3d's `spaces`, crowd3d's
+`paths` and lod3d's points read it. It is only where its activities are offered. A thing in the way
+there, or a thing to see, is a kind of its own.
 
 hitscan3d, walker and cover3d have `cylinder` of their own; shapes3d delivers each of them `box`, by its
 behaviors: where a line meets a box (`lineBox`), a box's footprint (`corners`), and where a body stands
@@ -94,12 +117,29 @@ still shape is left as it is.
    - `world.solids.mods: { models: 'shapes3d' }`, with `solids` listed before `render3d`, to draw each
      kind that gives a `look` (`{ colour, roughness?, sides?, thick?, map?, scale? }`, `sides` for a
      cylinder's prism, `thick` for a plane's slab, `map` a texture entry of the loader's catalogue laid
-     on it at `scale` metres to a span, as solids lays a paint's picture).
-   Other plugins' solids sit beside it in the same lists, `solids: ['scatter3d', 'shapes3d']`.
+     on it at `scale` metres to a span, as solids lays a paint's picture); or, in place of solids,
+   - `world.instances3d.mods: { instances: ['shapes3d'], behaviors: ['shapes3d'] }` and a look in
+     `world.instances3d.kinds` that gives `form` (`{ form: { sides?, thick? }, colour, map?, scale?, flat?,
+     lods: [0], shadow, leaf: 0 }`), to draw every row of a kind as one instance of the same shape, so a
+     hundred pillars are one draw call. A game picks one of the two for each kind.
+   - `world.particle3d.mods: { solids: ['shapes3d'] }`, so particles of a layer with a `bounce` bounce
+     off its boxes, planes, hyperplanes and cylinders
+   - `world.gpgpu3d.mods: { things: ['shapes3d'], behaviors: ['shapes3d'] }`, so what is moved on the
+     GPU and asks gpgpu3d (gpuparticle3d's particles, fabric3d's fabrics, hair3d's locks) meets its
+     boxes, planes, hyperplanes and cylinders
+   Other plugins' solids sit beside it in the same lists, `solids: ['lod3d', 'shapes3d']`.
+3. Every mod with the scene line that names it and the demo game that uses it: the `using-shapes3d`
+   skill.
 
 ## Plugins it works with
 
 - **hitscan3d**: `shapes3d.hitscan3d.ts`, its shapes as `solids` and the `box` behavior.
+- **particle3d**: `shapes3d.particle3d.ts`, on the page, its shapes as the `solids` particles bounce off.
+- **gpgpu3d**: `shapes3d.gpgpu3d.ts`, on the page, its shapes within reach as `things` on the GPU, where
+  the frame draws them, and the `box`, `plane`, `hyperplane` and `cylinder` behaviors, each a line met
+  and a point pushed clear in GLSL.
+- **fabric3d**: `shapes3d.fabric3d.ts`, its shapes as things a fabric is held to (`sources`) and the cut
+  `plane`.
 - **walker**: `shapes3d.walker.ts`, its shapes as `fixed` and the `box` footprint, and `ground`, the
   shapes as the ground itself.
 - **terrain3d**: `terrain3d.shapes3d.ts`, the land under the shapes.
@@ -108,7 +148,15 @@ still shape is left as it is.
 - **box3d**: `shapes3d.box3d.ts`, its shapes as `fixed`, things in box3d's world that never move,
   each named by its row.
 - **solids**: `shapes3d.solids.ts`, a plain model of each kind with a `look`.
-- **motion3d**: `shapes3d.motion3d.ts`, its spaces. A kind that lists `activities` offers them to a
+- **instances3d**: `shapes3d.instances3d.ts`, every row of a kind drawn as an instance of its shape
+  (`instances`) and the `form` geometry, the same shapes solids draws.
+- **lod3d**: `shapes3d.lod3d.ts` (`world.lod3d.mods: { surfaces: ['shapes3d'], seen: ['shapes3d'],
+  behaviors: ['shapes3d'] }`), every shape's parts as surfaces a layer stands on, named by its kind (a
+  box's `top`, `bottom`, `+x`, `-x`, `+z`, `-z`, a cylinder's `wall`, `top`, `bottom`, a plane's and a
+  hyperplane's `face`), and every point of a kind's `points`, named `<kind>.<point>`.
+- **motion3d**: `shapes3d.motion3d.ts`, its faces (`world.motion3d.mods: { faces: 'shapes3d' }`), the
+  four upright sides of every solid box turned by its `yaw`, which motion3d makes a traversal of (a
+  vault, a mantle), and its spaces. A kind that lists `activities` offers them to a
   body its shape holds (a cylinder or a box, over its footprint from its underside to its top; a plane
   has no inside and throws), and stands in nothing's way. Beside them it gives a `priority`, 1 when it
   gives none; `data`, blocks keyed by the plugin each is for, passed on untouched

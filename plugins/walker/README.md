@@ -41,7 +41,7 @@ With a `cell` (the finest ring terrain3d draws) the ground is stood on as the tr
 
 `groundOf(w)` makes the ground once for each truth and hands back that same ground every step, and
 keeps every corner of the lattice it has asked. Solids come two ways: `fixed`, what never moves (a
-level's walls, scatter3d's trunks, shapes3d's shapes), and `solids`, what moves. Both are asked by
+level's walls, lod3d's trunks, shapes3d's shapes), and `solids`, what moves. Both are asked by
 area, `(w, x, z, r)`, every solid within r of (x, z); `fixed` may name a list of plugins. An agent's
 map asks `fixed` once a tile and never again.
 
@@ -74,7 +74,7 @@ handed bare, `{ x, z, radius }`, as older providers hand them, is read as the cy
 ## Using it
 
 1. Give `world.walker: { kinds: { <kind>: { … } }, mods: { height: 'terrain3d', depth: 'terrain3d',
-   cell: 'terrain3d', solids: 'scatter3d' } }`.
+   cell: 'terrain3d', solids: 'lod3d' } }`.
 2. In the kind's rule, each step:
 
    ```ts
@@ -93,11 +93,11 @@ walker once. A game does four things:
 1. **List walker's row.** `"walker": {}` in `prefabs`, `{ "is": "walker" }` in `actors`, and `walker`
    (from `#plugins/walker/walker.sim.ts`) in the scene's `sim`. At the start of every step it keeps the
    ground (made on the first step, so it is ready before any body walks) and files the crowd.
-2. **Hand walker what never moves through `fixed`.** scatter3d already does: name it,
-   `world.walker.mods.fixed: 'scatter3d'`, in place of `solids: 'scatter3d'`. A game's level plugin
+2. **Hand walker what never moves through `fixed`.** lod3d already does: name it,
+   `world.walker.mods.fixed: 'lod3d'`, in place of `solids: 'lod3d'`. A game's level plugin
    writes `<plugin>.walker.ts` exporting `fixed(w, x, z, r)`, every solid that never moves within r of
-   (x, z) (walls, planters), and the scene names both, `fixed: ['scatter3d', '<plugin>']`; or the
-   scene places them as shapes3d's shapes, `fixed: ['scatter3d', 'shapes3d']`. Each agent
+   (x, z) (walls, planters), and the scene names both, `fixed: ['lod3d', '<plugin>']`; or the
+   scene places them as shapes3d's shapes, `fixed: ['lod3d', 'shapes3d']`. Each agent
    map tile asks it once. Anything that does move stays in `solids`, asked each step.
 3. **Give the crowd's kind `agent`**, the side of its map's squares in metres (0.5 for a body 0.3 m
    across), in its `world.walker.kinds` entry. Its rule calls `walk` as before; nothing else changes,
@@ -118,10 +118,18 @@ In horde, the farmers' rules went from 0.182 ms a step for 12 to 0.048 ms, and 1
 
 ## Plugins it works with
 
+- **gpgpu3d**: the mod `walker.gpgpu3d.ts` (`world.gpgpu3d.mods: { things: ['walker'], behaviors:
+  ['shapes3d'] }`) hands gpgpu3d every walking body as an upright `cylinder` (shapes3d's word) of its
+  kind's `radius` and `height` on its `pos`, so what is moved on the GPU meets it.
+- **grass3d**: the mod `walker.grass3d.ts` (`world.grass3d.mods: { pressed: 'gpgpu3d', behaviors:
+  ['walker'] }`) says how such a cylinder presses the grass: the grass bends away from it and is trampled
+  under it while it stands on the ground.
 - **terrain3d**: the mod `terrain3d.walker.ts` (`world.walker.mods: { height, depth, cell:
   'terrain3d' }`) stands bodies on the land, wading on the seabed.
-- **scatter3d**: the mod `scatter3d.walker.ts` (`mods: { fixed: 'scatter3d' }`, or `solids`) makes
-  trunks and boulders solid; as `fixed`, an agent's map asks for them once a tile.
+- **lod3d**: the mod `lod3d.walker.ts` (`mods: { fixed: 'lod3d' }`, or `solids`) makes the instances
+  of every row that gives `solid`, trunks and boulders, circles `solid` times their size round, worked
+  out from the same tiles the page draws; `world.lod3d.widest` is the widest of those circles and
+  `world.lod3d.remember` how many tiles it keeps. As `fixed`, an agent's map asks for them once a tile.
 - **shapes3d**: the mod `shapes3d.walker.ts` (`mods: { fixed: 'shapes3d', behaviors: 'shapes3d' }`)
   makes its cylinders and boxes solid, delivering `box`.
 - **hitscan3d**: walker's mod `walker.hitscan3d.ts` (`world.hitscan3d.mods: { bodies: 'walker' }`)

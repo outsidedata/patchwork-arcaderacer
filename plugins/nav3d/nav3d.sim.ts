@@ -14,7 +14,9 @@
 //   places  `[{ point: { at: [x, y, z], normal? }, data? }]`: shapes3d points, metres. `normal` [x, y, z],
 //           a unit vector, is the up of the ground there, for a graph walked on a wall or a ceiling; a
 //           place without one stands on [0, 1, 0]. `data.nav3d.tags` are names a route may be asked to
-//           reach ("kitchen").
+//           reach ("kitchen"). `data.nav3d.moe`, metres, is how wide a square across the ground the
+//           place spreads over: each route that goes to it goes to a spot of its own in that square
+//           about `at`, x and z each rolled within moe / 2 of it, its height kept (Routes, below).
 //   ways    `[{ line: { from, to } , data? }]` or `[{ spline: { points }, data? }]`: shapes3d lines and
 //           splines, each a way between the two places its ends stand on (within MATCH of a place's
 //           `at`). A line is the straight way from `from` to `to`; a spline the curve through `points`,
@@ -35,7 +37,8 @@
 //
 // Its numbers are the scene's `world.nav3d`:
 //   graphs  `{ <name>: { asset, bake? } }`: each graph by name, `asset` the catalogue entry of its file,
-//           and `bake` the rules the bake makes it by, for a graph the bake makes (The bake, below).
+//           and `bake` the rules the bake makes it by, for a graph the bake makes (The bake, below). The
+//           `graphs` mods give more (Mods, below).
 //   mods    the plugins it asks (Mods, below).
 //
 // Behaviors. A way costs to cross its own cost, whatever its word. A word whose ways cost something else
@@ -53,15 +56,23 @@
 // step that joins the graph), `course` the way's shape run the way the route crosses it, ending at `at`
 // (`{ line: { from, to } }` or `{ spline: { points } }`; null with no way), and the up there where the
 // graph gives one: a place's own `normal`, and the goal place's the normal of the place it joins from. A
-// step with no `normal` stands on [0, 1, 0]. It is undefined when there is no way. Each end joins the
+// step with no `normal` stands on [0, 1, 0]. A step to a place with a `moe` goes to that place's
+// spot for this route: `at` moved across the ground by `w.die()`, x and z each within moe / 2, and the
+// ends of the courses into and out of it moved with it; its height and the search are the place's own.
+// It is undefined when there is no way. Each end joins the
 // graph: on a graph with blocks, `from` to every place a straight walk reaches across none of them, and
 // every such place to the goal place, and `from` straight to the goal place when that walk crosses none,
 // the walks and the blocks taken across the ground; on one with none, each end to its nearest place,
 // nearest in all three, so an end on one level of a graph of levels joins a place of its own level and
 // not one over or under it. A join costs its length, in all three. A tag's route ends at the cheapest
 // place it tags. A way's cost is its word's behavior's; one undefined is not taken. The search is
-// Dijkstra's, every place in the graph's order, so two runs of one question give one answer, on the
-// server and on a page running ahead.
+// Dijkstra's over a heap, the lower-numbered of two places at one cost taken first, so two runs of one
+// question give one answer, on the server and on a page running ahead. On a graph with no blocks whose
+// ways' words have no behavior in the scene, every way costs its own and never anything else, so the
+// cheapest way from a place to every other is worked out once, the first time a route sets out from
+// that place, and kept for as long as the graph's file is: every later route from there is read off it.
+// Any other graph is searched for each route, from `from`'s joins, stopping once no place left can end
+// cheaper than the cheapest end found.
 //
 // The bake. `graphOf(w, name)` makes graph `name` from the space, by `world.nav3d.graphs.<name>.bake`:
 //   area       `[x0, z0, x1, z1]` metres: the play area. The ground goes on for ever; the graph stops here.
@@ -88,8 +99,12 @@
 //              straight walk from `a` to `b` [x, z] be made, by the bake's rules, and as what
 //              (`terrain3d.nav3d.ts`, `ground`).
 //   behaviors  many: the words' behaviors (Behaviors, above).
+//   graphs     many: `(world) → { <name>: { asset } }`, more graphs by name, beside `world.nav3d.graphs`,
+//              from the plugin that makes the scene's place (world3d's, `world3d.nav3d.ts`); a graph a mod
+//              gives is made by that plugin's own build, never by the bake. `graphsOf(world)` is every
+//              graph of the scene.
 // The bake throws naming the mod when the scene names no `height` or `link`. A route asks none of them
-// but `behaviors`.
+// but `behaviors` and `graphs`.
 import type { W } from '#engine/engine.ts'
 import * as math from '#plugins/math/math.sim.ts'
 import { mod, modsOf } from '#addons/scenemanager/scenemanager.addon.ts'
@@ -98,7 +113,7 @@ import { drawn } from '#plugins/shapes3d/shapes3d.kinematics3d.ts'
 
 export type Footprint = { points: number[][]; round: number }
 export type Rules = { area: number[]; clearance: number; around: number; [more: string]: unknown }
-export type Data = { nav3d?: { tags?: string[]; word?: string; cost?: number; one?: boolean }; [block: string]: any }
+export type Data = { nav3d?: { tags?: string[]; moe?: number; word?: string; cost?: number; one?: boolean }; [block: string]: any }
 export type Place = { point: { at: number[]; normal?: number[] }; data?: Data }
 export type Line = { line: { from: number[]; to: number[]; normal?: number[] }; data?: Data }
 export type Spline = { spline: { points: number[][]; normal?: number[] }; data?: Data }
@@ -110,7 +125,8 @@ export type Solids = (w: W, area: number[]) => Footprint[]
 export type Height = (w: W, x: number, z: number) => number
 export type Linker = (w: W, a: number[], b: number[], rules: Rules) => ({ cost: number } & Record<string, unknown>) | undefined
 export type Behavior = (w: W, data: any, way: Way, who: unknown) => number | undefined
-type Entry = { asset: string; bake?: Rules }
+export type Entry = { asset: string; bake?: Rules }
+export type Graphs = (world: Record<string, any>) => Record<string, Entry>
 
 // How far inside a block's sides a point must be to count as inside it: a walk along a side, or a
 // place on a corner, is outside.
@@ -133,16 +149,35 @@ export function lengthOf(way: Way): number {
   return at[at.length - 1]
 }
 
+// Every graph of a scene by name: `world.nav3d.graphs`, and each `graphs` mod's.
+export const graphsOf = (world: Record<string, any>): Record<string, Entry> =>
+  Object.assign({ ...(world.nav3d?.graphs ?? {}) }, ...modsOf<Graphs>(world, 'nav3d', 'graphs').map(f => f(world)))
+
 function entryOf(w: W, name: string): Entry {
-  const e = w.world.nav3d?.graphs?.[name] as Entry | undefined
-  if (!e) throw new Error(`nav3d has no graph ${name}: world.nav3d.graphs names ${Object.keys(w.world.nav3d?.graphs ?? {}).join(', ') || 'none'}`)
+  const all = graphsOf(w.world)
+  const e = all[name]
+  if (!e) throw new Error(`nav3d has no graph ${name}: world.nav3d.graphs and its graphs mods name ${Object.keys(all).join(', ') || 'none'}`)
   return e
 }
 
 // ---------------------------------------------------------------- the file
 
-// A graph read: its file, and each way's two places and its own cost, worked out once.
-type Read = { g: Graph; ends: [number, number][]; costs: number[] }
+// A graph read: its file, each way's two places and its own cost, each place's ways out (`outTo` the
+// place each reaches, `outWay` the way), the places' `at` one after another in `flat`, all worked out
+// once; `trees`, each place's cheapest ways to every other at the ways' own costs, worked out the first
+// time a route sets out from it; and `fixed`, by the behaviors a world has, whether every way costs its
+// own cost there (no way's word has a behavior).
+type Tree = { cost: Float64Array; place: Int32Array; way: Int32Array }
+type Read = {
+  g: Graph
+  ends: [number, number][]
+  costs: number[]
+  outTo: Int32Array[]
+  outWay: Int32Array[]
+  flat: Float64Array
+  trees: (Tree | undefined)[]
+  fixed: WeakMap<object, boolean>
+}
 
 const isPoint = (p: unknown, n: number) => Array.isArray(p) && p.length === n && p.every(Number.isFinite)
 const unit = (n: number[]) => Math.abs(math.hypot(n[0], n[1], n[2]) - 1) <= 1e-6
@@ -171,6 +206,8 @@ function read(name: string, g: Graph): Read {
     data(`place ${i}`, p.data)
     const tags = p.data?.nav3d?.tags
     if (tags !== undefined && !(Array.isArray(tags) && tags.every(t => typeof t === 'string'))) bad(`place ${i}'s data.nav3d.tags are not a list of names`)
+    const moe = p.data?.nav3d?.moe
+    if (moe !== undefined && !(Number.isFinite(moe) && moe >= 0)) bad(`place ${i}'s data.nav3d.moe is not a number of 0 or more`)
   })
   const on = (p: number[], i: number, end: string): number => {
     const found: number[] = []
@@ -199,7 +236,24 @@ function read(name: string, g: Graph): Read {
   })
   if (g.blocks !== undefined && !(Array.isArray(g.blocks) && g.blocks.every(b => Array.isArray(b) && b.length >= 3 && b.every(p => isPoint(p, 2)))))
     bad('blocks are a list of outlines, each three or more [x, z]')
-  const r = { g, ends, costs }
+  const n = g.places.length
+  const to: number[][] = Array.from({ length: n }, () => [])
+  const by: number[][] = Array.from({ length: n }, () => [])
+  g.ways.forEach((wy, k) => {
+    const [a, b] = ends[k]
+    to[a].push(b)
+    by[a].push(k)
+    if (!wy.data?.nav3d?.one) { to[b].push(a); by[b].push(k) }
+  })
+  const flat = new Float64Array(n * 3)
+  g.places.forEach((p, i) => flat.set(p.point.at, i * 3))
+  const r: Read = {
+    g, ends, costs, flat,
+    outTo: to.map(t => Int32Array.from(t)),
+    outWay: by.map(t => Int32Array.from(t)),
+    trees: new Array(n).fill(undefined),
+    fixed: new WeakMap(),
+  }
   reads.set(g.places, r)
   return r
 }
@@ -331,52 +385,123 @@ export function graphOf(w: W, name: string): Graph {
 
 // ---------------------------------------------------------------- routes
 
+// The search. Places come off a binary heap by their cost so far, the lower-numbered of two at one
+// cost first, as a scan of the places in the graph's order takes them, so two runs of one question
+// give one answer. `seen` the places it starts from at their costs; `wayCost(k)` what way `k` costs to
+// cross, undefined when it cannot be; `bound(u, c)`, once place `u` is off the heap at its cost `c`,
+// the cheapest end it gives (Infinity for none): the search stops once a place comes off dearer than
+// the cheapest of those, since every way left costs 0 or more and no place after it can end cheaper. It hands back each place's cost (Infinity unreached), the place before it on its way
+// (-1 a place it started from or one unreached) and the way from there (-1 none).
+function search(r: Read, seen: [number, number][], wayCost: (k: number) => number | undefined, bound: (u: number, c: number) => number): Tree {
+  const n = r.g.places.length
+  const cost = new Float64Array(n).fill(Infinity)
+  const place = new Int32Array(n).fill(-1)
+  const way = new Int32Array(n).fill(-1)
+  const done = new Uint8Array(n)
+  let heapC = new Float64Array(16), heapI = new Int32Array(16), size = 0
+  const less = (a: number, b: number) => heapC[a] < heapC[b] || (heapC[a] === heapC[b] && heapI[a] < heapI[b])
+  const swap = (a: number, b: number) => {
+    const c = heapC[a]; heapC[a] = heapC[b]; heapC[b] = c
+    const i = heapI[a]; heapI[a] = heapI[b]; heapI[b] = i
+  }
+  const push = (c: number, i: number) => {
+    if (size === heapC.length) {
+      const C = new Float64Array(size * 2), I = new Int32Array(size * 2)
+      C.set(heapC); I.set(heapI); heapC = C; heapI = I
+    }
+    let k = size++
+    heapC[k] = c; heapI[k] = i
+    while (k > 0) { const p = (k - 1) >> 1; if (!less(k, p)) break; swap(k, p); k = p }
+  }
+  const pop = () => {
+    const i = heapI[0]
+    size--
+    heapC[0] = heapC[size]; heapI[0] = heapI[size]
+    for (let k = 0; ;) {
+      const l = 2 * k + 1, m0 = l + 1
+      let m = k
+      if (l < size && less(l, m)) m = l
+      if (m0 < size && less(m0, m)) m = m0
+      if (m === k) break
+      swap(k, m); k = m
+    }
+    return i
+  }
+  for (const [i, c] of seen) if (c < cost[i]) { cost[i] = c; push(c, i) }
+  let best = Infinity
+  while (size > 0) {
+    const u = pop()
+    if (done[u]) continue
+    if (cost[u] > best) break
+    done[u] = 1
+    best = Math.min(best, bound(u, cost[u]))
+    const to = r.outTo[u], by = r.outWay[u]
+    for (let e = 0; e < to.length; e++) {
+      const v = to[e]
+      if (done[v]) continue
+      const c = wayCost(by[e])
+      if (c === undefined) continue
+      if (cost[u] + c < cost[v]) { cost[v] = cost[u] + c; place[v] = u; way[v] = by[e]; push(cost[v], v) }
+    }
+  }
+  return { cost, place, way }
+}
+
+// Whether every way of graph `r` costs its own cost in `world`: no way's word has a behavior there.
+function fixedIn(r: Read, world: object): boolean {
+  let f = r.fixed.get(world)
+  if (f === undefined) {
+    const all = behaviorsOf(world)
+    f = r.g.ways.every(wy => { const word = wordOf(wy); return word === undefined || !all[word] })
+    r.fixed.set(world, f)
+  }
+  return f
+}
+
+// The place nearest `p`, nearest in all three; -1 on a graph of none.
+function nearestOf(r: Read, p: number[]): number {
+  const f = r.flat
+  let best = -1, d = Infinity
+  for (let i = 0, k = 0; i < r.g.places.length; i++, k += 3) {
+    const dx = f[k] - p[0], dy = f[k + 1] - p[1], dz = f[k + 2] - p[2], e = dx * dx + dy * dy + dz * dz
+    if (e < d) { d = e; best = i }
+  }
+  return best
+}
+
 export function route(w: W, name: string, from: number[], to: number[] | string, who?: unknown): Step[] | undefined {
-  const { g, ends, costs } = read(name, json(w, entryOf(w, name).asset) as Graph)
+  const r = read(name, json(w, entryOf(w, name).asset) as Graph)
+  const { g, ends, costs } = r
   const n = g.places.length
   const spot = (i: number) => g.places[i].point.at
   const ground = (p: number[]) => [p[0], p[2]]
   const far = (a: number[], b: number[]) => math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2])
   // The places an end joins.
-  const nearest = (p: number[]) => {
-    let best = -1
-    for (let i = 0; i < n; i++) if (best < 0 || far(p, spot(i)) < far(p, spot(best))) best = i
-    return best < 0 ? [] : [best]
-  }
+  const nearest = (p: number[]) => { const i = nearestOf(r, p); return i < 0 ? [] : [i] }
   const joins = (p: number[]) => (g.blocks ? [...Array(n).keys()].filter(i => clear(g.blocks!, ground(p), ground(spot(i)))) : nearest(p))
   const goalAt = typeof to === 'string' ? undefined : to
   const goals = new Map<number, number>()
   if (typeof to === 'string') for (let i = 0; i < n; i++) { if (g.places[i].data?.nav3d?.tags?.includes(to)) goals.set(i, 0) }
   else for (const i of joins(to)) goals.set(i, far(spot(i), to))
 
-  // Dijkstra's over the places, from `from`'s joins.
-  const cost = new Array<number>(n).fill(Infinity)
-  const back = new Array<{ place: number | null; way: number | null }>(n)
-  for (const i of joins(from)) { cost[i] = far(from, spot(i)); back[i] = { place: null, way: null } }
-  const out = Array.from({ length: n }, () => [] as { to: number; way: number }[])
-  g.ways.forEach((wy, k) => {
-    const [a, b] = ends[k]
-    out[a].push({ to: b, way: k })
-    if (!wy.data?.nav3d?.one) out[b].push({ to: a, way: k })
-  })
-  const done = new Array<boolean>(n).fill(false)
-  for (;;) {
-    let u = -1
-    for (let i = 0; i < n; i++) if (!done[i] && cost[i] < Infinity && (u < 0 || cost[i] < cost[u])) u = i
-    if (u < 0) break
-    done[u] = true
-    for (const { to: v, way } of out[u]) {
-      if (done[v]) continue
-      const c = costOf(w, g.ways[way], costs[way], who)
-      if (c === undefined) continue
-      if (cost[u] + c < cost[v]) { cost[v] = cost[u] + c; back[v] = { place: u, way } }
-    }
-  }
-
+  // On a graph with no blocks whose ways all cost their own, `from` joins its one nearest place, and
+  // the cheapest way from there to every place is that place's tree, worked out the first time and kept.
+  // Otherwise a search from `from`'s joins at what each way costs now, for `who`.
   // The cheapest end: straight from `from` to the goal place, or a goal place and its join.
   let best = goalAt && g.blocks && clear(g.blocks, ground(from), ground(goalAt)) ? far(from, goalAt) : Infinity
+  let t: Tree, start = 0
+  if (!g.blocks && fixedIn(r, w.world)) {
+    const s = nearestOf(r, from)
+    if (s < 0) return undefined
+    t = r.trees[s] ??= search(r, [[s, 0]], k => costs[k], () => Infinity)
+    start = far(from, spot(s))
+  } else {
+    const seen: [number, number][] = joins(from).map(i => [i, far(from, spot(i))])
+    const straight = best
+    t = search(r, seen, k => costOf(w, g.ways[k], costs[k], who), (u, c) => Math.min(straight, c + (goals.get(u) ?? Infinity)))
+  }
   let end = -1
-  for (const [i, c] of goals) if (cost[i] + c < best) { best = cost[i] + c; end = i }
+  for (const [i, c] of goals) if (start + t.cost[i] + c < best) { best = start + t.cost[i] + c; end = i }
   if (best === Infinity) return undefined
   // A way's shape run the way the route crosses it, into place `i`.
   const courseOf = (k: number, i: number): Course => {
@@ -392,9 +517,21 @@ export function route(w: W, name: string, from: number[], to: number[] | string,
     return nr ? { ...step, normal: [nr[0], nr[1], nr[2]] } : step
   }
   const steps: Step[] = []
-  for (let i: number | null = end < 0 ? null : end; i !== null; i = back[i].place) {
-    const k = back[i].way
-    steps.unshift(up({ at: [...spot(i)], place: i, way: k === null ? null : g.ways[k], course: k === null ? null : courseOf(k, i) }, i))
+  for (let i = end; i >= 0; i = t.place[i]) {
+    const k = t.way[i]
+    steps.unshift(up({ at: [...spot(i)], place: i, way: k < 0 ? null : g.ways[k], course: k < 0 ? null : courseOf(k, i) }, i))
+  }
+  // Each place of the route with a `moe` moved across the ground by its own roll, the same for its step's
+  // `at` and for the ends of the courses into it and out of it, its height kept.
+  for (let s = 0; s < steps.length; s++) {
+    const moe = g.places[steps[s].place!].data?.nav3d?.moe
+    if (!moe) continue
+    const dx = (w.die() - 0.5) * moe, dz = (w.die() - 0.5) * moe
+    const move = (p: number[]) => { p[0] += dx; p[2] += dz }
+    move(steps[s].at)
+    const into = steps[s].course, out = steps[s + 1]?.course
+    if (into) move('line' in into ? into.line.to : into.spline.points[into.spline.points.length - 1])
+    if (out) move('line' in out ? out.line.from : out.spline.points[0])
   }
   if (goalAt) {
     const goal: Step = { at: [goalAt[0], goalAt[1], goalAt[2]], place: null, way: null, course: null }

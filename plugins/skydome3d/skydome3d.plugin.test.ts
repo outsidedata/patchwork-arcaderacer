@@ -280,6 +280,25 @@ test('the key light goes through 0 as it changes body, and nothing jumps at midn
   expect(Math.abs(before.zenith.r - after.zenith.r)).toBeLessThan(1e-9)
 })
 
+test('aimed, the key light shines from the way named at the sun\'s colour and intensity, the dome drawn by the row\'s time; let go, from the sun again', () => {
+  const { me, frame, set } = page()
+  set(skyOf({ t: DAY / 2 }))
+  frame()
+  const k = me.sky()!.key
+  const way = () => k.position.clone().sub(k.target.position).normalize()
+  const sun = way(), intensity = k.intensity, colour = k.color.clone(), zenith = me.sky()!.zenith.clone()
+  me.aim([0, -2, 0])
+  frame()
+  expect(way().distanceTo(new THREE.Vector3(0, -1, 0))).toBeLessThan(1e-6)
+  expect(k.intensity).toBe(intensity)
+  expect(k.color.equals(colour)).toBe(true)
+  expect(me.sky()!.zenith.equals(zenith)).toBe(true)
+  me.aim()
+  frame()
+  expect(way().distanceTo(sun)).toBeLessThan(1e-6)
+  expect(() => me.aim([0, 0, 0])).toThrow('skydome3d: aim is a way the key light shines from, [x, y, z] not all 0, not [0,0,0]')
+})
+
 test('toneMap is three\'s curve: the constants it uses are the ones in three\'s tonemapping chunk', () => {
   const chunk = THREE.ShaderChunk.tonemapping_pars_fragment
   for (const text of [

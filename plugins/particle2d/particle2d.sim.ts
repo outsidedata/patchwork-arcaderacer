@@ -6,18 +6,24 @@
 //
 // The one row of this kind is the ledger. Its prefab is `next`, the id the next entry gets, and
 // `live`, the entries, and nothing else, since a prefab field goes onto the row and a row goes to
-// every seat every step. A field of the row that is neither throws, naming it, in its `before`. The
+// every seat every step. The row holds one thing more once a rule has written it: `drivers`, the
+// drivers of the effects file a rule holds at a number, by name, with `drive(w, name, value)`, which
+// every page plays its effects by (`particle2d.plugin.ts`, Drivers); `drive(w, name)` lets one go back
+// to the file's. This half never reads the file, so a name the file has no driver of throws on the page.
+// A field of the row that is none of the three throws, naming it, in its `before`. The
 // fixed numbers are `world.particle2d`: `effects`, the name in the scene's `loader` catalogue of the data
 // file that holds every effect (the browser half reads it; this half never does), and `hold`.
 //
 // `emit(w, effect, at, spawn)` adds an entry: the effect's name, its point `at` in the world, [x, y]
 // or [x, y, h] as render2d reads one,
 // `age`, and from `spawn` its `life` (the seconds it goes on emitting, 0 for one burst), and a `dir`,
-// `to`, `tint`, `scale`, `floor`, `from`, `fly`, `land` and `layer` when given. With `fly`, its `life` is the
-// seconds its point takes to be carried from `at` to `to`. It hands the entry back. A rule that keeps
-// its id finds it again with `entry(w, id)`, undefined once it has left the row, and moves it by
-// writing its `at` or stops it by writing its `life`: a page follows an entry for as long as the row
-// holds it.
+// `to`, `tint`, `scale`, `floor`, `from`, `fly`, `land`, `layer` and `drivers` when given. With `fly`, its
+// `life` is the seconds its point takes to be carried from `at` to `to`. `drivers` are the effect's own:
+// drivers of the effects file by name, each held at that number for this effect alone, over the row's
+// and the file's (`particle2d.plugin.ts`, Drivers). It hands the entry back. A rule that keeps its id
+// finds it again with `entry(w, id)`, undefined once it has left the row, and moves it by writing its
+// `at`, drives it by writing its `drivers`, or stops it by writing its `life`: a page follows an entry
+// for as long as the row holds it.
 //
 // Each step ages every entry and drops the ones past their life, or past `hold` when that is
 // longer. A page reads only the last packet's rows each frame, so an entry on the row for a single
@@ -31,7 +37,7 @@ import * as math from '#plugins/math/math.sim.ts'
 
 export type Spawn = {
   life?: number; dir?: number[]; to?: number[]; tint?: number; scale?: number; floor?: number
-  from?: number; fly?: number; land?: Land[]; layer?: string
+  from?: number; fly?: number; land?: Land[]; layer?: string; drivers?: Record<string, number>
 }
 // An effect thrown where another lands, and its spawn.
 export type Land = Spawn & { effect: string; seed?: number }
@@ -56,7 +62,7 @@ const holds = (w: W, id: number) => {
 export const particle2d: Kind = {
   before(me, dt, w) {
     const d = me.data
-    for (const k of Object.keys(d)) if (!['next', 'live'].includes(k)) throw new Error(`the particle2d prefab has ${k}, which particle2d does not know`)
+    for (const k of Object.keys(d)) if (!['next', 'live', 'drivers'].includes(k)) throw new Error(`the particle2d prefab has ${k}, which particle2d does not know`)
     for (const e of d.live as Entry[]) {
       e.age += dt
       if (e.from !== undefined && !holds(w, e.from)) {
@@ -76,6 +82,18 @@ const ledgerOf = (w: W) => {
 
 export const entry = (w: W, id: number): Entry | undefined => (ledgerOf(w).live as Entry[]).find(e => e.id === id)
 
+// A driver of the effects file held at `value` on every seat's page, in place of what the file says, from
+// the step it is written; with no value, let go back to the file's.
+export function drive(w: W, name: string, value?: number) {
+  const ledger = ledgerOf(w)
+  if (value === undefined) {
+    if (ledger.drivers) delete ledger.drivers[name]
+    return
+  }
+  if (!Number.isFinite(value)) throw new Error(`particle2d's driver ${name} is driven to ${value}, and a driver is a finite number`)
+  ledger.drivers = { ...ledger.drivers, [name]: value }
+}
+
 export function emit(w: W, effect: string, at: number[], spawn: Spawn = {}): Entry {
   const ledger = ledgerOf(w)
   const entry: Entry = { id: ledger.next++, effect, at: [...at], age: 0, life: spawn.life ?? 0 }
@@ -91,6 +109,11 @@ export function emit(w: W, effect: string, at: number[], spawn: Spawn = {}): Ent
   }
   if (spawn.land) entry.land = structuredClone(spawn.land)
   if (spawn.layer !== undefined) entry.layer = spawn.layer
+  if (spawn.drivers) {
+    for (const [name, value] of Object.entries(spawn.drivers))
+      if (!Number.isFinite(value)) throw new Error(`particle2d effect ${effect} is emitted with its driver ${name} at ${value}, and a driver is a finite number`)
+    entry.drivers = { ...spawn.drivers }
+  }
   ledger.live.push(entry)
   return entry
 }
