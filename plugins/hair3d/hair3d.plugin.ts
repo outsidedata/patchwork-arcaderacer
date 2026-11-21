@@ -61,7 +61,7 @@ import type * as THREE from 'three'
 import type { Plugins } from '#engine/browser.ts'
 import { listed, mod, modsOf, provided } from '#addons/scenemanager/scenemanager.addon.ts'
 import type { Room } from '#plugins/gpgpu3d/gpgpu3d.keeper.ts'
-import { builtFrom, check, layout, rootsOf, seedOf, type Behavior, type Behaviors, type Hair, type Hair3d, type Keeper, type Looks, type Numbers, type Roots, type Skinned, type Skins, type Solids, type Thing, type WindMod } from './hair3d.sim.ts'
+import { TIE_TEXELS, builtFrom, check, layout, rootsOf, seedOf, tieRows, type Behavior, type Behaviors, type Frame, type Hair, type Hair3d, type Keeper, type Looks, type Numbers, type Roots, type Skinned, type Skins, type Solids, type Thing, type WindMod } from './hair3d.sim.ts'
 import { NOTHING, lockSpec, moving, shadowed, strandSpec, surface } from './hair3d.glsl.ts'
 
 // A wearer with each of its skins made by its word's behavior.
@@ -77,7 +77,9 @@ type Uniforms = Record<string, THREE.IUniform>
 // The locks of a hair on a skin's geometry: where they are rooted, the uniforms every shader of the hair
 // reads (`sheet`: the roots and the hairs file's numbers of the hair), the keeper's rooms of what each lock
 // and each strand is, and the hair as it was when they were last kept.
-type Rooted = { from: string; roots: Roots; textures: THREE.DataTexture[]; used: number; sheet: Uniforms; locks: Room; strands: Room; text: string }
+// `textures` are the roots' four and the tie each lock is gathered to; `ties` is the texture of the hair's ties,
+// a row a tie, and `frames` the skin's bones' frames it is written from.
+type Rooted = { from: string; roots: Roots; textures: THREE.DataTexture[]; ties: THREE.DataTexture; frames: Frame[]; used: number; sheet: Uniforms; locks: Room; strands: Room; text: string }
 
 // A hash of a text: a shader's place in the cache's key, since three reuses a program whose key it has seen.
 function textHash(text: string) {
@@ -163,7 +165,7 @@ export function hair3d() {
     const roots = rootsOf(hair, name, skin.skin())
     const { wide, high } = layout(roots.count, hair.links, 1)
     const rows = high / (hair.links + 1)
-    const textures = [roots.at, roots.normal, roots.bones, roots.weights].map(values => {
+    const textures = [roots.at, roots.normal, roots.bones, roots.weights, roots.tie].map(values => {
       const data = new Float32Array(wide * rows * 4)
       data.set(values)
       const tex = new T.DataTexture(data, wide, rows, T.RGBAFormat, T.FloatType)
@@ -173,7 +175,15 @@ export function hair3d() {
       tex.needsUpdate = true
       return tex
     })
+    const frames = skin.frames()
+    const tied = tieRows(hair, frames, name)
+    const ties = new T.DataTexture(tied, TIE_TEXELS, tied.length / (TIE_TEXELS * 4), T.RGBAFormat, T.FloatType)
+    ties.magFilter = T.NearestFilter
+    ties.minFilter = T.NearestFilter
+    ties.generateMipmaps = false
+    ties.needsUpdate = true
     const sheet: Uniforms = {
+      hTies: { value: ties },
       hAt: { value: textures[0] }, hWide: { value: wide }, hSeed: { value: seedOf(name) }, hStrands: { value: hair.strands },
       hComb: { value: new T.Vector3() }, hStiff: { value: new T.Vector2() },
       hGravity: { value: 0 }, hDamping: { value: 0 }, hDrag: { value: 0 },
@@ -188,7 +198,7 @@ export function hair3d() {
     const what = `hair3d hair ${name}`
     const locks = keeper!(lockSpec(what, hair.program)).room({ cols: 1, rows: 1, count: roots.count, uniforms: sheet, what: `${what}: its ${roots.count} locks`, hint: 'lower its density' })
     const strandsOf = keeper!(strandSpec(what)).room({ cols: 1, rows: 1, count: roots.count * hair.strands, uniforms: sheet, what: `${what}: its ${roots.count * hair.strands} strands`, hint: 'lower its density or its strands' })
-    const made: Rooted = { from, roots, textures, used: 1, sheet, locks, strands: strandsOf, text: JSON.stringify(hair) }
+    const made: Rooted = { from, roots, textures, ties, frames, used: 1, sheet, locks, strands: strandsOf, text: JSON.stringify(hair) }
     rooted.set(key, made)
     return made
   }
@@ -216,13 +226,13 @@ export function hair3d() {
     const pass = new T.ShaderMaterial({
       glslVersion: T.GLSL3,
       vertexShader: 'void main() { gl_Position = vec4( position.xy, 0.0, 1.0 ); }',
-      fragmentShader: moving(hair.links, meets?.glsl ?? NOTHING, moved.glsl),
+      fragmentShader: moving(hair.links, meets?.glsl ?? NOTHING, moved.glsl, !!hair.ties?.length),
       uniforms: {
         ...meets?.uniforms,
         ...frame!,
         ...r.sheet,
         ...moved.uniforms,
-        hNormal: { value: r.textures[1] }, hBones: { value: r.textures[2] }, hWeights: { value: r.textures[3] },
+        hNormal: { value: r.textures[1] }, hBones: { value: r.textures[2] }, hWeights: { value: r.textures[3] }, hTied: { value: r.textures[4] },
         hNow: { value: null }, hWas: { value: null }, boneTexture: { value: null },
         hBind: { value: new T.Matrix4() }, hUnit: { value: 1 / skin.unit },
         hFirst: { value: -1 }, hCopies: { value: 0 }, hCols: { value: 1 }, hHigh: { value: 1 }, hJump: { value: JUMP },
@@ -302,6 +312,7 @@ export function hair3d() {
       for (const t of p.targets) t.dispose()
       if (--p.rooted.used === 0) {
         for (const t of p.rooted.textures) t.dispose()
+        p.rooted.ties.dispose()
         p.rooted.locks.dispose()
         p.rooted.strands.dispose()
         for (const [k, r] of rooted) if (r === p.rooted) rooted.delete(k)
@@ -497,6 +508,9 @@ export function hair3d() {
           if (now === r.text) continue
           r.text = now
           sheetOf(r.sheet, h)
+          // its ties: the rows of the ties texture, which a tie's own numbers change
+          r.ties.image.data!.set(tieRows(h, r.frames, p.hair))
+          r.ties.needsUpdate = true
           r.locks.staleAll()
         }
       }

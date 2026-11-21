@@ -25,7 +25,7 @@
 | gpuparticle3d | particle3d with every particle on the GPU: the same effects files, moved, sorted and drawn there. |
 | grass3d | A meadow made blade by blade on the GPU round the camera: thins out with distance, sways in the wind, bends from cars and bodies and lies down in their tracks; a program of ops sets where it grows tall, short or dry. |
 | grid | A changing 2D map of cell layers in chunks, drawn on render2d, with picking and save as PNG. |
-| hair3d | Hair, fur and manes grown on a body's skin: locks rooted where the scene says, simulated on the GPU so they hang, swing and blow as the body moves, drawn strand by strand. |
+| hair3d | Hair, fur and manes grown on a body's skin: locks rooted where the scene says, simulated on the GPU so they hang, swing and blow as the body moves, drawn strand by strand; tied into ponytails, pigtails and braids. |
 | hitscan3d | Instant shots in 3D with lag compensation, line of sight and hurt. |
 | ik3d | Two-bone IK on the page: hands and feet put on grips, wheels, pedals and rungs. |
 | instances3d | Draws many copies of a look as instanced meshes, handed to it by other plugins. |

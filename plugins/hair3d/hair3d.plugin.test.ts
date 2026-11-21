@@ -16,7 +16,7 @@ import { scenemanager } from '#plugins/scenemanager/scenemanager.sim.ts'
 import { json, written } from '#plugins/loader/loader.sim.ts'
 import { gpgpu3d } from '#plugins/gpgpu3d/gpgpu3d.plugin.ts'
 import { hair3d } from './hair3d.plugin.ts'
-import type { Hair, Hair3d } from './hair3d.sim.ts'
+import { TIE_TEXELS, type Hair, type Hair3d } from './hair3d.sim.ts'
 
 const DT = 1 / 60
 const coat: Hair = {
@@ -186,6 +186,68 @@ test('a hair with a program has it compiled with what is kept of a lock: what st
   wrong.hairs.coat.program!.out = { nope: 'n' }
   plugins.loader.get = () => wrong
   expect(() => plugins.hair3d.afterTick(plugins)).toThrow('hair3d hair coat program out nope is none of cover, length, width, taper, combX, combY, combZ, stiffnessRoot, stiffnessTip, gravity, damping, drag, clumpRadius, clumpTight, curlRadius, curlTurns, ragged, vary, ao, roughness, shineStrength, shinePower, translucency, rootColour, tipColour')
+  plugins.hair3d.close()
+})
+
+test('a hair with ties roots which lock is gathered where; a tie\'s own numbers are read as it draws, and where it is and who it gathers builds the hair again', async () => {
+  const child = (await load(boot(structuredClone(top), { scenemanager }), pathToFileURL(dir + '/').href)).get('yard')!
+  child.step(DT)
+  const w = (globalThis as { hair3dPlugin?: W }).hair3dPlugin!
+  // a tie on the right edge's bone `tip`, 0.2 in from it, round the middle of the square
+  const tied = structuredClone(file)
+  tied.hairs.coat.links = 4
+  tied.hairs.coat.ties = [{
+    bone: 'tip', at: [-0.2, 0.05, 0], around: [-0.5, 0, 0], lift: 0.01, hang: [0, -1, 0], fall: 0.5, reach: 0.3, share: 1,
+    spread: 0.02, flare: 0.05, band: 0.1, side: [1, 0, 0], stiffness: [30, 3], braid: { radius: 0.01, pitch: 0.1 },
+  }]
+  const dressed: { surface: { uniforms: Record<string, { value: unknown }> } }[] = []
+  let now = tied
+  const mesh = hide()
+  const plugins = {
+    render3d: { THREE, scene: new THREE.Scene(), dress: (m: THREE.Material, own: (typeof dressed)[number]) => { dressed.push(own); return m } },
+    loader: { get: () => now },
+    puppet3d: { bodies: () => [mesh] },
+    wire: { scene: { world: w.world, plugins: yard.plugins }, rows: [{ id: 1, kind: 'beast', data: {} }] as Row[] },
+  } as unknown as Plugins
+  plugins.gpgpu3d = gpgpu3d()
+  plugins.hair3d = hair3d()
+  plugins.hair3d.afterTick(plugins)
+  const roots = plugins.hair3d.roots('puppet3d 1', 'coat')!
+  const gathered = Array.from({ length: roots.count }, (_, i) => roots.tie[i * 4]).filter(n => n === 1).length
+  expect(gathered).toBeGreaterThan(0)
+  expect(gathered).toBeLessThan(roots.count)
+  const ties = dressed[0].surface.uniforms.hTies.value as THREE.DataTexture
+  const data = ties.image.data as Float32Array
+  expect(data).toHaveLength(TIE_TEXELS * 4)
+  expect(data[3]).toBe(1)
+  expect(data[16]).toBeCloseTo(0.02, 6)
+
+  // its spread changed: the texture is written again in place, the locks kept again and not rooted again
+  const kept = () => plugins.hair3d.bodies()[0].patches[0].kept
+  const was = kept().locks
+  now = structuredClone(tied)
+  now.hairs.coat.ties![0].spread = 0.04
+  plugins.hair3d.afterTick(plugins)
+  expect(plugins.hair3d.roots('puppet3d 1', 'coat')).toBe(roots)
+  expect(dressed).toHaveLength(1)
+  expect(dressed[0].surface.uniforms.hTies.value).toBe(ties)
+  expect(data[16]).toBeCloseTo(0.04, 6)
+  expect(ties.version).toBeGreaterThan(1)
+  expect(kept().locks).toBe(was)
+
+  // its reach changed: which locks it gathers is rooted again
+  now = structuredClone(tied)
+  now.hairs.coat.ties![0].reach = 0.05
+  plugins.hair3d.afterTick(plugins)
+  const again = plugins.hair3d.roots('puppet3d 1', 'coat')!
+  expect(again).not.toBe(roots)
+  expect(Array.from({ length: again.count }, (_, i) => again.tie[i * 4]).filter(n => n === 1).length).toBeLessThan(gathered)
+  expect(dressed).toHaveLength(2)
+
+  // a tie on a bone the skin has not is refused, naming it
+  now = structuredClone(tied)
+  now.hairs.coat.ties![0].bone = 'spine'
+  expect(() => plugins.hair3d.afterTick(plugins)).toThrow('names the bone spine')
   plugins.hair3d.close()
 })
 

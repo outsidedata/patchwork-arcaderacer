@@ -10,6 +10,7 @@
       "shape": { "sphere": { "radius": 0.11 } },
       "height": 1.6,
       "on": { "meshes": ".", "bones": ["anchor"], "weight": 0, "cuts": [], "planes": [], "faces": [{ "toward": [0, 0.75, -0.66], "within": 95 }] },
+      "ties": { "origin": [0, -0.09, -0.015] },
       "solids": [{ "bone": "anchor", "at": [0, 0, 0], "radius": 0.11 }]
     },
     "ball": {

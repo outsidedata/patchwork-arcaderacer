@@ -100,7 +100,7 @@ The names come from the model: its skinned meshes' names and its bones' are in i
   stiff at the root and loose at the tip (`[12, 0.3]`); short fur is stiff all along (`[60, 12]`).
 - `gravity`, `damping` (the share of its speed lost a second) and `drag` (how fast it takes the wind's
   speed).
-- `links`: the points a lock is simulated with, from 1 to 16. The scalp has 6, the fur 2.
+- `links`: the points a lock is simulated with, from 1 to 32. The scalp has 6, the fur 2, a braid 28.
   `segments`: the pieces a strand is drawn in along the curve through them.
 
 ## How many, and how it looks
@@ -122,8 +122,8 @@ The strands are a dressed standard material, so the sky's fog, lights3d's lights
 them. Their mesh is marked `userData.moving`, so lights3d draws its shadow every frame
 (`using-lights3d`).
 
-A change to `on`, `density`, `strands`, `length`, `links`, `segments`, `shadow` or `program` roots and
-builds the hair again. Every other number is read as it draws.
+A change to `on`, `density`, `strands`, `length`, `links`, `segments`, `shadow`, `program` or a tie's `bone`,
+`at`, `reach` or `share` roots and builds the hair again. Every other number is read as it draws.
 
 ## A program: a pattern over the skin
 
@@ -146,6 +146,43 @@ the skin as it was bound, in metres, so a pattern stays put on the body as it mo
   each frame.
 - `bodies()` gives each patch's `kept`, `{ locks, strands }`, how many times each was written: 1 each
   until a number of the hair changes.
+
+## Ties: a ponytail, pigtails, a braid
+
+A hair's `ties` gather it as a hair tie does. A tie is a point a bone carries, never drawn, and a hair with
+ties has at least 3 `links`. Every field of a tie is required:
+
+```json
+"ties": [
+  { "bone": "Head", "at": [0, 0.13, -0.13], "around": [0, 0.09, 0.015], "lift": 0.02, "hang": [0, -1, -0.4], "fall": 0.6,
+    "reach": 0.35, "share": 1, "spread": 0.02, "flare": 0.07, "band": 0, "side": [1, 0, 0], "stiffness": [40, 2.5],
+    "braid": { "radius": 0, "pitch": 0.12 } }
+]
+```
+
+- `bone`, `at`: the bone that carries it (named as `on.bones` names one) and its place in that bone's frame as
+  bound, metres. The X Bot's `Head` bone has its origin at the neck: the middle of the head is `[0, 0.09, 0.015]`
+  and the skull is 0.105 round it.
+- `reach`, `share`: a lock whose root is within `reach` metres of the tie, and whose own length reaches it, goes
+  to the nearest such tie; `share` of those do, each by a roll of its own, so the rest stay loose. Two ties
+  either side of the head are pigtails parted down the middle; a dozen ties with a small `reach` each are a
+  head of braids.
+- `around`, `lift`: the centre the hair is laid round (the middle of the head) and how far it stands off the skin:
+  the links before the tie lie on an arc round the centre, so the hair lies on the head, not through it.
+- `hang`, `fall`, `side`: the way the hair hangs from the tie, how far that gives in to straight down, and the
+  way across it that a braid is woven across.
+- `spread`, `flare`, `band`: the bundle is `spread` wide at the tie and opens to `flare` by its end; a `band`
+  (metres below the tie, 0 for none) is a second tie that closes it down to there and lets a braid go, a tassel.
+- `stiffness`: `[gathered, hanging]`: low for a ponytail that swings (2.5), high for a braid (16).
+- `braid`: `{ radius, pitch }`. A radius above 0 makes each gathered lock one of a plait's three strands, woven
+  over and under: `radius` the swing either side, `pitch` metres for six crossings. Give a braid `links` of 24
+  to 32, a crossing wants about two links.
+
+Which lock goes to which tie is rooted (the bone, `at`, `reach` and `share`, so changing them roots the hair again);
+every other number of a tie is read as it draws. A gathered lock keeps its own length: the arc to the tie takes
+some of it and the rest hangs below. demo_hair3d's `hairs.json` has a ponytail, pigtails, a braid with a band,
+braided pigtails and a head of braids (`assets/hairs.styles.mjs` laid them), worn by the wanderers whose `as` names
+them (each needs an anim kind, with the head and neck capsules, and a walker kind of its own).
 
 ## What hair lies on
 

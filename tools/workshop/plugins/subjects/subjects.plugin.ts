@@ -12,6 +12,11 @@
 //               on      where a hair grows on it: a hair's `on` (`hair3d.sim.ts`), which the workshop gives
 //                       the hair it shows in place of the hair's own. Its one bone is `anchor`; +y is up
 //                       and +z ahead.
+//               ties    optional, `{ origin }`: the subject carries a hair's ties (`hair3d.sim.ts`, `ties`) on its
+//                       one bone, as a head does. A tie names the bone of the game's body that carries it, a
+//                       head bone whose origin is at the neck; `origin` is where that origin is in the
+//                       anchor's frame, metres, and every place a tie gives is moved by it. A subject with
+//                       none shows a hair with ties hanging loose
 //               solids  `[{ bone, at, radius }]`, the balls the hair is kept out of, each `radius` metres
 //                       round, `at` metres in the anchor's frame, which gpgpu3d holds (`subjects.gpgpu3d.ts`)
 //   lap       metres the subject runs forward before it is put back where it began
@@ -41,7 +46,7 @@ export type Wave = { amplitude: [number, number, number]; rate: number }
 export type Motion = { forward: number; moves: Wave[]; turns: Wave[]; spin: [number, number, number] }
 export type Shape = { sphere: { radius: number } } | { capsule: { radius: number; length: number; along: 'x' | 'y' | 'z' } } | { plane: { size: [number, number] } }
 export type Solid = { bone: string; at: [number, number, number]; radius: number }
-export type Subject = { shape: Shape; height: number; on: Hair['on']; solids: Solid[] }
+export type Subject = { shape: Shape; height: number; on: Hair['on']; solids: Solid[]; ties?: { origin: [number, number, number] } }
 export type Numbers = {
   subjects: Record<string, Subject>
   lap: number

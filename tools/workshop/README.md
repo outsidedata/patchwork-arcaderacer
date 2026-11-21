@@ -302,7 +302,12 @@ file (`world.hair3d.hairs`). Add `&file=<repo path>` for one of several hairs fi
   of its `program` where it has one (the ops, the wiring and the `out` are written in the file), then the
   file's wind and gust, which every hair of the file blows in. Each change is drawn that frame; the first
   group and a program's numbers root and build the hair again, as they do in the game. A number changed
-  since the file was read is amber.
+  since the file was read is amber. A hair with `ties` has a group for each tie (place, reach, share, the
+  centre the hair is laid round, how it hangs, the bundle's width, a second tie below, stiffness and a
+  braid's swing and pitch): a tie's place, reach and share root the hair again, the rest are read as it
+  draws. Only the `head` subject carries ties (its `ties.origin` in the stage file is where a game's head
+  bone, whose origin is at the neck, is in the ball); on any other subject a hair with ties hangs loose.
+  Ties are written in the file, never added or taken out here.
 - **Save to game** writes each changed number in place into the hairs file, checked by hair3d's own
   check and, for each hair's program, compiled over the ops the first scene that names the file delivers,
   so a number an op refuses is not written (`POST /api/hair3d/<game>`). **Revert** reads the file again.

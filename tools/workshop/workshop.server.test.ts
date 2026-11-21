@@ -1045,6 +1045,20 @@ test('a game\'s hairs file read for the hair workshop with the workshop\'s stage
   // a number hair3d's check refuses is not written
   expect((await post('/api/hair3d/salon', { file: 'games/salon/assets/hairs.json', edits: [{ path: ['hairs', 'bob', 'links'], value: 40 }] })).status).toBe(400)
   expect(JSON.parse(fs.readFileSync(path.join(root, 'games/salon/assets/hairs.json'), 'utf8'))).toEqual(now)
+
+  // a tie's numbers are saved in place under its place in the hair's list, and one hair3d refuses is not written
+  const tie = {
+    bone: 'Head', at: [0, 0.13, -0.13], around: [0, 0.09, 0.015], lift: 0.02, hang: [0, -1, -0.4], fall: 0.6, reach: 0.35, share: 1,
+    spread: 0.02, flare: 0.07, band: 0, side: [1, 0, 0], stiffness: [40, 2.5], braid: { radius: 0, pitch: 0.12 },
+  }
+  const tied = { ...hairs, hairs: { bob: { ...bob, ties: [tie] } } }
+  write('games/salon/assets/hairs.json', JSON.stringify(tied, null, 2) + '\n')
+  const tune = [{ path: ['hairs', 'bob', 'ties', 0, 'spread'], value: 0.03 }, { path: ['hairs', 'bob', 'ties', 0, 'at', 2], value: -0.12 }, { path: ['hairs', 'bob', 'ties', 0, 'braid', 'pitch'], value: 0.2 }]
+  expect(await post('/api/hair3d/salon', { file: 'games/salon/assets/hairs.json', edits: tune })).toEqual({ status: 200, body: { written: true } })
+  const tuned = JSON.parse(fs.readFileSync(path.join(root, 'games/salon/assets/hairs.json'), 'utf8'))
+  expect(tuned).toEqual({ ...hairs, hairs: { bob: { ...bob, ties: [{ ...tie, spread: 0.03, at: [0, 0.13, -0.12], braid: { radius: 0, pitch: 0.2 } }] } } })
+  expect((await post('/api/hair3d/salon', { file: 'games/salon/assets/hairs.json', edits: [{ path: ['hairs', 'bob', 'ties', 0, 'reach'], value: 0 }] })).status).toBe(400)
+  expect(JSON.parse(fs.readFileSync(path.join(root, 'games/salon/assets/hairs.json'), 'utf8'))).toEqual(tuned)
 })
 
 test('a game\'s grasses file read for the grass workshop with its land\'s lattice and the workshop\'s stage, and a number of a grass saved in place', async () => {

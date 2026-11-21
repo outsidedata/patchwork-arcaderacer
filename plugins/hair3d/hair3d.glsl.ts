@@ -226,12 +226,15 @@ export const strandSpec = (what: string): Spec => ({
 // whether the point `x`, which was at `was` a frame ago, is inside thing `i`: `normal` the way out and
 // `depth` the metres along it `x` is to move to be out of it. `reading` is the keeper's reading of a lock's
 // group `move`.
-export const moving = (links: number, meet: string, reading: string) => /* glsl */ `
+export const moving = (links: number, meet: string, reading: string, tied = false) => /* glsl */ `
 precision highp float;
 precision highp int;
 #define LINKS ${links}
 #define LIFT 0.15
+${tied ? '#define TIED' : ''}
 ${SHEET}
+uniform highp sampler2D hTies;
+uniform highp sampler2D hTied;
 uniform highp sampler2D hNormal;
 uniform highp sampler2D hBones;
 uniform highp sampler2D hWeights;
@@ -265,6 +268,26 @@ mat4 hBone( float i, int row ) {
   }
   return mat4( texelFetch( boneTexture, at, 0 ), texelFetch( boneTexture, at + ivec2( 1, 0 ), 0 ), texelFetch( boneTexture, at + ivec2( 2, 0 ), 0 ), texelFetch( boneTexture, at + ivec2( 3, 0 ), 0 ) );
 }
+#ifdef TIED
+// The tie a lock is gathered to, as the lock reads it: the way across the hair and the way through it, the
+// plait's strand, its swing and its pitch, and the bundle's own angle and radius, spread and flare, and how
+// long the hanging part is.
+vec3 hAcross, hDepth;
+float hBraid, hPitch, hSlot, hAng, hRad, hSpread, hFlare, hFan, hBand;
+// Where a lock is off the way the hair hangs, \`u\` metres past the tie: the bundle \`spread\` wide down to the
+// band and opening out to \`flare\` from there to the end, and, with a plait, its strand's swing across and its
+// turn over and under the others, let go past the band. A plait's three strands are one sway, a third of a
+// turn apart: across, sin( t - 120° ), and over and under, sin( 2t - 60° ).
+vec3 hOff( float u ) {
+  vec3 o = ( hAcross * cos( hAng ) + hDepth * sin( hAng ) ) * hRad * mix( hSpread, hFlare, clamp( ( u - hBand ) / max( hFan - hBand, 1e-3 ), 0.0, 1.0 ) );
+  if ( hBraid > 0.0 ) {
+    float t = 6.2831853 * u / hPitch + 2.0943951 * hSlot;
+    float held = hBand > 0.0 ? 1.0 - smoothstep( hBand, hBand + 0.03, u ) : 1.0;
+    o += ( hAcross * ( hBraid * sin( t - 2.0943951 ) ) + hDepth * ( hBraid * 0.9 * sin( 2.0 * t - 1.0471976 ) ) ) * held;
+  }
+  return o;
+}
+#endif
 void main() {
   ivec2 px = ivec2( gl_FragCoord.xy );
   ivec2 tile = ivec2( px.x / hWide, px.y / hHigh );
@@ -308,6 +331,60 @@ void main() {
   vec2 stiff = hValStiff();
   float gravity = hValGravity(), damping = hValDamping(), drag = hValDrag();
 
+#ifdef TIED
+  // A lock gathered to a tie: the ties texture's row of its tie, whose bone carries the tie, the arc the
+  // lock is laid along from its root to the tie round the centre the tie names, and how long each of its
+  // links is, those before the tie and those after.
+  vec4 tie = texelFetch( hTied, lock, 0 );
+  bool gathered = tie.x > 0.5;
+  int kk = 1;
+  float la = 0.0, lb = 0.0, lifted = 0.0, rFrom = 0.0, rTo = 0.0, sweep = 0.0, gatherPull = 0.0, tailPull = 0.0;
+  vec3 pin = root, centre = root, from = vec3( 1.0, 0.0, 0.0 ), spin = vec3( 0.0, 1.0, 0.0 ), tailDir = vec3( 0.0, -1.0, 0.0 );
+  if ( gathered ) {
+    int ti = int( tie.x + 0.5 ) - 1;
+    vec4 t0 = texelFetch( hTies, ivec2( 0, ti ), 0 ), t1 = texelFetch( hTies, ivec2( 1, ti ), 0 );
+    vec4 t2 = texelFetch( hTies, ivec2( 2, ti ), 0 ), t3 = texelFetch( hTies, ivec2( 3, ti ), 0 );
+    vec4 t4 = texelFetch( hTies, ivec2( 4, ti ), 0 ), t5 = texelFetch( hTies, ivec2( 5, ti ), 0 );
+    mat4 bone = hBone( t0.w, row );
+    mat4 into = hBind * bone;
+    mat3 rot = mat3( hBind ) * mat3( bone );
+    vec3 tieAt = ( into * vec4( t0.xyz * hUnit, 1.0 ) ).xyz;
+    centre = ( into * vec4( t1.xyz * hUnit, 1.0 ) ).xyz;
+    lifted = t1.w;
+    gatherPull = t4.z;
+    tailPull = t4.w;
+    vec3 outFrom = root - centre, outTo = tieAt - centre;
+    rFrom = length( outFrom );
+    rTo = length( outTo );
+    from = outFrom / max( rFrom, 1e-5 );
+    vec3 to = outTo / max( rTo, 1e-5 );
+    sweep = acos( clamp( dot( from, to ), -1.0, 1.0 ) );
+    spin = cross( from, to );
+    if ( length( spin ) < 1e-3 ) spin = cross( from, rot * vec3( 0.0, 1.0, 0.0 ) );
+    if ( length( spin ) < 1e-3 ) spin = cross( from, vec3( 1.0, 0.0, 0.0 ) );
+    spin = normalize( spin );
+    float arc = max( length( vec2( sweep * 0.5 * ( rFrom + rTo ), rTo - rFrom ) ), 1e-3 );
+    float whole = max( hValLong(), 1e-3 );
+    kk = clamp( int( float( LINKS ) * arc / whole + 0.5 ), 1, LINKS - 1 );
+    la = arc / float( kk );
+    lb = max( whole - arc, 0.04 ) / float( LINKS - kk );
+    tailDir = normalize( mix( normalize( rot * t2.xyz ), vec3( 0.0, -1.0, 0.0 ), t2.w ) );
+    vec3 side = rot * t3.xyz;
+    hAcross = normalize( side - tailDir * dot( side, tailDir ) + vec3( 0.0, 0.0, 1e-6 ) );
+    hDepth = cross( hAcross, tailDir );
+    hPitch = t3.w;
+    hSpread = t4.x;
+    hFlare = t4.y;
+    hBraid = t5.x;
+    hBand = t5.y;
+    hSlot = tie.y;
+    hAng = 6.2831853 * tie.z;
+    hRad = sqrt( tie.w );
+    hFan = max( lb * float( LINKS - kk ), 1e-3 );
+    pin = tieAt + hOff( 0.0 );
+  }
+#endif
+
   // The wind as it gusts at this lock.
   vec2 gp = ( root.xz - hDrift ) / hGust.x;
   float a = gp.x + 1.3 * gp.y + hTime * hGust.z;
@@ -317,9 +394,35 @@ void main() {
   vec3 held = root;
   for ( int i = 1; i <= LINKS; i++ ) {
     if ( i > mine ) break;
+    // Where this link lies with nothing on it, how long it is and how hard it is pulled there: along the
+    // way the lock lies; or, in a lock gathered to a tie, along the arc to the tie, at the tie, and past it.
     vec3 goal = held + lies * l;
+    float link = l, pull = mix( stiff.x, stiff.y, float( i ) / float( LINKS ) );
+    bool pinned = false;
+    vec3 way0 = lies;
+#ifdef TIED
+    if ( gathered ) {
+      if ( i < kk ) {
+        float s = float( i ) / float( kk );
+        float th = sweep * s;
+        vec3 dir = from * cos( th ) + cross( spin, from ) * sin( th );
+        goal = centre + dir * ( mix( rFrom, rTo, s ) + lifted * sin( 3.14159265 * s ) );
+        link = la;
+        pull = gatherPull;
+      } else if ( i == kk ) {
+        goal = pin;
+        pinned = true;
+      } else {
+        float u = float( i - kk ) * lb;
+        goal = held + tailDir * lb + hOff( u ) - hOff( u - lb );
+        link = lb;
+        pull = tailPull;
+      }
+      way0 = tailDir;
+    }
+#endif
     vec3 next = goal;
-    if ( !lay ) {
+    if ( !lay && !pinned ) {
       ivec2 p = base + ivec2( 0, i );
       vec4 now = texelFetch( hNow, p, 0 );
       vec3 x = now.xyz, was = now.w > 1.5 ? now.xyz : texelFetch( hWas, p, 0 ).xyz;
@@ -327,8 +430,7 @@ void main() {
       v += ( vec3( 0.0, - gravity, 0.0 ) + drag * ( wind - v ) ) * hDt;
       v *= exp( - damping * hDt );
       next = x + v * hDt;
-      float along = float( i ) / float( LINKS );
-      next = mix( next, goal, 1.0 - exp( - mix( stiff.x, stiff.y, along ) * hDt ) );
+      next = mix( next, goal, 1.0 - exp( - pull * hDt ) );
       if ( i == 1 ) {
         float under = dot( next - root, n );
         if ( under < 0.0 ) next -= n * under;
@@ -341,7 +443,7 @@ void main() {
       }
       vec3 d = next - held;
       float far = length( d );
-      next = held + ( far > 1e-6 ? d / far : lies ) * l;
+      next = held + ( far > 1e-6 ? d / far : way0 ) * link;
     }
     held = next;
   }

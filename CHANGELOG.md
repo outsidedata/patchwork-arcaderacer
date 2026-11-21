@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-21-d5fb580
+
+- terrain3d — grass grows on the land in a game published as a static site.
+
+## 2026-11-21-d0d9c3e
+
+- hair3d — hair can be tied up into ponytails, pigtails and braids.
+
 ## 2026-11-20-97847d2
 
 - ui3d — a new plugin: shows things in 3D over the game, such as a logo title, that move, glow and answer the pointer and keys.

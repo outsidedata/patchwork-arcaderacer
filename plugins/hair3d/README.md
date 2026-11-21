@@ -84,6 +84,42 @@ A hair:
 
   A name the program does not give leaves that field as the file has it. What a program gives is worked
   out once for each lock and kept; a name that reads the clock (`time`) is worked out each frame.
+- `ties` (optional): where the hair is gathered, as a hair tie gathers it: a list of points, each carried
+  by a bone and never drawn. A ponytail is one, pigtails two, a head of braids a dozen. A hair with ties
+  has at least 3 `links`. Each tie:
+  - `bone`, `at`: the bone that carries it, named as `on.bones` names one, and its place in that bone's
+    frame as the skin was bound, metres.
+  - `reach`, `share`: a lock whose root is within `reach` metres of the tie, and whose own length reaches
+    it, is gathered to the nearest such tie; of those, `share` (0 to 1) are, each by a roll of its own, so
+    some hairs stay loose. Two ties either side of a head part the hair between them.
+  - `around`, `lift`: the centre the hair is laid round (the middle of the head), in the same frame, and
+    the metres the hair stands off the skin on its way: the links before the tie lie along an arc round the
+    centre from the lock's root to the tie, so the hair lies on the head and not through it.
+  - `hang`, `fall`, `side`: the way the hair hangs from the tie in the bone's frame, how far it gives in to
+    straight down (0 to 1), and the way across it, which a braid is woven across.
+  - `spread`, `flare`, `band`: the hair is `spread` metres wide round the way it hangs at the tie and opens
+    out to `flare` by its end; with a `band`, a second tie that many metres below the first, it stays
+    `spread` down to it and opens out past it, a tassel below a braid's tie. 0 is no band.
+  - `stiffness`: `[gathered, hanging]`, how hard the links are pulled back to where the tie holds them, a
+    second: the ones along the arc and the ones that hang. Low for a ponytail that swings, high for a braid.
+  - `braid`: `{ radius, pitch }`. With a `radius` above 0 each gathered lock is one of the three strands
+    of a plait, picked by a roll of its own, and the strands weave over and under each other: `radius`
+    metres either way across the hair, `pitch` metres for the six crossings it takes to come round. A plait
+    is only as fine as the links along it: a crossing wants about two links, so `links` is high (up to 32)
+    for a braid.
+
+  A lock gathered to a tie keeps its own length: as long as it is, less what the arc to the tie takes of
+  it, hangs below the tie, so the hair is ragged at its end as it was. The links that lie along the arc and
+  the one at the tie are laid by the tie, carried by its bone; the ones below hang, swing and meet the
+  body as any link does. A lock that is not gathered hangs as its `comb` and `stiffness` lay it.
+
+```json
+"ties": [
+  { "bone": "Head", "at": [0, 0.13, -0.13], "around": [0, 0.09, 0.015], "lift": 0.02, "hang": [0, -1, -0.4], "fall": 0.6,
+    "reach": 0.35, "share": 1, "spread": 0.02, "flare": 0.07, "band": 0, "side": [1, 0, 0], "stiffness": [40, 2.5],
+    "braid": { "radius": 0, "pitch": 0.12 } }
+]
+```
 
 ```json
 "program": {
@@ -129,8 +165,15 @@ A hair:
   lock and a texel a strand, shared by every body of the same geometry. The pass and the strands read
   them back and work out only what moves. A number of the hair changed keeps its locks again.
   `bodies()` gives how many times each has been written.
+- **The ties** are rooted with the locks: each lock keeps which tie it is gathered to, which of a plait's
+  three strands it is and two rolls that put it in its bundle. The ties' own numbers are a row of a small
+  texture each, in the skin's own frame as it was bound, written again when they change. The pass lays a
+  gathered lock's links in its own way: the links before its tie on the arc round the tie's centre, the
+  link at its tie where the tie's bone holds the tie, and the links after it hanging, each moved on by
+  where the bundle opens out and where the plait weaves.
 - A body's hair is built again when what it is rooted and built from changes (`on`, `density`, `strands`,
-  `length`, `links`, `segments`, `shadow`, `program`); every other number is read as it draws.
+  `length`, `links`, `segments`, `shadow`, `program`, and of its ties which locks they gather: their bone,
+  place, `reach` and `share`); every other number, the rest of a tie's among them, is read as it draws.
 
 It hands out `bodies()`, `roots(id, hair)`, `state(id, hair)` and `close()`.
 
@@ -185,8 +228,9 @@ game's hairs file grown on a test subject (a head, a ball, a neck, a tail's root
 is moved, turned and run forward, every number changed as it draws, those of a hair's `program`'s nodes
 among them, and saved into the file (`tools/workshop/README.md`).
 
-demo_hair3d is an X Bot with long hair walked round a yard among X Bots in fur; its `dev.html` tunes every
-number of its hairs file live. demo_puppet3d's horse wears a mane and a tail and its lion a mane, on
+demo_hair3d is an X Bot with long hair walked round a yard among X Bots in fur, a ponytail, pigtails, a long
+braid, braided pigtails tied at their ends and a head of braids; its `dev.html` tunes every number of its
+hairs file live. demo_puppet3d's horse wears a mane and a tail and its lion a mane, on
 puppet3d's bodies in its paddock and on crowd3d's in its herd (`dev.html?scene=herd`), each scene with a
 hairs file of its own.
 
@@ -209,6 +253,7 @@ hairs file of its own.
 ## Keywords
 
 hair, fur, mane, tail, beard, coat, strands, locks, guide hairs, GPU hair, hair simulation, follow the
-leader, Verlet, skinned mesh, bones, scalp, comb, clump, curl, wind, gusts, Kajiya-Kay, program of ops,
+leader, Verlet, skinned mesh, bones, scalp, comb, clump, curl, hair tie, ponytail, pigtails, braid, plait,
+ties, wind, gusts, Kajiya-Kay, program of ops,
 parting, bald patch, stripes, hair pattern, `world.hair3d`, hairs file, `program`, `keeper`,
 `bodies`, `roots`, `state`

@@ -16,8 +16,9 @@ import type { Ground, Land as Handed } from '#plugins/grass3d/grass3d.sim.ts'
 import { land as landOf, type Field, type Land, type Stroke } from './terrain3d.sim.ts'
 import { layoutOf } from './terrain3d.rings.ts'
 
-// This module, which grass3d's workers load to answer the land.
-const HERE = import.meta.url
+// This module, which grass3d's workers load to answer the land. Named as a `new URL` of its own file so
+// the static site's bundle (`scripts/bundle.ts`) finds it as a task of a worker and writes it as a file.
+const HERE = new URL('./terrain3d.grass3d.ts', import.meta.url).href
 
 const ids = new WeakMap<object, number>()
 let next = 0

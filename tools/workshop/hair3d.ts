@@ -33,8 +33,9 @@
 // game's scene delivers; **Revert** reads the file again. The file written on disk by anything else is
 // read again when nothing here is unsaved.
 //
-// `window.__workshop` is `{ plugins, world, shown, frame }`, for driving the page from a console: `frame()`
-// is one frame, which a window behind others, given none by the browser, is stepped with.
+// `window.__workshop` is `{ plugins, world, shown, frame, orbit }`, for driving the page from a console:
+// `frame()` is one frame, which a window behind others, given none by the browser, is stepped with, and
+// `orbit` the camera's controls, whose `target` it looks at.
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { loader } from '#plugins/loader/loader.plugin.ts'
@@ -119,7 +120,7 @@ const groups = (h: Hair): { title: string; note: string; fields: Field[] }[] => 
       num(['strands'], 'strands a lock', '', 1, 40, 1),
       num(['length', 0], 'length', 'm', 0.01, 1.5, 0.005),
       num(['length', 1], 'length spread', '', 0, 2, 0.05),
-      num(['links'], 'links', '', 1, 16, 1),
+      num(['links'], 'links', '', 1, 32, 1),
       num(['segments'], 'segments', '', 1, 24, 1),
       { is: 'flag', path: ['shadow'], label: 'casts shadows' },
     ],
@@ -164,6 +165,35 @@ const groups = (h: Hair): { title: string; note: string; fields: Field[] }[] => 
       num(['translucency'], 'translucency', '', 0, 2, 0.01),
     ],
   },
+  ...(h.ties ?? []).map((t, i) => ({
+    title: h.ties!.length === 1 ? 'Its tie' : `Its tie ${i + 1}`,
+    note: `Held by the bone ${t.bone}, never drawn. Its place, reach and share decide which locks are gathered to it, and changing any of them roots and builds the hair again; the rest is read as it draws.`,
+    fields: [
+      num(['ties', i, 'at', 0], 'place x', 'm', -0.5, 0.5, 0.005),
+      num(['ties', i, 'at', 1], 'place y', 'm', -0.5, 0.5, 0.005),
+      num(['ties', i, 'at', 2], 'place z', 'm', -0.5, 0.5, 0.005),
+      num(['ties', i, 'reach'], 'reach', 'm', 0.01, 0.6, 0.005),
+      num(['ties', i, 'share'], 'share gathered', '', 0, 1, 0.01),
+      num(['ties', i, 'around', 0], 'laid round x', 'm', -0.3, 0.3, 0.005),
+      num(['ties', i, 'around', 1], 'laid round y', 'm', -0.3, 0.3, 0.005),
+      num(['ties', i, 'around', 2], 'laid round z', 'm', -0.3, 0.3, 0.005),
+      num(['ties', i, 'lift'], 'stands off the skin', 'm', 0, 0.1, 0.001),
+      num(['ties', i, 'hang', 0], 'hangs x', '', -1, 1, 0.01),
+      num(['ties', i, 'hang', 1], 'hangs y', '', -1, 1, 0.01),
+      num(['ties', i, 'hang', 2], 'hangs z', '', -1, 1, 0.01),
+      num(['ties', i, 'fall'], 'gives in to straight down', '', 0, 1, 0.01),
+      num(['ties', i, 'spread'], 'bundle at the tie', 'm', 0, 0.08, 0.001),
+      num(['ties', i, 'flare'], 'bundle at the end', 'm', 0, 0.15, 0.001),
+      num(['ties', i, 'band'], 'second tie below', 'm', 0, 0.6, 0.005),
+      num(['ties', i, 'side', 0], 'across x', '', -1, 1, 0.01),
+      num(['ties', i, 'side', 1], 'across y', '', -1, 1, 0.01),
+      num(['ties', i, 'side', 2], 'across z', '', -1, 1, 0.01),
+      num(['ties', i, 'stiffness', 0], 'stiffness, gathered', '/s', 0, 120, 0.5),
+      num(['ties', i, 'stiffness', 1], 'stiffness, hanging', '/s', 0, 60, 0.5),
+      num(['ties', i, 'braid', 'radius'], 'braid swing', 'm', 0, 0.05, 0.0005),
+      num(['ties', i, 'braid', 'pitch'], 'braid pitch', 'm', 0.02, 0.5, 0.005),
+    ],
+  })),
   ...(h.program ? [{ title: 'Its program', note: 'The numbers of its nodes, by node, which root and build the hair again. The ops, the wiring and the outputs are written in the file.', fields: programFields(h) }] : []),
 ]
 // The file's wind and gust, each path from the file.
@@ -335,7 +365,11 @@ function show() {
   shown.wind = edited!.wind
   shown.gust = edited!.gust
   shown.kinds = { [subject]: { hairs: [hair] } }
-  shown.hairs = { [hair]: { ...h, on: s.on } as Hair }
+  // its ties are carried by the subject's one bone: each place the game says in the frame of its own bone
+  // (a head's, whose origin is at the neck) moved by where that frame's origin is in the subject's
+  const o = s.ties?.origin ?? [0, 0, 0]
+  const moved = (p: [number, number, number]): [number, number, number] => [p[0] + o[0], p[1] + o[1], p[2] + o[2]]
+  shown.hairs = { [hair]: { ...h, on: s.on, ties: s.ties ? h.ties?.map(t => ({ ...t, bone: 'anchor', at: moved(t.at), around: moved(t.around) })) : undefined } as Hair }
 }
 
 let world: Json
@@ -449,7 +483,7 @@ async function build(f: Found, stage: Stage) {
     const b = (P.hair3d.bodies() as { patches: { locks: number; strands: number }[] }[])[0]
     $('#hud').textContent = b ? `${b.patches[0].locks} locks\n${b.patches[0].strands} strands` : ''
   }
-  ;(window as Json).__workshop = { plugins: P, world, shown, frame }
+  ;(window as Json).__workshop = { plugins: P, world, shown, frame, orbit }
   const loop = () => { requestAnimationFrame(loop); frame() }
   requestAnimationFrame(loop)
 }
