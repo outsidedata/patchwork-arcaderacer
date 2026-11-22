@@ -2,7 +2,7 @@
 // out: `node .claude/skills/committing-a-game/scripts/raw.mjs games/<game>`, from the root.
 // It reads the files git would commit in that folder, tracked and untracked but not ignored, so a
 // game's `.gitignore` is honoured, and names:
-//   a glb not packed by gltfpack: its `asset.generator` is not gltfpack's, so it is a plain export
+//   a glb not packed by gltfpack or by pro-ng's `pack.mjs` (meshopt, EXT_meshopt_compression required): a plain export
 //   a model or scene source: .fbx .blend .blend1 .obj .gltf .dae .3ds .max .ma .mb .usd .usda .usdc .usdz
 //   an archive: .zip .7z .rar .tar .gz .tgz
 //   a working picture: .psd .kra .xcf .exr .tif .tiff .tga
@@ -34,13 +34,17 @@ const ARCHIVE = /\.(zip|7z|rar|tar|gz|tgz)$/i
 const WORKING = /\.(psd|kra|xcf|exr|tif|tiff|tga)$/i
 const JPG = /\.jpe?g$/i
 
-// The generator a glb names in its JSON chunk, or why it has none.
+// How a glb was packed, from its JSON chunk: gltfpack's own generator, or pro-ng's `pack.mjs` (the library's kit
+// cars, bikes and places), which compresses as gltfpack does and says so by requiring EXT_meshopt_compression. Anything
+// else is a plain export, named by its generator, or why it has none.
 const generator = file => {
   const b = fs.readFileSync(file)
   if (b.length < 20 || b.toString('ascii', 0, 4) !== 'glTF') return 'not a glb'
   const length = b.readUInt32LE(12)
   if (b.toString('ascii', 16, 20) !== 'JSON') return 'no JSON chunk'
-  return JSON.parse(b.toString('utf8', 20, 20 + length)).asset?.generator ?? 'no generator'
+  const json = JSON.parse(b.toString('utf8', 20, 20 + length))
+  if (json.extensionsRequired?.includes('EXT_meshopt_compression')) return 'gltfpack-compatible meshopt (pro-ng pack.mjs)'
+  return json.asset?.generator ?? 'no generator'
 }
 
 const raw = []
@@ -49,7 +53,7 @@ for (const f of files) {
   const full = path.join(dir, f)
   if (/\.glb$/i.test(f)) {
     const g = generator(full)
-    if (!/^gltfpack/i.test(g)) raw.push(`${f}  glb not packed by gltfpack (generator: ${g})`)
+    if (!/^(gltfpack|gltfpack-compatible)/i.test(g)) raw.push(`${f}  glb not packed by gltfpack (generator: ${g})`)
   } else if (SOURCE.test(f)) raw.push(`${f}  model or scene source`)
   else if (ARCHIVE.test(f)) raw.push(`${f}  archive`)
   else if (WORKING.test(f)) raw.push(`${f}  working picture`)

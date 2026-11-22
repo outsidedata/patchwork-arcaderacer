@@ -87,6 +87,76 @@ async function live(run: () => Promise<void>) {
 }
 const wait = (ms: number) => new Promise((done) => setTimeout(done, ms))
 
+// What a song sounds like played in time, for what Tone.Offline cannot render: it runs every transport
+// callback before it renders, so a Part made or started while the song plays is not heard in it. A
+// real-time context to no device, Tone's look-ahead `lookAhead`, its output copied block by block by a
+// ScriptProcessorNode on Tone's destination at each block's playbackTime; the song loaded, `during`
+// handed the daw and `when(seconds, f)`, which calls `f` as the song reaches that many seconds, and
+// then the song played from tick 0 (so what `during` does at once is done with the transport
+// stopped); the capture handed back from the transport's start, as `render`'s is.
+type Heard = { peak(from: number, to: number, channel?: number): number; onsets(level?: number): number[] }
+async function heard(p: Project, seconds: number, during?: (daw: ReturnType<typeof audiodaw>, when: (at: number, f: () => void) => void) => void, ranges?: (k: Knob) => Range, lookAhead = 0.1): Promise<Heard> {
+  const was = Tone.getContext()
+  const raw = new web.AudioContext({ sinkId: { type: 'none' } } as AudioContextOptions)
+  const ctx = new Tone.Context(raw as unknown as AudioContext)
+  ctx.lookAhead = lookAhead
+  Tone.setContext(ctx)
+  const rate = raw.sampleRate
+  const total = Math.ceil(seconds * rate)
+  const out = [new Float32Array(total), new Float32Array(total)]
+  try {
+    const daw = audiodaw()
+    daw.load(p, ranges)
+    await daw.start()
+    let start = Infinity
+    // A ScriptProcessorNode hands its input two blocks after it was played: its playbackTime is that
+    // of the block it outputs, the input's two blocks earlier.
+    const block = 1024
+    const late = (2 * block) / rate
+    const tap = raw.createScriptProcessor(block, 2, 2)
+    tap.onaudioprocess = (e) => {
+      const at = Math.round((e.playbackTime - late - start) * rate)
+      for (let c = 0; c < 2; c++) {
+        const block = e.inputBuffer.getChannelData(c)
+        for (let i = 0; i < block.length; i++) if (at + i >= 0 && at + i < total) out[c]![at + i] = block[i]!
+      }
+    }
+    Tone.getDestination().connect(tap as unknown as Tone.InputNode)
+    tap.connect(raw.destination)
+    // Tone's transport starts at the context's now(), the look-ahead past what is heard.
+    const begun = performance.now() + lookAhead * 1000
+    during?.(daw, (at, f) => setTimeout(f, Math.max(0, begun + at * 1000 - performance.now())))
+    start = Tone.getContext().now()
+    daw.play(0)
+    await wait((seconds + lookAhead) * 1000 + 300)
+    daw.dispose()
+    tap.disconnect()
+  } finally {
+    await ctx.close()
+    Tone.setContext(was)
+  }
+  return {
+    peak(from, to, channel = 0) {
+      let most = 0
+      for (let i = Math.floor(from * rate); i < Math.min(total, Math.floor(to * rate)); i++) most = Math.max(most, Math.abs(out[channel]![i]!))
+      return most
+    },
+    // Every time in seconds the left channel rises above `level` after 30 ms under it.
+    onsets(level = 0.05) {
+      const quiet = Math.floor(0.03 * rate)
+      const found: number[] = []
+      let last = -quiet
+      const x = out[0]!
+      for (let i = 0; i < total; i++) {
+        if (Math.abs(x[i]!) < level) continue
+        if (i - last >= quiet) found.push(i / rate)
+        last = i
+      }
+      return found
+    },
+  }
+}
+
 // An automation track aimed at `target`, its pattern `a` of `notes` two seconds long.
 const automation = (target: Knob, notes: AutomationNote[], mute = false): AutomationTrack =>
   ({ kind: 'automation', name: 'auto', color: '#0af', target, patterns: { a: { length: 2 * second, notes } }, mute })
@@ -260,9 +330,9 @@ describe('audiodaw through Tone', () => {
 
   it('plays an edit to a pattern notes while it plays', async () => {
     const start = project([device('a')], [track('a', [note(0)], 2 * second)])
-    const out = await render(start, 2, at(0.5, () => addNote(start, 0, 'a', note(second))))
-    expect(peak(out, 0.2, 0.95)).toBeLessThan(0.01)
-    expect(peak(out, 1, 1.1)).toBeGreaterThan(0.1)
+    const out = await heard(start, 1.5, (daw, when) => when(0.5, () => daw.edit(addNote(start, 0, 'a', note(second)))))
+    expect(out.peak(0.2, 0.95)).toBeLessThan(0.01)
+    expect(out.peak(1, 1.1)).toBeGreaterThan(0.1)
   })
 
   it('makes the Part again when a pattern length or from is edited', async () => {
@@ -270,8 +340,8 @@ describe('audiodaw through Tone', () => {
     const plain = await render(start, 2)
     expect(peak(plain, 0.9, 2)).toBeLessThan(0.01)
     // Before the song's end, which is the half-second clip's end until the edit moves it.
-    const longer = await render(start, 2, at(0.25, () => setLength(start, 0, 'a', 2 * second)))
-    expect(peak(longer, 1, 1.1)).toBeGreaterThan(0.1)
+    const longer = await heard(start, 1.5, (daw, when) => when(0.25, () => daw.edit(setLength(start, 0, 'a', 2 * second))))
+    expect(longer.peak(1, 1.1)).toBeGreaterThan(0.1)
   })
 
   it('plays a pattern whose from was set, its played notes where they were in the song', async () => {
@@ -283,13 +353,13 @@ describe('audiodaw through Tone', () => {
 
   it('takes tracks added and removed mid-song without a reload', async () => {
     const p = project(stereo(), [track('l', [note(second)], 2 * second, 0), track('r', [note(second, 48, 'E5')], 2 * second, 1)])
-    const added = await render(p, 2, at(0.5, () => addClip(addTrack(p, track('new', [note(1.5 * second)], 2 * second, 0)), { track: 2, pattern: 'a', start: 0 })))
-    expect(peak(added, 1, 1.1, 0)).toBeGreaterThan(0.1)
-    expect(peak(added, 1.5, 1.6, 0)).toBeGreaterThan(0.1)
-    expect(peak(added, 1, 1.1, 1)).toBeGreaterThan(0.1)
-    const removed = await render(p, 2, at(0.5, () => removeTrack(p, 0)))
-    expect(peak(removed, 0.9, 2, 0)).toBeLessThan(0.001)
-    expect(peak(removed, 1, 1.1, 1)).toBeGreaterThan(0.1)
+    const added = await heard(p, 2, (daw, when) => when(0.5, () => daw.edit(addClip(addTrack(p, track('new', [note(1.5 * second)], 2 * second, 0)), { track: 2, pattern: 'a', start: 0 }))))
+    expect(added.peak(1, 1.1, 0)).toBeGreaterThan(0.1)
+    expect(added.peak(1.5, 1.6, 0)).toBeGreaterThan(0.1)
+    expect(added.peak(1, 1.1, 1)).toBeGreaterThan(0.1)
+    const removed = await heard(p, 1.5, (daw, when) => when(0.5, () => daw.edit(removeTrack(p, 0))))
+    expect(removed.peak(0.9, 1.5, 0)).toBeLessThan(0.001)
+    expect(removed.peak(1, 1.1, 1)).toBeGreaterThan(0.1)
   })
 
   it('makes the rack again when a device is added or removed by an edit', async () => {
@@ -561,6 +631,86 @@ describe('audiodaw through Tone', () => {
       expect(daw.playing).toBe(true)
       daw.dispose()
     })
+  })
+})
+
+// Onsets heard where a DAW plays them, each within 20 ms.
+function onTime(got: number[], expected: number[]) {
+  expect(got.length, `heard ${got.map(g => g.toFixed(3)).join(' ')}`).toBe(expected.length)
+  got.forEach((g, i) => expect(Math.abs(g - expected[i]!), `onset ${i} at ${g.toFixed(3)} s, not ${expected[i]} s`).toBeLessThan(0.02))
+}
+
+// A song of one device and one track, no clips, the track's patterns `x` (a note each beat, a beat
+// long) and `y` (a note each eighth, a beat long) in the slots of scenes 0 and 1. A launch waits for
+// the next beat (192 ticks, half a second at 120 bpm).
+const beat = 192
+const short = (time: number) => note(time, 24)
+function session(): Project {
+  const t: NoteTrack = {
+    kind: 'notes', name: 't', color: '#fff', target: 0,
+    patterns: { x: { length: beat, notes: [short(0)] }, y: { length: beat, notes: [short(0), short(96)] }, z: { length: 2 * beat, notes: [short(0)] } },
+    slots: ['x', 'y'],
+    mute: false, solo: false,
+  }
+  return { ...project([device('a')], [t]), clips: [], scenes: [{ name: 'one' }, { name: 'two' }], launch: beat }
+}
+
+describe('audiodaw clips that loop', () => {
+  it('repeats a pattern to fill a clip longer than it, and stops at the clip end', async () => {
+    // A half-second pattern in a two-second clip: its note four times.
+    const p = { ...project([device('a')], [track('a', [short(0)], second / 2)]), clips: [{ track: 0, pattern: 'a', start: 0, length: 2 * second }] }
+    const out = await render(p, 3)
+    for (const t of [0, 0.5, 1, 1.5]) expect(peak(out, t, t + 0.05)).toBeGreaterThan(0.1)
+    expect(peak(out, 2, 3)).toBeLessThan(0.01)
+  })
+})
+
+describe('audiodaw session', () => {
+  it('brings a launched slot in on the next beat, and another in its place on the beat after a second press', async () => {
+    const out = await heard(session(), 2.4, (daw, when) => {
+      when(0.1, () => daw.launch(0, 0))
+      when(1.1, () => daw.launch(0, 1))
+    })
+    onTime(out.onsets(), [0.5, 1, 1.5, 1.75, 2, 2.25])
+  })
+
+  it('plays a slot launched while stopped from where play starts', async () => {
+    const out = await heard(session(), 1.4, (daw) => daw.launch(0, 0))
+    onTime(out.onsets(), [0, 0.5, 1])
+  })
+
+  it("keeps a slot launched inside the song's loop playing through every wrap", async () => {
+    // The song cycles over its first second; the slot of a note each beat comes in on the second beat,
+    // and is heard on every beat after, the first of each pass of the loop among them.
+    const p = { ...session(), loop: { start: 0, end: 2 * beat } }
+    const out = await heard(p, 2.4, (daw, when) => {
+      daw.cycle(true)
+      when(0.1, () => daw.launch(0, 0))
+    })
+    onTime(out.onsets(), [0.5, 1, 1.5, 2])
+  })
+
+  it('holds back the arrangement of a track the session plays, and hears it again back in the arrangement', async () => {
+    // The arrangement: pattern z, a note each second, for four seconds. The session's slot of a note
+    // each eighth comes in at 0.5 s and holds the track until BACK TO ARRANGEMENT at 1.6 s.
+    const p = { ...session(), clips: [{ track: 0, pattern: 'z', start: 0, length: 8 * beat }] }
+    p.tracks = [{ ...(p.tracks[0] as NoteTrack), slots: ['y'] }]
+    const out = await heard(p, 2.4, (daw, when) => {
+      when(0.1, () => daw.launch(0, 0))
+      when(1.6, () => daw.arrange())
+    })
+    onTime(out.onsets(), [0, 0.5, 0.75, 1, 1.25, 1.5, 2])
+  })
+
+  it("loops an automation slot's line on its knob, pass after pass", async () => {
+    // A device at −12 dB holding a note; an automation slot of a beat dips its volume to −60 dB for
+    // the first half of each beat, from the beat it comes in on.
+    const dip: AutomationTrack = { kind: 'automation', name: 'dip', color: '#0af', target: { part: 'volume', strip: { device: 0 } }, patterns: { d: { length: beat, notes: [automationNote(0, beat / 2, 0, 0)] } }, slots: ['d'], mute: false }
+    const p: Project = { ...project([held()], [track('a', [note(0, 8 * second)], 8 * second), dip]), clips: [{ track: 0, pattern: 'a', start: 0 }], scenes: [{ name: 'one' }], launch: beat }
+    const out = await heard(p, 1.9, (daw, when) => when(0.1, () => daw.launch(1, 0)), ranges)
+    const own = out.peak(0.1, 0.4)
+    for (const t of [0.55, 1.05, 1.55]) expect(out.peak(t, t + 0.15), `dipped at ${t} s`).toBeLessThan(own / 4)
+    for (const t of [0.8, 1.3]) expect(out.peak(t, t + 0.15), `own at ${t} s`).toBeGreaterThan(own / 2)
   })
 })
 

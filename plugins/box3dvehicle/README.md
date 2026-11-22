@@ -3,9 +3,10 @@
 Driveable cars on box3d: a chassis, a wheel per corner and a wheel joint each, made from one
 description, driven by throttle, brake, steer and gear, riding on a suspension of springs, dampers,
 bump stops and anti-roll bars. Direct-drive, petrol (torque curve, manual or automatic gearbox) or
-electric engines. The page draws the whole car (body, open jeep tub, fenders, bumpers, grille,
-lamps that light, tyres with tread, springs, dampers, arms, solid axles) or a baked model, with
-exhaust smoke, dust, tyre tracks and engine sound.
+electric engines. The page draws a pro-ng kit model from the library (its body rigged so its
+suspension and steering move as the physics does, its lamps lit as it brakes, reverses and has its
+headlights on), or a car of its own (body, fenders, bumpers, grille, lamps that light, tyres with
+tread, springs, dampers, arms), with exhaust smoke, dust, tyre tracks and engine sound.
 
 ## Why use it
 
@@ -42,19 +43,20 @@ With `hit` and the `bodies` and `strike` mods, a chassis moving at `hit.speed` o
 bodies its box meets for `hit.damage` per m/s.
 
 **Browser half (`box3dvehicle.plugin.ts`).** Every car is drawn from its Vehicle's `look` and
-placed each frame from its rows. Without `model` it builds the body box and cabin, or an open jeep
-(tub, hood, dash, seats, steering wheel, windshield, roll bar), fenders, bumpers, grille, headlights
-that throw spot lights, tail, brake and reverse lights, a spare, revolved tyres with chevron tread on
-dished rims, and at each corner a coil spring, damper and arms that squash with the wheel, or a solid
-axle (`solid`) with links, shocks and a driveshaft, or independent suspension (`independent`): double
-wishbones, knuckles, a rack and tie rods at the front, trailing arms held by radius rods at the rear,
-coilovers with a main and a tender spring and a piggyback reservoir, anti-roll bars with end links,
-half-shafts, hubs and brakes, every arm rigid and swinging about its pivots, each wheel drawn on the
-arc its arms give it (its camber, toe and how far it moves in and out) while its physics wheel slides
-straight up and down on its spring. With `model` a baked glb is drawn on the chassis
-instead, its lamps and steering wheel found by node name. `points` are named empties (a seat, the
-grips on the wheel) for a body to sit at and hold. Parts that never move against each other are
-merged into one mesh per material.
+placed each frame from its rows. Without `model` it builds the body box and cabin, fenders, bumpers,
+grille, headlights that throw spot lights, tail, brake and reverse lights, a spare, revolved tyres
+with chevron tread on dished rims, and at each corner a coil spring, damper and arms that squash with
+the wheel; it draws no steering wheel. With `model` a glb is drawn on the chassis instead. A pro-ng
+kit model (it names its `looks`, drawn through the `models` mod, supershader3d's) is the way a game's
+car is made: the library's vehicles (`pro-ng/kit/modern/vehicles/`) are built to the contract in
+`pro-ng/kit/modern/vehicles/BOX3DVEHICLE.md`. Its body's skeleton is the suspension and steering, and
+`look.rig` names the kit thing whose clips box3dvehicle poses every frame: `steer` from the row's
+steer, and each wheel's `travel <axle> <side>` from its compression. Its lamps are materials with lit
+twins, named in `look.lamps`, drawn lit while their group is (`head`, `tail`, `reverse`, `amber`). Its
+`steer…` node is the steering wheel, turned by `look.lock`, and `look.wheel` (and `look.hubs`) are
+models of their own on each wheel. A loader `model` glb has its lamps and steering wheel found by node
+name. `points` are named empties (a seat, the grips on the wheel) for a body to sit at and hold.
+Parts that never move against each other are merged into one mesh per material.
 
 The lamps, `look.lights`: the headlight beams aim `beam.dip` radians down and `beam.toe` radians out
 to each side; with `beam.at` `[x, y, z]` the two beams stand there on the chassis (the left at −z,
@@ -106,8 +108,18 @@ crossfaded by `rpm` and throttle.
    - `chassis`, `wheel`, `joint`: the kinds of the parts' rows.
    - `vehicles`: name to Vehicle: `body` (`length`, `height`, `width`, `mass`, `center`, `friction`,
      `cabin`), `bodies`, `axles` (each `at`, `track`, `mount`, `wheel`, `spring`, `damper`,
-     `bumpStop`, `antiRoll`, `driven`, `steered`), `engine` (direct, petrol or electric), `steering`,
-     `pedal`, `look`, `hit`.
+     `bumpStop`, `antiRoll`, `driven`, `steered`, and `one`, `rake`, `brakeTorque`), `engine` (direct, petrol
+     or electric), `steering`, `balance`, `pedal`, `look`, `hit`. A **one-wheel axle** (`one: true`, `track` 0)
+     carries one wheel on the middle line, and a vehicle of two of them is a motorcycle: it has no tilt across
+     to stand on, so its springs carry the lever rule's shares, and its `balance` (`hertz`, `dampingRatio`,
+     `torque`, `lean`, `rate`, `reference`, `floor`) holds it up and leans it into its turns with a roll torque
+     on the chassis (`box3dvehicle.sim.ts`, Balance); the row writes `aim`, `lean` and `speed`. An axle's `rake`
+     tips its spring's line, which its wheel steers about too, back from up (a fork's), `at` and `mount` the
+     spring's top where that line puts it from the wheel's rest place. An axle's `brakeTorque` is its wheels'
+     torque at brake 1 in place of the engine's (a bike brakes mostly with its front). The body's `inertia`
+     [roll, yaw, pitch] replaces the box's own. A vehicle with a one-wheel axle is drawn by its `look.model`,
+     its `look.wheel` a `{ centre }` model, or a list of them for each axle, and its rig's clips
+     `travel <axle> centre` (`pro-ng/kit/modern/vehicles/BOX3DVEHICLE.md`, "A one-wheel axle").
    - `lightsOff`: true for no brake or reverse lights, and headlights lit only by the `lights` act.
    - `mods`: `{ gravity, land, grip, drag, bodies, strike, sound }`. `gravity` is required.
 3. Put a `box3dvehicle` row in `actors` with `vehicle`, `pos`, `rot` and, if it starts moving,
@@ -118,25 +130,15 @@ crossfaded by `rpm` and throttle.
 Helpers: `design(world, row)` (a car's Vehicle), `pointOf(v, name)`, `corners(v)`, `wheelAt`,
 `loads(v, g)`, `ride(v, g)`, `torqueAt(curve, rpm)`, `along(points, x)` (a curve of `[x, y]` points
 read at `x`), `automatic(v)`, `pedals(v, car)`,
-`shift(me, v, by)`, `solidParts`. On the page, `plugins.box3dvehicle.point(id, name)` is a point's
-empty as drawn this frame.
+`shift(me, v, by)`, `turned(v, corner, steer, mid)` (a steered wheel's angle, with `steering.ackermann`).
+On the page, `plugins.box3dvehicle.point(id, name)` is a point's empty as drawn this frame.
 
-`truck/` holds the Blender scripts that build a vehicle's `look.model` to its scene numbers
-(`truck.py`, the monster truck on solid axles, and `utv.py`, a long-travel side-by-side on
-independent suspension, both on the building blocks of `kit.py`), and the checker (`parts.ts` then
-`look.py`) that measures the model's clearance against every wheel at rest, full bump, full droop,
-crossed and at full lock, and prints coplanar faces that z-fight. For independent suspension it also
-prints how far each drawn wheel sits from its physics wheel and its camber and steer in every state
-(`parts.ts`'s OFFSET lines), and each part's room against the body, the tyres and every other part it
-is not joined to, and each coilover's stroke and springs:
-
-```
-Blender -b --factory-startup --python plugins/box3dvehicle/truck/truck.py -- <scene.json> <vehicle> <out.glb>
-Blender -b --factory-startup --python plugins/box3dvehicle/truck/utv.py -- <scene.json> <vehicle> <out.glb>
-node --experimental-strip-types plugins/box3dvehicle/truck/parts.ts <scene.json> <vehicle> <outdir>
-Blender -b --python plugins/box3dvehicle/truck/look.py -- <scene.json> <vehicle> <model.glb> <outdir>
-```
-
+A game makes its cars from the library's kit with its bake: each car a body scene (the compound with
+its wheels and steering wheel left out, and its `interior/steering` placed alone as the thing `steer`)
+and a scene for each side's wheel, cut and packed into `<name>.kit.glb` and `<name>.kit.looks.json`, the
+spring and steering numbers of the car's entry written into its body scene as the kit's ride keys.
+`games/vehicles/assets/kit.make.ts` and `ride.make.ts` are the model, and its
+`vehicles.models.test.ts` and `vehicles.rig.test.ts` the standard every car is held to.
 ## Plugins it works with
 
 - **gpgpu3d**: the mod `box3dvehicle.gpgpu3d.ts` (`world.gpgpu3d.mods: { things: ['box3dvehicle'],
@@ -169,6 +171,9 @@ Blender -b --python plugins/box3dvehicle/truck/look.py -- <scene.json> <vehicle>
   ['box3dvehicle']`) hands it the same sources, for `world.gpuparticle3d.attach`.
 - **render3d**: draws the car and dresses its materials, so the sky, wet and snow reach it.
 - **loader**: a `look.model` glb and the engine sound manifest.
+- **supershader3d**: the mod `supershader3d.box3dvehicle.ts` (`mods: { models: 'supershader3d' }`) builds a
+  pro-ng model's mesh in the scene's one shader, plays its rig's clips and hands the look numbers of each
+  lamp's lit twin.
 - **player**: a seat's `player` row relays presses to the car it holds.
 
 ## Keywords
@@ -178,5 +183,5 @@ bar, preload, sag, throttle, brake, steer, steering, handbrake, gearbox, gears, 
 clutch, rpm, torque curve, redline, petrol, electric motor, regen, four-wheel drive, front-wheel
 drive, rear-wheel drive, one pedal, arcade driving, reverse, tyre grip, friction, rolling resistance,
 mud, skid marks, tyre tracks, dust, exhaust smoke, headlights, brake lights, engine sound, solid
-axle, procedural car model, Blender, get in the car, enter vehicle, `vehicle`, `scrap`,
+axle, independent suspension, pro-ng, kit, rig, ride clips, lit twin, Ackermann, get in the car, enter vehicle, `vehicle`, `scrap`,
 `world.box3dvehicle`

@@ -6,15 +6,27 @@
     "loader": {
       "mods": { "shaders": "render3d" },
       "assets": {
-        "splash": {
+        "ar1": {
           "type": "texture",
-          "url": "/games/arcaderacer/assets/loading/splash.webp",
+          "url": "/games/arcaderacer/assets/loading/ar1.webp",
           "for": "ui",
           "preload": true
         },
-        "logo": {
+        "ar2": {
           "type": "texture",
-          "url": "/games/arcaderacer/assets/loading/logo.webp",
+          "url": "/games/arcaderacer/assets/loading/ar2.webp",
+          "for": "ui",
+          "preload": true
+        },
+        "ar3": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/loading/ar3.webp",
+          "for": "ui",
+          "preload": true
+        },
+        "ar4": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/loading/ar4.webp",
           "for": "ui",
           "preload": true
         },

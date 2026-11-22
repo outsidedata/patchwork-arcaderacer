@@ -146,6 +146,24 @@ test('while the art comes down the screen covers the canvas, shows its picture o
   U.close()
 })
 
+test('a line that gives a picture shows it at the panel\'s corner at the size it was made, while that line shows, and a line with none shows none', async () => {
+  const lines = { ...look.lines, text: [{ text: 'Hold shift to run.', picture: 'splash' }, 'Giants sleep at dusk.'] }
+  const { U, L, frame } = await page(scene({ ...look, pictures: [], lines }))
+  frame(0)
+  expect((on(U).get('line picture') as PIXI.Sprite).visible).toBe(false)
+  await landed(L, frame, 2)
+  frame(0.5)
+  const sprite = on(U).get('line picture') as PIXI.Sprite
+  expect([sprite.visible, sprite.texture, sprite.x, sprite.y, sprite.width, sprite.height]).toEqual([true, splash, 0, 0, 4, 4])
+  // The bar and the words are drawn over it, though it landed after them.
+  expect([...on(U).keys()]).toEqual(['cover', 'line picture', 'bar', 'line'])
+  frame(2.1)
+  expect(sprite.visible).toBe(false)
+  frame(4.2)
+  expect(sprite.visible).toBe(true)
+  U.close()
+})
+
 test('once everything the first tick started is in, the screen fades over its fade, then goes and lets go of the input, and never comes back', async () => {
   const { U, L, frame } = await page()
   frame(0)
@@ -283,6 +301,7 @@ test('numbers of the wrong shape throw the first frame, naming the panel', async
   await expect(bad({ ...look, fade: -1 }).then(f => f(0))).rejects.toThrow('ui panel loading\'s loading fade -1 is not a number of seconds from 0')
   await expect(bad({ ...look, pictures: [{ picture: 'level', at: [0, 0], size: [1, 1] }] }).then(f => f(0))).rejects.toThrow('ui panel loading\'s loading picture level is no preloaded texture entry for ui in world.loader.assets')
   await expect(bad({ ...look, lines: { ...look.lines, every: 0 } }).then(f => f(0))).rejects.toThrow('ui panel loading\'s loading lines every 0 is not a number of seconds above 0')
+  await expect(bad({ ...look, lines: { ...look.lines, text: [{ text: 'x', picture: 'level' }] } }).then(f => f(0))).rejects.toThrow('ui panel loading\'s loading lines picture level is no preloaded texture entry for ui in world.loader.assets')
   await expect(bad({ ...look, lines: { ...look.lines, text: [] } }).then(f => f(0))).rejects.toThrow('ui panel loading\'s loading lines has no text')
 })
 

@@ -328,6 +328,16 @@
 // does an `attach` with no `mods.sources`, and a source's driver the file has none of, the frame it is
 // handed.
 //
+// The sky's light. A particle is drawn unlit, its colour its own, so with no light but its own it is as
+// bright at night as at noon. `world.particle3d.mods.light` names the plugin that hands over the light of the
+// scene's sky (skydome3d's, `skydome3d.particle3d.ts`), which exports `light(plugins)`, asked once a frame
+// after the sky has drawn: `[r, g, b]`, the share of its own colour each channel of a particle is drawn in,
+// 1 where the sky is brightest, under it as the sun sets, the weather closes in and night comes, or
+// undefined while the sky has none yet, drawn in its own colour until then. Every particle is times it,
+// glow (`gain`) and what it `add`s included: a fire that must shine at night is a `lamp` and its light, which
+// no sky dims, never its particles' own colour. With no `light` named a particle is drawn in its own
+// colour always. The plugin it names is listed before this one (`ahead`).
+//
 // A spawn, a rule's entry or what a page's `emit` is handed, is the effect's point `at` and:
 //
 //   life     the seconds it goes on emitting; left out, 0, one burst.
@@ -369,7 +379,7 @@
 // `close` frees every mesh and the texture of particle3d's own shapes; the sheets are the loader's and stay.
 import type { Plugins } from '#engine/browser.ts'
 import { seeded, type Die } from '#engine/engine.ts'
-import { modsOf } from '#addons/scenemanager/scenemanager.addon.ts'
+import { ahead, mod, modsOf } from '#addons/scenemanager/scenemanager.addon.ts'
 import { play, type Frame } from '#plugins/loader/loader.sim.ts'
 import { flight, type Entry, type Land, type Spawn } from './particle3d.sim.ts'
 import { CELL, SHAPES, corners, strip, type Shape } from './shapes.ts'
@@ -460,6 +470,9 @@ const LIMITS: Record<string, [number, number]> = {
 export type Meet = (from: number[], dir: number[], far: number) => { t: number; normal: number[] } | undefined
 // What a `solids` mod exports: asked once a frame.
 export type Solids = (plugins: Plugins) => Meet
+// What a `light` mod hands back each frame: how much light each channel of a particle's colour takes, a
+// share of its own, or undefined while there is none yet (the header, The sky's light).
+export type SkyLight = (plugins: Plugins) => number[] | undefined
 // A word's Drawer, its Drawing, and one particle as a Drawing is handed it (the header, Words).
 export type Put = { at: number[]; rot: number[]; size: number; pick: number }
 export type Drawing = { put(list: Put[]): void; dispose(): void }
@@ -837,6 +850,9 @@ export function particle3d() {
   let asked = false
   let stale = false // the effects file has been written since the running effects read their layers
   let checked = false
+  // The light every particle's colour is times this frame, one uniform every mesh's material reads: white
+  // while no `light` mod is named or it has nothing yet.
+  const lit = { value: [1, 1, 1] }
   let parts: Part[] = []
   // Every batch made, by sheet, then page, then how it is drawn, and every batch in the order it was made.
   const batches = new Map<string | undefined, Map<number, Map<string, Batch>>>()
@@ -1431,13 +1447,15 @@ export function particle3d() {
         : 'diffuseColor.rgb *= t.rgb;',
       'diffuseColor.a *= cover;',
     ].join('\n')
-    m.onBeforeCompile = (shader: { vertexShader: string; fragmentShader: string }) => {
+    m.onBeforeCompile = (shader: { vertexShader: string; fragmentShader: string; uniforms: Record<string, any> }) => {
+      shader.uniforms.skyLit = lit
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', '#include <common>\nattribute float keep;\nvarying float vKeep;\nattribute vec2 frame2;\nattribute vec2 look;\nvarying vec2 vFrame2;\nvarying vec2 vLook;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvKeep = keep;\nvLook = look;\n#ifdef USE_MAP\nvFrame2 = (mapTransform * vec3(frame2, 1.0)).xy;\n#endif')
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying float vKeep;\nvarying vec2 vFrame2;\nvarying vec2 vLook;')
+        .replace('#include <common>', '#include <common>\nuniform vec3 skyLit;\nvarying float vKeep;\nvarying vec2 vFrame2;\nvarying vec2 vLook;')
         .replace('#include <map_fragment>', `#ifdef USE_MAP\n${read}\n#endif`)
+        .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= skyLit;')
         .replace('#include <premultiplied_alpha_fragment>', '#include <premultiplied_alpha_fragment>\ngl_FragColor.a *= vKeep;')
     }
     m.customProgramCacheKey = () => `particle3d ${how.key}`
@@ -1863,6 +1881,7 @@ export function particle3d() {
       const order = scene.plugins!
       if (order.indexOf('render3d') < order.indexOf('particle3d'))
         throw new Error('particle3d is listed after render3d, which would draw every particle before it is turned')
+      ahead(scene, 'particle3d', 'light')
     }
     if (!asked) {
       if (!plugins.loader) throw new Error('particle3d reads its effects through loader, which this scene does not name')
@@ -1933,6 +1952,8 @@ export function particle3d() {
     step(plugins: Plugins, dt: number) {
       const { scene } = plugins.wire
       const own = setup(plugins)
+      // The sky's light this frame, which every particle's colour is times, or white.
+      lit.value = mod<SkyLight>(scene.world!, 'particle3d', 'light')?.(plugins) ?? [1, 1, 1]
 
       // The file checked the first frame it is read and the first after it is written, and its drivers
       // planned; then every driver's value this frame, before anything moves by a number driven.

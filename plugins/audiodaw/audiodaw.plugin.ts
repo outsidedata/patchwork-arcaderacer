@@ -5,16 +5,21 @@
 // `DrumKit` of Tone drums, one per note, `drumKit`), its effects (`new Tone[is](options)`, chained
 // in order, a Chorus's, a Tremolo's, an AutoPanner's and an AutoFilter's LFO started, which Tone
 // makes stopped) and its `Tone.Channel`; each bus, a `Tone.Channel` that `receive`s its name into its
-// effects; the master's effects, chained on `Tone.getDestination()`; and one `Tone.Part` per clip,
-// whose events are its pattern's notes. A Part's callback reads its track as the song is when the
-// note falls: a track let through (`sounds`) plays `triggerAttackRelease(note, duration, time,
-// velocity)` on the instrument of the device it targets then, so a track retargeted or muted while
-// playing is heard so at its next note.
+// effects; the master's effects, chained on `Tone.getDestination()`; and one looping `Tone.Part` per
+// note clip, whose events are its pattern's notes, its loop the pattern's `from` to `length`, started
+// at the clip's start with its offset into the loop and stopped at the clip's end. A Part's callback
+// reads its track as the song is when the note falls: a track let through (`sounds`) plays
+// `triggerAttackRelease(note, duration, time, velocity)` on the instrument of the device it targets
+// then, so a track retargeted or muted while playing is heard so at its next note.
+//
+// The session (`launch`, `launchScene`, `halt`, `haltAll`, `arrange`, `session`) plays the song's
+// slots: each a looping Part of its pattern on its track, started and stopped on a launch's tick. Its
+// header is the session's section below.
 //
 // `edit(project)` hands each value that changed to the Tone object that holds it: `set` on an
 // instrument or an effect, an effect off as `wet = 0`, the channel's `volume`, `pan`, `mute` and
-// `solo`, a send's gain, `part.add` and `part.remove` on a clip's live Part, and the instrument made
-// again when its `is` or its `voices` changed. A rack of another length is made again, device by device; tracks have no
+// `solo`, a send's gain, a clip's Part made again when the clip or its pattern changed, and the
+// instrument made again when its `is` or its `voices` changed. A rack of another length is made again, device by device; tracks have no
 // Tone object of their own, so tracks come and go as their clips' Parts do. Everything else is the
 // Transport's own: `play`, `stop`, `pause`, `locate`, `cycle`, `position` (`transport.ticks`) and
 // `stamp` (`transport.getTicksAtTime(Tone.now())`). `optionsOf(device)` and `effectOptionsOf(chain,
@@ -55,7 +60,7 @@
 
 import type { Plugins } from '#engine/browser.ts'
 import * as Tone from 'tone'
-import { DRUM_KIT, fromOf, sounds, spanOf, type Bus, type Chain, type Clip, type Device, type Effect, type Instrument, type KitOptions, type Lane, type Pad, type Project, type Knob, type Range, type AutomationNote, type AutomationPattern, level, valueAt } from './audiodaw.sim'
+import { DRUM_KIT, fromOf, launchOf, lengthOn, passesOn, playedOf, round, slotOf, sounds, spanOf, type Bus, type Chain, type Clip, type Device, type Effect, type Instrument, type KitOptions, type Lane, type Note, type Pad, type Pattern, type Project, type Knob, type Range, type AutomationNote, type AutomationPattern, level, valueAt } from './audiodaw.sim'
 
 // What every Tone instrument and effect has: a setting, an input, an output.
 type Settable = Tone.ToneAudioNode & { set(options: object): unknown; get(): object }
@@ -362,7 +367,78 @@ export type Ranges = (knob: Knob, project: Project) => Range | undefined
 
 type Strip = { device: Device; instrument: Sounding; effects: Wet[]; channel: Tone.Channel; sends: Map<string, Tone.Gain<'decibels'>> }
 type Return = { bus: Bus; channel: Tone.Channel; effects: Wet[] }
-type Playing = { clip: Clip; pattern: Lane; ids: number[] }
+// The last of `list` that `ok` takes, or undefined.
+function latest<T>(list: T[], ok: (x: T) => boolean): T | undefined {
+  for (let i = list.length - 1; i >= 0; i--) if (ok(list[i]!)) return list[i]
+  return undefined
+}
+
+// A note of a Part, at its tick in its pattern.
+type Ev = { time: string; n: Note }
+// A clip on the song: a note clip's looping Part, or an automation clip's scheduled events.
+type Playing = { clip: Clip; pattern: Lane; ids: number[]; part?: Tone.Part<Ev> }
+
+// A Part of a pattern's loop: the notes from its `from` to its `length`, looped there, each handed to
+// `play` at its time. Tone's Part does the rest: started at a tick with an offset into the loop, it
+// plays from where the song is, follows the transport's starts, locates and loop, and swing.
+function loopPart(x: Pattern, play: (when: number, n: Note) => void): Tone.Part<Ev> {
+  const from = fromOf(x)
+  const part = new Tone.Part<Ev>((when, e) => play(when, e.n), x.notes.filter(n => n.time >= from && n.time < x.length).map(n => ({ time: ticks(n.time), n })))
+  part.loop = true
+  part.loopStart = ticks(from)
+  part.loopEnd = ticks(x.length)
+  return part
+}
+
+// A slot launched on a track of the session: its track (its place in the song, kept as tracks move),
+// the kind of its pattern, its scene and pattern, and what plays it, a note pattern's looping Part
+// (`loopPart`) or an automation pattern's (`automationPart`). `anchor` is the song's tick its loop's
+// first pass began on, kept through every jump of the transport, so its place in its loop at a tick
+// is `round(tick - anchor, played)`; `begun` and `offset` are its Part's last start, the tick and the
+// offset into the pattern, to make it again with; `started` whether that start has been handed to
+// Tone, `gone` whether it has been let go; `stop` the tick it stops at once another slot or a stop is
+// launched. `heard` and `until` are the audio times it is heard from and to, for the page to read.
+type Player = {
+  track: number
+  kind: 'notes' | 'automation'
+  scene: number
+  name: string
+  lane: Lane
+  part: Tone.Part<Ev> | Tone.Part<Cue>
+  anchor: number
+  begun?: number
+  offset: number
+  started: boolean
+  gone: boolean
+  // Launched while the transport stood: started before the transport is (`begin`), heard from its start.
+  ready: boolean
+  // Each of its Part's events, by its tick in the pattern, and what it does at an audio time: what
+  // `catchUp` plays of a pass Tone began past its start.
+  events: { at: number; fire: (when: number) => void }[]
+  stop?: number
+  heard?: number
+  until?: number
+}
+// An automation pattern's events in a Part: a glide at a note's start and the knob let go at its end,
+// for a knob that glides; for one Tone only sets, a set of the value `at` ticks into the note, and the
+// knob let go at its end, each sent `early` ticks ahead (`automationPart`).
+// `on` is its tick in the Part, `time` the same as Tone takes it; `at` the ticks into the note it is for,
+// and `tick` the pattern's tick it is for.
+type Cue = { time: string; on: number; kind: 'glide' | 'end' | 'step' | 'release'; n: AutomationNote; at: number; tick: number }
+// A track of the session: the slots launched on it, the one playing and the one coming in at its
+// launch; whether the session holds it (Ableton's: its arrangement is not heard until BACK TO
+// ARRANGEMENT); and the launch waiting, the scene coming in (none for a stop) at a tick.
+type Deck = { players: Player[]; held: boolean; next?: { scene?: number; at: number } }
+// What the page is shown of a track of the session (`session()`).
+export type Launched = {
+  // The slot heard now, by its scene, and how far through its loop the song is, 0 to 1.
+  scene?: number
+  through?: number
+  // The launch waiting: the scene coming in, none for a stop, and the tick it comes in at.
+  next?: { scene?: number; at: number }
+  // Whether the session holds the track, so its arrangement is not heard.
+  held: boolean
+}
 
 let songs = 0
 
@@ -406,7 +482,8 @@ export function song(start: Project, ranges?: Ranges) {
   const bound = (p: Project) => {
     if (ending !== undefined) transport.clear(ending)
     const { end } = spanOf(p)
-    ending = end > 0 ? at(transport, (when) => transport.stop(when), end) : undefined
+    // While a slot of the session plays or waits to, the song plays on past its end, as Ableton's does.
+    ending = end > 0 ? at(transport, (when) => { if (!launched()) transport.stop(when) }, end) : undefined
   }
 
   const wireMaster = () => destination.chain(...master)
@@ -446,10 +523,16 @@ export function song(start: Project, ranges?: Ranges) {
     }
   }
 
-  // The strip a note track's notes go to now, or undefined when they are held back or go nowhere.
-  const heard = (t: number): Strip | undefined => {
+  // The session's tracks, by the track's place in the song.
+  const decks: Deck[] = []
+  const deck = (t: number): Deck => (decks[t] ??= { players: [], held: false })
+
+  // The strip a note track's notes go to now, or undefined when they are held back or go nowhere. Its
+  // arrangement's notes (`arranged`) are held back too while the session holds the track.
+  const heard = (t: number, arranged = true): Strip | undefined => {
     const x = project.tracks[t]
     if (x?.kind !== 'notes' || x.target === undefined || !sounds(project, t)) return undefined
+    if (arranged && decks[t]?.held) return undefined
     return strips[x.target]
   }
 
@@ -485,35 +568,36 @@ export function song(start: Project, ranges?: Ranges) {
     return r
   }
 
-  // A clip's notes, each a `transport.schedule` at its tick in the song: the clip's start plus the
-  // note's time past the pattern's `from`, only the notes from `from` to the pattern's `length`, so
-  // the clip plays once and notes kept outside those ticks are not heard. The transport fires each
-  // whenever it passes its tick, so a clip made while playing sounds from where the song is, and
-  // again each time a loop or a locate brings the song back over it. Its track is read as the note
-  // falls: a clip moved to another track plays through that one. A clip of an automation track
-  // schedules no notes.
+  // A note clip is a Tone.Part of its pattern's loop (`loopPart`), started at the clip's start with
+  // its offset into the loop and stopped at its end, so its pattern repeats to fill it. Tone plays a
+  // Part from where the song is, so a clip made while playing sounds from there, and again each time
+  // the song's loop or a locate brings it back over it. Its track is read as each note falls: a clip
+  // moved to another track plays through that one, and none plays while the session holds its track.
+  // An automation clip is its notes' events on the transport (`automate`).
   const part = (clip: Clip): Playing => {
     const track = project.tracks[clip.track]!
     const pattern = track.patterns[clip.pattern]!
     const playing: Playing = { clip, pattern, ids: [] }
     if (track.kind !== 'notes') {
-      automate(playing, track.patterns[clip.pattern]!)
+      automate(playing, pattern as AutomationPattern)
       return playing
     }
-    const notes = track.patterns[clip.pattern]!
-    const from = fromOf(notes)
-    for (const n of notes.notes) {
-      if (n.time < from || n.time >= notes.length) continue
-      playing.ids.push(at(transport, (when) => {
-        const s = heard(playing.clip.track)
-        if (s) s.instrument.triggerAttackRelease(n.note, ticks(n.duration), when, n.velocity)
-      }, clip.start + n.time - from))
-    }
+    const x = pattern as Pattern
+    const made = loopPart(x, (when, n) => {
+      const s = heard(playing.clip.track)
+      if (s) s.instrument.triggerAttackRelease(n.note, ticks(n.duration), when, n.velocity)
+    })
+    const [pass] = passesOn(x, clip)
+    made.start(ticks(clip.start), ticks(fromOf(x) + clip.start - pass!.base))
+    made.stop(ticks(clip.start + lengthOn(x, clip)))
+    playing.part = made
     return playing
   }
   const unpart = (p: Playing) => {
     for (const id of p.ids) transport.clear(id)
     p.ids = []
+    p.part?.dispose()
+    p.part = undefined
   }
 
   // Automation ------------------------------------------------------------------------------------
@@ -572,10 +656,12 @@ export function song(start: Project, ranges?: Ranges) {
   const chainMade = (c: Chain): Wet[] | undefined => (c === 'master' ? master : 'bus' in c ? returns.get(c.bus)?.effects : strips[c.device]?.effects)
 
   // The knob an automation track sends its values to now, reached, with its range: undefined while
-  // the track is muted, targets none, or its knob has no range the page gave.
-  const aimed = (t: number): { knob: Knob; r: Reached; range: Range } | undefined => {
+  // the track is muted, targets none, or its knob has no range the page gave. Its arrangement's values
+  // (`arranged`) reach none while the session holds the track.
+  const aimed = (t: number, arranged = true): { knob: Knob; r: Reached; range: Range } | undefined => {
     const x = project.tracks[t]
     if (x?.kind !== 'automation' || !x.target || !sounds(project, t)) return undefined
+    if (arranged && decks[t]?.held) return undefined
     const range = ranges?.(x.target, project)
     const r = range && reach(x.target)
     return r && range ? { knob: x.target, r, range } : undefined
@@ -598,10 +684,13 @@ export function song(start: Project, ranges?: Ranges) {
   // knob's own travel: on a knob of the log curve, and on one in decibels, which Tone keeps as a gain,
   // the same turn is the same ratio, so its ramp is of the same ratio each second; on any other, a
   // straight ramp. An exp line is drawn as short ramps between its values along the bend.
+  // Where each Param's line last handed to it ends, in audio time (`glide`), for `restore`.
+  const ends = new WeakMap<Tone.Param<Tone.Unit.UnitName>, number>()
   const glide = (a: { r: Reached; range: Range }, n: AutomationNote, at0: number, until: number, time: number) => {
     const s = second()
     const heardAt = (tick: number) => time + (tick - at0) * s
     for (const p of a.r.params!) {
+      ends.set(p, heardAt(until))
       const log = a.range.curve === 'log' || (p.units === 'decibels' && p.convert)
       p.cancelScheduledValues(time)
       p.setValueAtTime(level(a.range, valueAt(n, at0)), time)
@@ -625,40 +714,55 @@ export function song(start: Project, ranges?: Ranges) {
   }
   // A knob back to its own value at audio time `time`. A stop, a locate or an edit takes back what was
   // scheduled after it (`cut`); a note's own end does not, since its line's last ramp ends at that
-  // very time and would be taken back with it.
+  // very time and would be taken back with it. A note's end is set no earlier than its line's last
+  // ramp ends: the line's end is worked out from ticks and the note's end is the time Tone hands its
+  // event, the same tick a hair apart, and a set a hair before the ramp's end is ramped from, back down
+  // to the line's last value, which then holds (`experiments/session/dip.ts` heard it at a look-ahead
+  // of 0.1 s).
   const restore = (r: Reached, time: number, cut = true) => {
     if (r.params) for (const p of r.params) {
+      const end = ends.get(p)
+      ends.delete(p)
       if (cut) p.cancelScheduledValues(time)
-      p.setValueAtTime(r.own, time)
+      p.setValueAtTime(r.own, cut || end === undefined ? time : Math.max(time, end))
     } else setAt(r, r.own, time)
   }
 
-  // Where each automation note of a clip sounds in the song, from its pattern's `from` to its
-  // `length`: its first tick and the tick it ends.
-  const spans = (clip: Clip, x: AutomationPattern) => {
+  // An automation note sounding on the song: the note, the song's tick it began on (`begins`, before
+  // `start` when the clip's offset or its pass cut its front), and the ticks it is heard, `start` to
+  // `end`.
+  type Span = { n: AutomationNote; begins: number; start: number; end: number }
+
+  // Where each automation note of a clip sounds in the song, pass by pass of its loop: from its
+  // pattern's `from` to its `length`, each note cut at its pass's end and the clip's.
+  const spans = (clip: Clip, x: AutomationPattern): Span[] => {
     const from = fromOf(x)
-    return x.notes.flatMap(n => {
-      const start = clip.start + n.time - from
-      const end = clip.start + Math.min(n.time + n.duration, x.length) - from
-      return n.time >= from && n.time < x.length && end > start ? [{ n, start, end }] : []
-    })
+    return passesOn(x, clip).flatMap(pass => x.notes.flatMap(n => {
+      if (n.time < from || n.time >= x.length) return []
+      const begins = pass.base + n.time - from
+      const start = Math.max(begins, pass.start)
+      const end = Math.min(pass.base + Math.min(n.time + n.duration, x.length) - from, pass.end)
+      return end > start ? [{ n, begins, start, end }] : []
+    }))
   }
-  // Whether automation track `t` has a note sounding at `tick` other than one ending there.
+  // Whether automation track `t`'s arrangement has a note sounding at `tick` other than one ending
+  // there.
   const holds = (t: number, tick: number) => parts.some(p => p.clip.track === t && project.tracks[t]?.kind === 'automation' &&
     spans(p.clip, p.pattern as AutomationPattern).some(s => s.start <= tick && tick < s.end))
 
-  // An automation clip's notes, each a `transport.schedule` like a note: at its first tick a knob that
-  // glides is handed the whole note's line, and at its end goes back to its own value unless another
-  // note of the track takes it there. A knob Tone only sets is set on every 16th of the song the note
-  // covers, and at its end, each event a look-ahead of ticks early so its set is sent in time. Each
-  // reads its track as it falls: a track muted or retargeted is heard so from its next event.
+  // An automation clip's notes, each a `transport.schedule` at its tick on each pass: at its first
+  // tick a knob that glides is handed the note's line from there, and at its end goes back to its own
+  // value unless another note of the track takes it there. A knob Tone only sets is set on every 16th
+  // of the song the note covers, and at its end, each event a look-ahead of ticks early so its set is
+  // sent in time. Each reads its track as it falls: a track muted, retargeted or held by the session
+  // is heard so from its next event.
   const automate = (playing: Playing, x: AutomationPattern) => {
     const sixteenth = project.ppq / 4
     const early = ahead()
-    for (const { n, start, end } of spans(playing.clip, x)) {
+    for (const { n, begins, start, end } of spans(playing.clip, x)) {
       playing.ids.push(at(transport, (when) => {
         const a = aimed(playing.clip.track)
-        if (a?.r.params) glide(a, n, 0, end - start, when)
+        if (a?.r.params) glide(a, n, start - begins, end - begins, when)
       }, start))
       playing.ids.push(at(transport, (when) => {
         const a = aimed(playing.clip.track)
@@ -668,7 +772,7 @@ export function song(start: Project, ranges?: Ranges) {
       for (let k = Math.ceil((start + 1) / sixteenth) * sixteenth; k < end; k += sixteenth) steps.push(k)
       for (const k of steps) playing.ids.push(at(transport, (when) => {
         const a = aimed(playing.clip.track)
-        if (a && !a.r.params) setAt(a.r, level(a.range, valueAt(n, k - start)), when + early * second())
+        if (a && !a.r.params) setAt(a.r, level(a.range, valueAt(n, k - begins)), when + early * second())
       }, Math.max(0, k - early)))
       playing.ids.push(at(transport, (when) => {
         const a = aimed(playing.clip.track)
@@ -677,18 +781,46 @@ export function song(start: Project, ranges?: Ranges) {
     }
   }
 
-  // Every automated knob where the song is at `tick`, heard from audio time `time`: a note sounding
-  // there is taken up from that tick, and a knob with none goes back to its own value. A play from
-  // the middle of a note, a locate, and the loop's jump back each land here.
+  // The automation note sounding on track `t` at the song's `tick`: the session's, from the slot
+  // playing there, while the session holds the track; the arrangement's otherwise.
+  const soundingAt = (t: number, tick: number): Span | undefined => {
+    const d = decks[t]
+    if (!d?.held) return parts.filter(p => p.clip.track === t).flatMap(p => spans(p.clip, p.pattern as AutomationPattern)).find(s => s.start <= tick && tick < s.end)
+    const pl = playerAt(d, tick)
+    if (!pl) return undefined
+    const x = pl.lane as AutomationPattern
+    const from = fromOf(x)
+    const at = from + round(tick - pl.anchor, playedOf(x))
+    const n = x.notes.find(n => n.time >= from && n.time < x.length && n.time <= at && at < Math.min(n.time + n.duration, x.length))
+    if (!n) return undefined
+    const begins = tick - (at - n.time)
+    return { n, begins, start: tick, end: begins + Math.min(n.time + n.duration, x.length) - n.time }
+  }
+
+  // Automation track `t`'s knob where the song is at `tick`, heard from audio time `time`: a note
+  // sounding there is taken up from that tick, and a knob with none goes back to its own value. A knob
+  // Tone only sets is set there and on each 16th of the note the look-ahead after it, whose own events
+  // were handed to Tone before the song got there.
+  const resumeTrack = (t: number, tick: number, time: number) => {
+    const a = aimed(t, false)
+    if (!a) return
+    const sounding = soundingAt(t, tick)
+    if (!sounding) { restore(a.r, time); return }
+    const { n, begins, end } = sounding
+    if (a.r.params) { glide(a, n, tick - begins, end - begins, time); return }
+    setAt(a.r, level(a.range, valueAt(n, tick - begins)), time)
+    const sixteenth = project.ppq / 4
+    const s = second()
+    for (let k = Math.ceil((tick + 1) / sixteenth) * sixteenth; k < Math.min(end, tick + ahead()); k += sixteenth) {
+      setAt(a.r, level(a.range, valueAt(n, k - begins)), time + (k - tick) * s)
+    }
+  }
+
+  // Every automated knob where the song is at `tick`, heard from audio time `time`. A play from the
+  // middle of a note, a locate, and the loop's jump back each land here.
   const resume = (tick: number, time: number) => {
     project.tracks.forEach((x, t) => {
-      if (x.kind !== 'automation') return
-      const a = aimed(t)
-      if (!a) return
-      const sounding = parts.filter(p => p.clip.track === t).flatMap(p => spans(p.clip, p.pattern as AutomationPattern)).find(s => s.start <= tick && tick < s.end)
-      if (!sounding) { restore(a.r, time); return }
-      if (a.r.params) glide(a, sounding.n, tick - sounding.start, sounding.end - sounding.start, time)
-      else setAt(a.r, level(a.range, valueAt(sounding.n, tick - sounding.start)), time)
+      if (x.kind === 'automation') resumeTrack(t, tick, time)
     })
   }
   // Every automated knob back to its own value, every set still waiting taken back: the transport
@@ -702,8 +834,440 @@ export function song(start: Project, ranges?: Ranges) {
       if (r) restore(r, time)
     }
   }
-  const started = (time: number) => resume(transport.getTicksAtTime(time), time)
-  const looped = (time: number) => resume(project.loop?.start ?? 0, time)
+  // The session --------------------------------------------------------------------------------------
+  //
+  // A slot launched is a Tone.Part of its pattern looped on its track: a note pattern's `loopPart`, an
+  // automation pattern's `automationPart`. Tone starts and stops it on the launch's tick
+  // (`part.start(tick, offset)`, `part.stop(tick)`). The tick is the next multiple of the song's
+  // `launch` from the first tick Tone has not handed over (`boundary`), so a press within the
+  // look-ahead of a bar waits for the bar after. (Tone's own "@1m" is no use from a press: called
+  // outside a transport callback it lands off the bar, which `experiments/session/launch.ts` measured.)
+  //
+  // Tone holds a Part's start and stop at ticks of the song, and the song's loop wraps those ticks: a
+  // Part started inside the loop reads as not yet started on the ticks before its start, after the
+  // wrap. So on every wrap (the transport's 'loop' event, which Tone emits before it hands over the
+  // loop's first tick) and every locate, each playing slot's Part is started again at the tick the
+  // song lands on, its offset the place in its loop it had reached, its `anchor` moved with it; and a
+  // launch whose tick is past the loop's end is the loop's start, done in that same event.
+  //
+  // What else changes at a launch's tick is done by a transport event a tick before it (`onTick`),
+  // handed that tick's time plus one tick: the session takes hold of the track there (its arrangement
+  // is held back from the launch's tick on, Tone handing a tick's events in the order they were
+  // scheduled), the knob of an automation track is taken up where the slot coming in has it, and the
+  // slots going out are let go.
+
+  // The first tick a launch made now can wait for: two past the ticks of the context's now(), so the
+  // event a tick before it is still to be handed over.
+  const soonest = () => Math.floor(transport.getTicksAtTime(transport.context.now())) + 2
+  // A launch's tick: the next multiple of the song's `launch` from the soonest; while the transport
+  // cycles, one at or past the loop's end is the loop's start, which the transport wraps to.
+  type Boundary = { at: number; wrap: boolean }
+  const boundary = (): Boundary => {
+    const n = soonest()
+    const q = launchOf(project)
+    const at = q ? Math.ceil(n / q) * q : n
+    const loop = transport.loop ? project.loop : undefined
+    return loop && at >= loop.end ? { at: loop.start, wrap: true } : { at, wrap: false }
+  }
+  // What waits for the next wrap, handed its time.
+  const wraps: { fn: (time: number) => void }[] = []
+  // What a deck has waiting at a launch's tick: its event or its wrap, the slots going and the one
+  // coming, and the launch itself, made again after a locate.
+  type Pending = { id?: number; wrap?: { fn: (time: number) => void }; going: Player[]; coming?: Player; again: (t: number) => void }
+  const pending = new Map<Deck, Pending>()
+
+  // `fn` at a launch's tick, handed its time: from an event a tick before it, or from the wrap.
+  const onTick = (b: Boundary, fn: (time: number) => void): Pick<Pending, 'id' | 'wrap'> => {
+    if (b.wrap) {
+      const w = { fn }
+      wraps.push(w)
+      return { wrap: w }
+    }
+    const id = at(transport, (when) => fn(when + second()), b.at - 1)
+    return { id }
+  }
+
+  // An automation pattern's Part for a slot: each note's end first and its glide (a knob that glides),
+  // its sets on each 16th of the pattern it covers and its let go (a knob Tone only sets), each of
+  // those `early` ticks ahead and sent that far, round the loop. The slot's first pass has no sets of
+  // its first `early` ticks: `resumeTrack` makes them when it comes in.
+  const automationPart = (pl: Player): { part: Tone.Part<Cue>; events: Player['events'] } => {
+    const x = pl.lane as AutomationPattern
+    const from = fromOf(x), played = playedOf(x)
+    const early = ahead()
+    const sixteenth = project.ppq / 4
+    // A cue put on the Part at the pattern's tick `tick`, round the loop.
+    const cue = (tick: number, c: Omit<Cue, 'time' | 'on'>): Cue => {
+      const on = from + round(tick - from, played)
+      return { ...c, time: ticks(on), on }
+    }
+    const notes = x.notes.filter(n => n.time >= from && n.time < x.length)
+    const cues: Cue[] = []
+    for (const n of notes) {
+      const end = Math.min(n.time + n.duration, x.length)
+      cues.push(cue(end, { kind: 'end', n, at: end - n.time, tick: end }))
+    }
+    for (const n of notes) {
+      const end = Math.min(n.time + n.duration, x.length)
+      cues.push(cue(n.time, { kind: 'glide', n, at: end - n.time, tick: n.time }))
+      for (let k = n.time; k < end; k = Math.floor(k / sixteenth) * sixteenth + sixteenth) cues.push(cue(k - early, { kind: 'step', n, at: k - n.time, tick: k }))
+      cues.push(cue(end - early, { kind: 'release', n, at: end - n.time, tick: end }))
+    }
+    // Whether another note of the pattern sounds at its tick `tick`, round the loop.
+    const holding = (tick: number) => {
+      const p = from + round(tick - from, played)
+      return notes.some(n => n.time <= p && p < Math.min(n.time + n.duration, x.length))
+    }
+    const fire = (when: number, c: Cue) => {
+      const a = aimed(pl.track, false)
+      if (!a) return
+      if (c.kind === 'glide') { if (a.r.params) glide(a, c.n, 0, c.at, when) }
+      else if (c.kind === 'end') { if (a.r.params && !holding(c.tick)) restore(a.r, when, false) }
+      else if (c.kind === 'step') { if (!a.r.params) setAt(a.r, level(a.range, valueAt(c.n, c.at)), when + early * second()) }
+      else if (!a.r.params && !holding(c.tick)) setAt(a.r, a.r.own, when + early * second())
+    }
+    const part = new Tone.Part<Cue>(fire, cues)
+    part.loop = true
+    part.loopStart = ticks(from)
+    part.loopEnd = ticks(x.length)
+    return { part, events: cues.map(c => ({ at: c.on, fire: (when: number) => fire(when, c) })) }
+  }
+
+  // A slot's Part, of its pattern's kind, and its events; a note slot plays its track's device, the
+  // session's own.
+  const playerPart = (pl: Player): { part: Player['part']; events: Player['events'] } => {
+    if (pl.kind === 'automation') return automationPart(pl)
+    const x = pl.lane as Pattern
+    const play = (when: number, n: Note) => {
+      const s = heard(pl.track, false)
+      if (s) s.instrument.triggerAttackRelease(n.note, ticks(n.duration), when, n.velocity)
+    }
+    const from = fromOf(x)
+    return { part: loopPart(x, play), events: x.notes.filter(n => n.time >= from && n.time < x.length).map(n => ({ at: n.time, fire: (when: number) => play(when, n) })) }
+  }
+
+  // A slot's Part just started at the song's `tick`, heard at audio time `time`, from a transport
+  // event handed over past that tick (a wrap): Tone places each of the Part's notes from the ticks at
+  // the context's now(), so a note between `tick` and those ticks is put off to the next pass. Each
+  // such note is played here at its own time.
+  const catchUp = (pl: Player, tick: number, time: number) => {
+    const n = transport.getTicksAtTime(transport.context.now())
+    const played = playedOf(pl.lane)
+    const s = second()
+    for (const e of pl.events) {
+      const o = tick + round(e.at - pl.offset, played)
+      if (o < n) e.fire(time + (o - tick) * s)
+    }
+  }
+
+  // The slot of a deck playing at the song's `tick`: the last one started and not stopped by then.
+  const playerAt = (d: Deck, tick: number) => latest(d.players, p => p.started && !p.gone && (p.stop === undefined || p.stop > tick))
+
+  // A slot let go of at once: its Part thrown away.
+  const drop = (pl: Player) => {
+    pl.part.dispose()
+    pl.gone = true
+  }
+
+  // What a deck had waiting taken back: its event or its wrap cleared, the slot coming thrown away.
+  const unpend = (d: Deck): Pending | undefined => {
+    const w = pending.get(d)
+    if (!w) return undefined
+    pending.delete(d)
+    if (w.id !== undefined) transport.clear(w.id)
+    if (w.wrap) wraps.splice(wraps.indexOf(w.wrap), 1)
+    if (w.coming) {
+      drop(w.coming)
+      d.players = d.players.filter(p => p !== w.coming)
+    }
+    return w
+  }
+
+  // A deck changed at a launch's tick: the slots playing there stopped, `coming` started (none for a
+  // stop), the session's hold on the track `hold` from then on. A launch waiting on the deck is taken
+  // back first, its slots going going still.
+  const change = (t: number, b: Boundary, coming: Player | undefined, hold: boolean, again: (t: number) => void) => {
+    const d = deck(t)
+    const was = unpend(d)
+    const going = [...(was?.going ?? []), ...d.players.filter(p => !p.gone && p.stop === undefined && p !== coming)]
+    for (const o of going) o.stop = b.at
+    // At the wrap (`time`), the notes of the slot coming in that Tone put off are played (`catchUp`).
+    const go = (tick: number, time?: number) => {
+      for (const o of going) o.part.stop(ticks(tick))
+      if (coming) {
+        coming.anchor = tick
+        coming.begun = tick
+        coming.started = true
+        coming.part.start(ticks(tick), ticks(coming.offset))
+        if (time !== undefined) catchUp(coming, tick, time)
+      }
+    }
+    if (!b.wrap) go(b.at)
+    if (coming) d.players.push(coming)
+    d.next = { ...(coming ? { scene: coming.scene } : {}), at: b.at }
+    const next = d.next
+    const w: Pending = {
+      ...onTick(b, (time) => {
+        pending.delete(d)
+        if (b.wrap) go(b.at, time)
+        d.held = hold
+        if (d.next === next) d.next = undefined
+        for (const o of going) {
+          o.until = time
+          drop(o)
+        }
+        if (coming) coming.heard = time
+        // The deck's track where it is now: an edit may have moved it since the launch. Its knob is
+        // taken up where the slot coming in has it, or let go with none.
+        const here = decks.indexOf(d)
+        if (project.tracks[here]?.kind === 'automation') resumeTrack(here, b.at, time)
+      }),
+      going,
+      ...(coming ? { coming } : {}),
+      again,
+    }
+    pending.set(d, w)
+  }
+
+  // A slot of track `t` made for scene `s`, not yet started.
+  const slot = (t: number, s: number): Player | undefined => {
+    const x = project.tracks[t]
+    if (!x) throw new Error(`audiodaw: no track ${t}`)
+    const name = slotOf(project, t, s)
+    if (name === undefined) return undefined
+    const lane = x.patterns[name]!
+    const pl: Player = { track: t, kind: x.kind, scene: s, name, lane, part: undefined as unknown as Tone.Part<Ev>, events: [], anchor: 0, offset: fromOf(lane), started: false, gone: false, ready: false }
+    Object.assign(pl, playerPart(pl))
+    return pl
+  }
+
+  // While the transport is not running, a launch waits for play: the deck's slots let go, the one
+  // launched kept to start where play starts (`begin`), the session holding the track at once.
+  const ready = (t: number, coming: Player | undefined, hold: boolean) => {
+    const d = deck(t)
+    unpend(d)
+    for (const o of d.players) drop(o)
+    if (coming) coming.ready = true
+    d.players = coming ? [coming] : []
+    d.held = hold
+    d.next = coming ? { scene: coming.scene, at: transport.ticks } : undefined
+  }
+
+  // Track `t`'s slot of scene `s` launched: its pattern looped from the launch's tick, the slot playing
+  // stopped there; an empty slot stops the track.
+  const launch = (t: number, s: number, b = boundary()) => {
+    const coming = slot(t, s)
+    if (transport.state !== 'started') return ready(t, coming, true)
+    change(t, b, coming, true, (here) => launch(here, s))
+  }
+  // Track `t`'s slot stopped at the launch's tick; the session keeps hold of the track.
+  const halt = (t: number, b = boundary()) => {
+    if (transport.state !== 'started') return ready(t, undefined, true)
+    change(t, b, undefined, true, (here) => halt(here))
+  }
+  // Every track's slot of scene `s` launched at one tick: an empty one stops its track.
+  const launchScene = (s: number) => {
+    const b = boundary()
+    project.tracks.forEach((_, t) => {
+      if (slotOf(project, t, s) !== undefined) launch(t, s, b)
+      else if (decks[t]?.players.some(p => !p.gone) || pending.has(deck(t))) halt(t, b)
+    })
+  }
+  // Every track's slot stopped at one tick.
+  const haltAll = () => {
+    const b = boundary()
+    decks.forEach((d, t) => { if (d && (d.players.some(p => !p.gone) || pending.has(d))) halt(t, b) })
+  }
+  // Every track back to its arrangement, at the soonest tick: the slots stopped and the session's hold
+  // let go.
+  const arrange = () => {
+    const b: Boundary = { at: soonest(), wrap: false }
+    decks.forEach((d, t) => {
+      if (!d || (!d.held && !d.players.some(p => !p.gone) && !pending.has(d))) return
+      if (transport.state !== 'started') return ready(t, undefined, false)
+      change(t, b, undefined, false, (here) => change(here, { at: soonest(), wrap: false }, undefined, false, () => {}))
+    })
+  }
+
+  // Every slot playing started again at the song's `tick`, its place in its loop kept: its anchor moved
+  // by `by` ticks, the jump the song made to get there. At a wrap (`time`), the notes Tone put off are
+  // played (`catchUp`); at a locate Tone's own start, which follows, places them.
+  const reanchor = (tick: number, by: number, time?: number) => {
+    for (const d of decks) {
+      if (!d) continue
+      for (const pl of d.players) {
+        if (!pl.started || pl.gone || pl.stop !== undefined) continue
+        pl.anchor += by
+        pl.begun = tick
+        pl.offset = fromOf(pl.lane) + round(tick - pl.anchor, playedOf(pl.lane))
+        pl.part.stop(ticks(tick))
+        pl.part.start(ticks(tick), ticks(pl.offset))
+        if (time !== undefined) catchUp(pl, tick, time)
+      }
+    }
+  }
+
+  // Play about to start at the song's `tick` from a transport standing: each slot launched while it
+  // stood started there, before the transport, so Tone's own start places its notes.
+  const begin = (tick: number) => {
+    for (const d of decks) {
+      if (!d) continue
+      for (const pl of d.players) {
+        if (!pl.ready || pl.started || pl.gone) continue
+        pl.anchor = tick
+        pl.begun = tick
+        pl.started = true
+        pl.part.start(ticks(tick), ticks(pl.offset))
+      }
+    }
+  }
+
+  // The transport started (a play, a locate, the start after a pause): the slots launched while it
+  // stood are heard from here; every knob is taken up where the song is.
+  const started = (time: number) => {
+    const tick = Math.round(transport.getTicksAtTime(time))
+    for (const d of decks) {
+      if (!d) continue
+      for (const pl of d.players) {
+        if (!pl.ready || !pl.started) continue
+        pl.ready = false
+        pl.heard = time
+        d.next = undefined
+      }
+    }
+    resume(tick, time)
+  }
+  // The song's loop wrapped: every slot playing anchored again on the loop's start, then each launch
+  // waiting for the wrap done, then every knob taken up there.
+  const looped = (time: number) => {
+    const loop = project.loop
+    if (loop) {
+      reanchor(loop.start, loop.start - loop.end, time)
+      for (const w of wraps.splice(0)) w.fn(time)
+    }
+    resume(loop?.start ?? 0, time)
+  }
+
+  // The song located from tick `was` to `to` while it plays: every slot playing started again there,
+  // its place in its loop kept, and each launch waiting made again from there.
+  // Called before the transport jumps, so the knobs it takes up at its start are the slots' as moved;
+  // hands back the launches to make again, called once it has landed.
+  const jump = (was: number, to: number): (() => void) => {
+    const again: (() => void)[] = []
+    decks.forEach((d, t) => {
+      if (!d) return
+      const w = unpend(d)
+      if (!w) return
+      // The slots it was letting go of play on, from where the song lands.
+      for (const o of w.going) o.stop = undefined
+      again.push(() => w.again(t))
+    })
+    reanchor(to, to - was)
+    return () => { for (const f of again) f() }
+  }
+
+  // A slot's pattern edited while it is launched: its Part made again of the pattern as it is now, at
+  // its place in its loop, from the soonest tick it can start at (or its launch's tick, still to come),
+  // and stopped where it was to stop.
+  const remake = (pl: Player, lane: Lane) => {
+    pl.part.dispose()
+    pl.lane = lane
+    Object.assign(pl, playerPart(pl))
+    if (!pl.started) {
+      pl.offset = fromOf(lane)
+      return
+    }
+    const tick = Math.max(soonest(), pl.begun ?? 0)
+    pl.begun = tick
+    pl.offset = fromOf(lane) + round(tick - pl.anchor, playedOf(lane))
+    pl.part.start(ticks(tick), ticks(pl.offset))
+    if (pl.stop !== undefined) pl.part.stop(ticks(pl.stop))
+  }
+
+  // The session kept to an edit of the song. Each deck moves with its track: to the place of the same
+  // track object (a track moved, or others added or taken away), else to its own place when the track
+  // there is new (the track edited). A deck whose track is gone, or a slot of the other kind, is let
+  // go; a slot whose pattern is gone is let go, one renamed plays on under its new name, one edited is
+  // made again (`remake`). Hands back whether any slot was let go, so knobs are taken up again.
+  const follow = (was: Project, now: Project): boolean => {
+    if (was.tracks === now.tracks) return false
+    let lost = false
+    const taken = new Set<number>()
+    const to = was.tracks.map((x) => {
+      const j = now.tracks.indexOf(x)
+      if (j >= 0) taken.add(j)
+      return j
+    })
+    was.tracks.forEach((_, i) => {
+      if (to[i]! >= 0 || i >= now.tracks.length || taken.has(i) || was.tracks.includes(now.tracks[i]!)) return
+      to[i] = i
+      taken.add(i)
+    })
+    const moved: Deck[] = []
+    decks.forEach((d, i) => {
+      if (!d) return
+      const j = to[i]!
+      const x = j >= 0 ? now.tracks[j] : undefined
+      if (!x) {
+        unpend(d)
+        for (const pl of d.players) drop(pl)
+        lost ||= d.players.length > 0
+        return
+      }
+      moved[j] = d
+      for (const pl of d.players) {
+        pl.track = j
+        if (pl.gone) continue
+        let lane: Lane | undefined = x.kind === pl.kind ? x.patterns[pl.name] : undefined
+        if (!lane && x.kind === pl.kind) {
+          const renamed = Object.entries(x.patterns).find(([, v]) => v === pl.lane)
+          if (renamed) [pl.name, lane] = renamed
+        }
+        if (!lane) {
+          drop(pl)
+          lost = true
+        } else if (lane !== pl.lane) remake(pl, lane)
+      }
+      d.players = d.players.filter(p => !p.gone || p.until !== undefined)
+    })
+    decks.length = 0
+    moved.forEach((d, j) => { decks[j] = d })
+    return lost
+  }
+
+  // Every slot let go of and every launch taken back: the transport stopped. The session keeps hold of
+  // its tracks until they are sent back to the arrangement.
+  const unlaunch = () => {
+    for (const d of decks) {
+      if (!d) continue
+      unpend(d)
+      for (const pl of d.players) drop(pl)
+      d.players = []
+      d.next = undefined
+    }
+    wraps.length = 0
+  }
+
+  // Whether any slot plays or waits to: the song's end does not stop the transport while one does.
+  const launched = () => decks.some(d => d?.players.some(p => !p.gone)) || pending.size > 0
+
+  // What the page is shown of each track of the session, read at the context's now(), where the
+  // playhead is: the slot heard there and how far through its loop, and the launch waiting.
+  const session = (): Launched[] => {
+    const now = transport.context.now()
+    const tick = transport.ticks
+    return project.tracks.map((_, t) => {
+      const d = decks[t]
+      if (!d) return { held: false }
+      d.players = d.players.filter(p => !(p.gone && (p.until === undefined || p.until <= now)))
+      const on = latest(d.players, p => p.heard !== undefined && p.heard <= now && (p.until === undefined || p.until > now))
+      return {
+        held: d.held,
+        ...(on ? { scene: on.scene, through: round(tick - on.anchor, playedOf(on.lane)) / playedOf(on.lane) } : {}),
+        ...(d.next ? { next: d.next } : {}),
+      }
+    })
+  }
   transport.on('start', started)
   transport.on('loop', looped)
 
@@ -726,6 +1290,8 @@ export function song(start: Project, ranges?: Ranges) {
     waiting.clear()
     if (later !== undefined) transport.context.clearTimeout(later)
     later = undefined
+    unlaunch()
+    decks.length = 0
     for (const p of parts) unpart(p)
     if (ending !== undefined) transport.clear(ending)
     ending = undefined
@@ -748,6 +1314,7 @@ export function song(start: Project, ranges?: Ranges) {
     const was = project
     if (now === was) return
     project = now
+    const lost = follow(was, now)
     if (now.bpm !== was.bpm || now.timeSignature !== was.timeSignature || now.swing !== was.swing ||
       now.swingSubdivision !== was.swingSubdivision || now.ppq !== was.ppq || now.loop !== was.loop) time(now)
     const [a, b] = [spanOf(now), spanOf(was)]
@@ -825,13 +1392,14 @@ export function song(start: Project, ranges?: Ranges) {
       for (const [bus, dB] of Object.entries(device.sends)) if (!s.sends.has(bus)) send(s, bus, dB)
     })
 
-    // A clip is kept while it starts where it did and plays the very same pattern object; anything
-    // else of it changed (its notes, its pattern's length or `from`, its start) schedules it again.
+    // A clip is kept while it starts where it did, runs as long from the same place in its loop, and
+    // plays the very same pattern object; anything else of it changed (its notes, its pattern's length
+    // or `from`, its start, length or offset) makes it again.
     const kept: Playing[] = []
     now.clips.forEach((clip, i) => {
       const p = parts[i]
       const pattern = now.tracks[clip.track]!.patterns[clip.pattern]!
-      if (p && p.clip.start === clip.start && p.pattern === pattern) {
+      if (p && p.clip.start === clip.start && p.clip.length === clip.length && p.clip.offset === clip.offset && p.pattern === pattern) {
         p.clip = clip
         kept.push(p)
         return
@@ -848,7 +1416,7 @@ export function song(start: Project, ranges?: Ranges) {
       const y = now.tracks[t]
       return x.kind === 'automation' && x !== y &&
         !(y?.kind === 'automation' && y.mute === x.mute && JSON.stringify(y.target) === JSON.stringify(x.target))
-    }) || now.tracks.length !== was.tracks.length
+    }) || now.tracks.length !== was.tracks.length || lost
     if (changedKnobs) {
       const time = transport.context.now()
       for (const x of was.tracks) {
@@ -920,7 +1488,11 @@ export function song(start: Project, ranges?: Ranges) {
     return r ? r.params !== undefined : undefined
   }
 
-  return { edit, meter, attack, release, optionsOf, effectOptionsOf, glides, dispose, get project() { return project } }
+  return {
+    edit, meter, attack, release, optionsOf, effectOptionsOf, glides, dispose,
+    launch: (t: number, s: number) => launch(t, s), halt: (t: number) => halt(t), launchScene, haltAll, arrange, session, jump, unlaunch, begin,
+    get project() { return project },
+  }
 }
 
 export type Song = ReturnType<typeof song>
@@ -990,14 +1562,46 @@ export function audiodaw() {
     },
     // Tone's context let run, which a page allows after a press or a key.
     start() { return Tone.start() },
-    play(tick = transport().ticks) { transport().start(undefined, ticks(tick)) },
+    // Play from `tick`. From a pause somewhere else, the session's slots play on from there, each at
+    // the place in its loop it had reached (`jump`).
+    play(tick = transport().ticks) {
+      const tr = transport()
+      const was = tr.ticks
+      const after = tr.state === 'paused' && tick !== was ? playing?.jump(was, tick) : undefined
+      if (tr.state !== 'started') playing?.begin(tick)
+      tr.start(undefined, ticks(tick))
+      after?.()
+    },
     // Whether the transport is running: Tone's `state`.
     get playing() { return transport().state === 'started' },
     attack(device: number, note: string, velocity: number) { loaded().attack(device, note, velocity) },
     release(device: number, note: string) { loaded().release(device, note) },
-    stop() { transport().stop() },
+    // The transport stopped, and with it every slot of the session (Ableton's stop).
+    stop() {
+      playing?.unlaunch()
+      transport().stop()
+    },
     pause() { transport().pause() },
-    locate(tick: number) { transport().ticks = tick },
+    // The song put at `tick`. Playing, the session's slots play on from there, each at the place in
+    // its loop it had reached, and a launch waiting waits again from there.
+    locate(tick: number) {
+      const tr = transport()
+      if (tr.state !== 'started' || !playing) {
+        tr.ticks = tick
+        return
+      }
+      const after = playing.jump(Math.ceil(tr.getTicksAtTime(tr.now())), tick)
+      tr.ticks = tick
+      after()
+    },
+    // The session (`audiodaw.sim.ts`): a slot launched by its track and scene, a track stopped, a
+    // scene launched, every track stopped, every track back to its arrangement; what each track plays.
+    launch(track: number, scene: number) { loaded().launch(track, scene) },
+    halt(track: number) { loaded().halt(track) },
+    launchScene(scene: number) { loaded().launchScene(scene) },
+    haltAll() { loaded().haltAll() },
+    arrange() { loaded().arrange() },
+    session(): Launched[] { return playing?.session() ?? [] },
     cycle(on: boolean) { transport().loop = on },
     position() { return transport().ticks },
     stamp() { return transport().getTicksAtTime(Tone.now()) },

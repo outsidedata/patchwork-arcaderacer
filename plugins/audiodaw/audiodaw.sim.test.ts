@@ -7,6 +7,7 @@ import {
   putEffect, putInstrument, sounds, spanOf, turnEffect, uniqueClip,
   noteTrack, automationTrack, automationNote, addAutomationPattern, addAutomationNote, moveAutomationNote,
   removeAutomationNote, addPoint, movePoint, removePoint, setKnob,
+  passes, addScene, removeScene, moveScene, duplicateScene, setSlot, slotOf, scenesOf,
   type AutomationTrack, type Device, type Knob, type NoteTrack, type Project,
 } from './audiodaw.sim'
 
@@ -47,6 +48,52 @@ function untouched(p: Project, edit: (p: Project) => Project): Project {
   expect(p).toEqual(before)
   return out
 }
+
+describe('audiodaw clips that loop', () => {
+  it("lays a clip of its own length over its pattern's loop, pass by pass, begun at its offset", () => {
+    // A bar's pattern (768 ticks) in a clip of two and a half bars from tick 1000, begun a beat into its
+    // loop: three passes, the first a beat short and the last cut at the clip's end.
+    const p = moveClip(song(), 0, { start: 1000, length: 1920, offset: 192 })
+    expect(clipEnd(p, p.clips[0]!)).toBe(2920)
+    expect(passes(p, p.clips[0]!)).toEqual([
+      { base: 808, start: 1000, end: 1576 },
+      { base: 1576, start: 1576, end: 2344 },
+      { base: 2344, start: 2344, end: 2920 },
+    ])
+    // Its length taken away, it plays its loop once from its offset.
+    const once = moveClip(p, 0, { length: undefined })
+    expect(clipEnd(once, once.clips[0]!)).toBe(1000 + 576)
+  })
+})
+
+describe('audiodaw session', () => {
+  it('keeps every track\'s slots to the scenes as scenes are added, copied, moved and taken away, and patterns renamed and removed', () => {
+    let p = addScene(addScene(song(), { name: 'verse' }), { name: 'drop' })
+    p = setSlot(setSlot(p, 0, 0, 'a'), 2, 1, 'a')
+    expect(slotOf(p, 0, 0)).toBe('a')
+    expect(slotOf(p, 2, 1)).toBe('a')
+    // A scene put in first moves every slot along with its scene.
+    p = addScene(p, { name: 'intro' }, 0)
+    expect(scenesOf(p).map(s => s.name)).toEqual(['intro', 'verse', 'drop'])
+    expect([slotOf(p, 0, 1), slotOf(p, 2, 2), slotOf(p, 0, 0)]).toEqual(['a', 'a', undefined])
+    // A scene copied plays the same patterns.
+    p = duplicateScene(p, 1, 'verse 2')
+    expect(slotOf(p, 0, 2)).toBe('a')
+    // Moving a scene carries its slots.
+    p = moveScene(p, 3, 0)
+    expect(scenesOf(p).map(s => s.name)).toEqual(['drop', 'intro', 'verse', 'verse 2'])
+    expect(slotOf(p, 2, 0)).toBe('a')
+    // A pattern renamed is renamed in its slots; one removed empties them.
+    p = renamePattern(p, 0, 'a', 'hook')
+    expect([slotOf(p, 0, 2), slotOf(p, 0, 3)]).toEqual(['hook', 'hook'])
+    p = removePattern(p, 0, 'hook')
+    expect(p.tracks[0]!.slots).toBeUndefined()
+    // A scene taken away takes its slots.
+    p = removeScene(p, 0)
+    expect(slotOf(p, 2, 0)).toBeUndefined()
+    expect(scenesOf(p).map(s => s.name)).toEqual(['intro', 'verse', 'verse 2'])
+  })
+})
 
 describe('audiodaw clip arithmetic', () => {
   it('plays a pattern from its from to its length, once', () => {

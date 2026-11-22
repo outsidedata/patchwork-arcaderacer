@@ -35,6 +35,11 @@
 //             out, no bar.
 //   lines     one line of `text` at a time in the ui's style `style`, its middle at `at`, the next
 //             every `every` seconds from the first frame, round again after the last; left out, none.
+//             An entry of `text` is a string, or `{ "text": "...", "picture": "ar1" }`: while that line's turn
+//             lasts, its `picture` (a `texture` entry for `ui`, preloaded) is drawn with its top left at
+//             the panel's top left, at the size the file was made, once it has landed, under the bar and
+//             the words, and still while `shaders` says its words in place of the line. A line with no
+//             picture shows none.
 //   shaders   `{ style, at, text }`: the line shown in place of `lines` once every file is in and while
 //             shaders are still compiling (`plugins.loader.shaders()`, which counts them through the
 //             scene's `world.loader.mods.shaders`, render3d's); left out, nothing is said, and the screen
@@ -59,11 +64,16 @@
 import type { Plugins } from '#engine/browser.ts'
 import type { Bar, Behaviors, Ui } from '../ui/ui.plugin.ts'
 
+// One of `lines.text`: the words alone, or the words and the picture shown while they are.
+export type Line = string | { text: string; picture?: string }
+export const wordsOf = (line: Line): string => (typeof line === 'string' ? line : line.text)
+export const pictureOf = (line: Line): string | undefined => (typeof line === 'string' ? undefined : line.picture)
+
 export type Loading = {
   fill?: unknown
   pictures?: { picture: string; at: [number, number]; size: [number, number] }[]
   bar?: Bar & { at: [number, number]; fill: unknown }
-  lines?: { style: string; at: [number, number]; every: number; text: string[] }
+  lines?: { style: string; at: [number, number]; every: number; text: Line[] }
   shaders?: { style: string; at: [number, number]; text: string }
   fade: number
 }
@@ -98,6 +108,12 @@ function check(look: Loading, panel: string, loader: Plugins['loader']) {
   const l = look.lines
   if (l && !(typeof l.every === 'number' && l.every > 0)) throw new Error(`${where} lines every ${l.every} is not a number of seconds above 0`)
   if (l && !(Array.isArray(l.text) && l.text.length > 0)) throw new Error(`${where} lines has no text`)
+  for (const line of l?.text ?? []) {
+    const name = pictureOf(line)
+    if (name === undefined) continue
+    const it = loader.catalogued(name)
+    if (!it || it.type !== 'texture' || it.for !== 'ui' || it.preload === false) throw new Error(`${where} lines picture ${name} is no preloaded texture entry for ui in world.loader.assets`)
+  }
 }
 
 export const behaviors = (): Behaviors => {
@@ -153,6 +169,19 @@ export const behaviors = (): Behaviors => {
         shown.push(sprite)
       })
 
+      // The picture of the line whose turn it is, at the panel's top left corner at the size it was made,
+      // once it has landed: under the bar and the words, which stay drawn over it, the shaders line too.
+      // It is made on the first frame, before the bar and the words, so they stay over it whenever it lands.
+      if (look.lines?.text.some(line => pictureOf(line) !== undefined)) {
+        const l = look.lines
+        const name = pictureOf(l.text[Math.floor((now - s.began) / l.every) % l.text.length])
+        const tex = name === undefined ? undefined : loader.get(name)
+        const sprite = ui.show(panel, 'line picture', () => new PIXI.Sprite())
+        sprite.visible = !!tex
+        if (tex && sprite.texture !== tex) sprite.texture = tex
+        shown.push(sprite)
+      }
+
       if (look.bar) {
         const b = look.bar
         const bar = ui.show(panel, 'bar', () => ui.bar(b))
@@ -168,14 +197,16 @@ export const behaviors = (): Behaviors => {
         shown.push(line)
       } else if (look.lines) {
         const l = look.lines
+        const current = l.text[Math.floor((now - s.began) / l.every) % l.text.length]
         const line = ui.show(panel, 'line', () => new PIXI.Text({ text: '', style: ui.style(l.style), anchor: 0.5 }))
-        line.text = l.text[Math.floor((now - s.began) / l.every) % l.text.length]
+        line.text = wordsOf(current)
         line.position.set(l.at[0], l.at[1])
         shown.push(line)
       }
 
       for (const it of shown) it.alpha = alpha
-      if ((look.pictures ?? []).every(p => !!loader.get(p.picture))) s.drawn = true
+      const named = [...(look.pictures ?? []).map(p => p.picture), ...(look.lines?.text ?? []).map(pictureOf).filter(n => n !== undefined)]
+      if (named.every(n => !!loader.get(n))) s.drawn = true
     },
   }
 }

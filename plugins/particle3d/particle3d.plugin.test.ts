@@ -1660,3 +1660,67 @@ test('a source that names its own effect throws it with no attachment written, k
   beacons([{ key: 'a', on: 'item', effect: 'smoke', at: [0, 0, 0], drivers: {} }])
   expect(() => p.frame()).toThrow('particle3d\'s item source a throws the effect smoke, which the effects file has not')
 })
+
+// ---------------------------------------------------------------- the sky's light
+
+// A game's own plugin, `glow`, whose `light` mod hands the share the test puts on `globalThis.sunlight`,
+// each frame, as skydome3d's hands the sky's.
+const glowHome = mkdtempSync(join(tmpdir(), 'particle3d-light-'))
+afterAll(() => rmSync(glowHome, { recursive: true }))
+mkdirSync(join(glowHome, 'plugins', 'glow'), { recursive: true })
+writeFileSync(join(glowHome, 'plugins', 'glow', 'glow.particle3d.ts'), 'export const light = () => (globalThis as any).sunlight\n')
+const sunlight = (share: number[] | undefined) => { (globalThis as any).sunlight = share }
+// A page whose scene names the `light` mod, with `glow` listed ahead of particle3d, or after it.
+const lit = async (order = ['loader', 'shipped', 'particle3d', 'render3d'], named = true) => {
+  const p = page(order)
+  const world = p.plugins.wire.scene.world
+  if (named) world.particle3d.mods = { light: 'glow' }
+  world.shipped = { plugins: ['glow'] }
+  world.scenemanager = { home: pathToFileURL(glowHome + '/').href }
+  await prepare({} as any, [], world)
+  return p
+}
+// The shader every mesh's material is compiled from, as three hands it over: the chunks a splice goes after.
+const compiled = (plugins: any) => {
+  const mesh = plugins.render3d.scene.children.find((o: any) => o.isMesh)
+  const shader: any = {
+    uniforms: {},
+    vertexShader: '#include <common>\n#include <begin_vertex>',
+    fragmentShader: '#include <common>\n#include <map_fragment>\n#include <color_fragment>\n#include <premultiplied_alpha_fragment>',
+  }
+  mesh.material.onBeforeCompile(shader)
+  return shader
+}
+
+test('every particle\'s colour is times the share the `light` mod hands, written each frame into the one uniform every mesh reads, before its colour is drawn', async () => {
+  const p = await lit()
+  sunlight([0.5, 0.25, 1])
+  p.me.emit('square', [0, 0, 0])
+  p.frame()
+  const shader = compiled(p.plugins)
+  expect(shader.uniforms.skyLit.value).toEqual([0.5, 0.25, 1])
+  expect(shader.fragmentShader).toContain('uniform vec3 skyLit;')
+  expect(shader.fragmentShader).toMatch(/#include <color_fragment>\ndiffuseColor\.rgb \*= skyLit;/)
+  sunlight([0.1, 0.2, 0.3])
+  p.frame()
+  expect(shader.uniforms.skyLit.value).toEqual([0.1, 0.2, 0.3])
+})
+
+test('with no light yet from the mod, or none named, a particle is drawn in its own colour', async () => {
+  const waiting = await lit()
+  sunlight(undefined)
+  waiting.me.emit('square', [0, 0, 0])
+  waiting.frame()
+  expect(compiled(waiting.plugins).uniforms.skyLit.value).toEqual([1, 1, 1])
+  const none = await lit(undefined, false)
+  sunlight([0.2, 0.2, 0.2])
+  none.me.emit('square', [0, 0, 0])
+  none.frame()
+  expect(compiled(none.plugins).uniforms.skyLit.value).toEqual([1, 1, 1])
+})
+
+test('a plugin named by `light` listed after particle3d throws, as it would hand the light of the frame before', async () => {
+  const p = await lit(['loader', 'particle3d', 'shipped', 'render3d'])
+  sunlight([1, 1, 1])
+  expect(() => p.frame()).toThrow('particle3d is listed before glow, whose light it reads that frame')
+})

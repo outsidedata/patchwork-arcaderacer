@@ -26,7 +26,12 @@
 // a second point, where a beam ends; and how fast time runs, so a quick burst can be watched slowly.
 // Last, the light it is seen in: the background's colour, the stage's sky light and sun, and the exposure,
 // each starting as the stage starts it, kept in this browser across reloads, never saved into a file, and
-// put back by Stage light.
+// put back by Stage light. A scene that lists skydome3d is seen under its sky (the workshop's own stage has
+// one, and the particles are dimmed by it as the scene's `world.particle3d.mods.light` says): the sky is the
+// light then, and in place of the sky light, the sun and the exposure the stage's bottom right corner has
+// three buttons, each a time of day (5, 14 and 18 to start). The one pressed sets the sky to its time, and
+// a panel over the buttons sets that time's hour, the day of the year, the moon's phase and the strength of
+// the sun and of the moon.
 //
 // A number field takes a number, or an expression of the file's drivers (particle3d's header, Drivers),
 // which is set once it reads as one. Under the effects, the left column has the file's drivers, each its
@@ -93,7 +98,10 @@
 //   auto, every      a burst: thrown again (1 or 0), every so many whole seconds
 //   grid             the grid and the stick shown, 1 or 0
 //   background       rrggbb, the stage's background
-//   sky, sun, exposure   the stage's light
+//   sky, sun, exposure   the stage's light (a stage with a sky has none of them)
+//   skyat            a stage with a sky: which of its three times is pressed, 1 to 3
+//   skyhour, skyday, skyphase, skysun, skymoon   that time's hour (0 to 24), day of the year (1 to 365),
+//                    moon phase (0 to 1), sun strength and moon strength, where they differ from its start
 //   camera, look     x,y,z: where the camera stands and the point it turns round
 //   mute, solo, open layers by the number on their cards, from 1: muted (a list), played alone (one),
 //                    opened (a list)
@@ -388,7 +396,7 @@ async function main() {
   const uiScene = found.ui3d.find(x => x.scene === look?.scene) ?? found.ui3d[0]
   // Each Replay shows the look under a new key, so ui3d makes it again and its clock starts again.
   let replays = 0
-  const st = await stage(found, view, uiScene)
+  const st = await stage(found, view, uiScene, { sky: true })
   const { loader: real, camera, canvas, grid, stick, bomb, toss } = st
   const restage = () => st.show(Object.fromEntries(Object.entries(working).map(([n, layers]) =>
     [n, n !== effect ? layers : layers.filter((_, i) => (solo === undefined ? !muted.has(i) : i === solo))])), { drivers, forceGenerators: generators })
@@ -590,9 +598,11 @@ async function main() {
     }
     const apply = () => {
       three.background = new Color(lit.background)
-      st.sky.intensity = lit.sky
-      st.sun.intensity = lit.sun
-      renderer.toneMappingExposure = lit.exposure
+      if (!st.clock) {
+        st.sky.intensity = lit.sky
+        st.sun.intensity = lit.sun
+        renderer.toneMappingExposure = lit.exposure
+      }
       try { localStorage.setItem(LIT, JSON.stringify(lit)) } catch { /* as above */ }
     }
     const inputs: { reset(): void }[] = []
@@ -607,13 +617,132 @@ async function main() {
     colour.oninput = () => { lit.background = colour.value; apply(); put('background', lit.background.slice(1)) }
     field(bar, 'Background', colour)
     inputs.push({ reset() { colour.value = lit.background } })
-    slider('Sky light', 'sky', 3)
-    slider('Sun', 'sun', 5)
-    slider('Exposure', 'exposure', 3)
+    // With a sky the sky is the light, and it sets the exposure itself every frame: its time of day, moon
+    // and light are the three buttons over the stage's corner (The sky's times, below), not these.
+    if (!st.clock) {
+      slider('Sky light', 'sky', 3)
+      slider('Sun', 'sun', 5)
+      slider('Exposure', 'exposure', 3)
+    }
     const back = make('button', 'small', 'Stage light')
     back.title = 'Put the background, the lights and the exposure back as the stage starts them'
     back.onclick = () => { Object.assign(lit, start); apply(); for (const i of inputs) i.reset(); for (const k of ['background', 'sky', 'sun', 'exposure']) put(k, undefined) }
     bar.append(back)
+    apply()
+  }
+
+  // ---- the sky's times ----
+
+  // A stage that has a sky: three buttons in the stage's bottom right corner, each a time of day, and one
+  // panel above them that sets the one pressed: its hour, the day of the year, the moon's phase, the sun's
+  // strength and the moon's. Each button keeps its own, so pressing one shows that time at once and the panel
+  // is that button's. The page's alone, never saved into a file; kept in this browser across reloads, and in
+  // the address as `skyat` (the button, from 1) and `skyhour`, `skyday`, `skyphase`, `skysun`, `skymoon` where
+  // that button's differ from where it starts.
+  if (st.clock) {
+    const { data, day, look } = st.clock
+    type Sky = { hour: number; day: number; phase: number; sun: number; moon: number }
+    const SKY = 'particle-workshop-sky'
+    const CONTROLS = [
+      { key: 'hour', label: 'Hour', min: 0, max: 24, step: 0.05, address: 'skyhour', hint: 'hours into the sky\'s day: 0 is midnight, 12 noon' },
+      { key: 'day', label: 'Day of the year', min: 1, max: 365, step: 1, address: 'skyday', hint: '1 is the first of January' },
+      { key: 'phase', label: 'Moon phase', min: 0, max: 1, step: 0.01, address: 'skyphase', hint: '0 is a new moon, 0.5 a full one' },
+      { key: 'sun', label: 'Sun strength', min: 0, max: 6, step: 0.05, address: 'skysun', hint: 'the key light the sun gives at its highest' },
+      { key: 'moon', label: 'Moon strength', min: 0, max: 3, step: 0.05, address: 'skymoon', hint: 'the key light a full moon gives at its highest' },
+    ] as const
+    const ICONS = [
+      '<svg viewBox="0 0 16 16"><path d="M2 12h12M5 12a3 3 0 0 1 6 0M8 2v4M6.5 3.5 8 2l1.5 1.5M2.5 8.5l1 1M13.5 8.5l-1 1"/></svg>',
+      '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M3 13l1.4-1.4M11.6 4.4 13 3"/></svg>',
+      '<svg viewBox="0 0 16 16"><path d="M2 12h12M5 12a3 3 0 0 1 6 0M8 2v4M6.5 4.5 8 6l1.5-1.5M2.5 8.5l1 1M13.5 8.5l-1 1"/></svg>',
+    ]
+    const HOURS = [5, 14, 18]
+    // each button starts at its hour, and at the stage's own day, phase and strengths
+    const start = (i: number): Sky => ({ hour: HOURS[i], day: data.doy, phase: data.phase, sun: look.sunIntensity, moon: look.moonIntensity })
+    const times = HOURS.map((_, i) => start(i))
+    let at = 1
+    try {
+      const kept = JSON.parse(localStorage.getItem(SKY) ?? 'null')
+      const whole = (t: Record<string, unknown> | undefined) => CONTROLS.every(c => Number.isFinite(t?.[c.key]))
+      if (kept?.times?.length === HOURS.length && kept.times.every(whole)) {
+        times.splice(0, times.length, ...kept.times)
+        if (Number.isInteger(kept.at) && kept.at >= 0 && kept.at < HOURS.length) at = kept.at
+      }
+    } catch { /* kept only where the browser keeps it */ }
+    // the address's, ahead of this browser's
+    const pressed = saidNumber('skyat')
+    if (pressed !== undefined) {
+      if (Number.isInteger(pressed) && pressed >= 1 && pressed <= HOURS.length) at = pressed - 1
+      else wrong('skyat', `a whole number from 1 to ${HOURS.length}`)
+    }
+    for (const c of CONTROLS) {
+      const v = saidNumber(c.address)
+      if (v === undefined) continue
+      if (v < c.min || v > c.max) wrong(c.address, `a number from ${c.min} to ${c.max}`)
+      else times[at][c.key] = v
+    }
+    const clock = (hour: number) => {
+      const minutes = Math.round(hour * 60) % 1440
+      return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`
+    }
+
+    const box = make('div'); box.id = 'sky'
+    const pop = make('div', 'pop')
+    const head = make('div', 'head')
+    const title = make('b')
+    const reset = make('button', 'small', 'Reset')
+    reset.title = 'Put this time back as the stage starts it'
+    head.append(title, reset)
+    pop.append(head)
+    const inputs = CONTROLS.map(c => {
+      const line = make('label', 'line')
+      line.title = c.hint
+      const range = make('input'); range.type = 'range'; range.min = String(c.min); range.max = String(c.max); range.step = String(c.step)
+      const number = make('input'); number.type = 'number'; number.min = String(c.min); number.max = String(c.max); number.step = String(c.step)
+      line.append(make('span', '', c.label), range, number)
+      pop.append(line)
+      return { c, range, number }
+    })
+    const row = make('div', 'times')
+    const buttons = HOURS.map((_, i) => {
+      const b = make('button'); b.innerHTML = ICONS[i]
+      const label = make('span')
+      b.append(label)
+      b.onclick = () => { if (i === at && pop.classList.contains('open')) pop.classList.remove('open'); else { at = i; pop.classList.add('open') } apply() }
+      row.append(b)
+      return { b, label }
+    })
+    box.append(pop, row)
+    view.append(box)
+
+    // The sky as the pressed button has it, and every control showing it.
+    function apply() {
+      const t = times[at]
+      data.t = (t.hour / 24) * day
+      data.doy = t.day
+      data.phase = t.phase
+      look.sunIntensity = t.sun
+      look.moonIntensity = t.moon
+      title.textContent = clock(t.hour)
+      buttons.forEach((b, i) => { b.label.textContent = clock(times[i].hour); b.b.classList.toggle('on', i === at) })
+      for (const { c, range, number } of inputs) {
+        range.value = String(t[c.key])
+        if (document.activeElement !== number) number.value = String(+t[c.key].toFixed(2))
+        number.classList.remove('bad')
+        put(c.address, t[c.key] === start(at)[c.key] ? undefined : t[c.key])
+      }
+      put('skyat', at + 1)
+      try { localStorage.setItem(SKY, JSON.stringify({ at, times })) } catch { /* as above */ }
+    }
+    for (const { c, range, number } of inputs) {
+      range.oninput = () => { times[at][c.key] = Number(range.value); apply() }
+      number.oninput = () => {
+        const v = number.valueAsNumber
+        if (!Number.isFinite(v) || v < c.min || v > c.max) { number.classList.add('bad'); return }
+        times[at][c.key] = v
+        apply()
+      }
+    }
+    reset.onclick = () => { times[at] = start(at); apply() }
     apply()
   }
 

@@ -50,6 +50,7 @@
     "skid": 1,
     "burnout": 1,
     "smokeTint": 14935014,
+    "boosting": 1,
     "racer": 1,
     "paid": 1
   },
@@ -117,6 +118,26 @@
         "alphas": [[0, 0], [0.1, 0.5], [1, 0]],
         "spin": 0.4,
         "tint": "smokeTint"
+      }
+    ],
+    "embers": [
+      {
+        "sheet": "fx",
+        "clip": "glow",
+        "every": 0.03,
+        "life": [0.6, 1.3],
+        "size": [0.06, 0.13],
+        "dir": [0, 1, 0],
+        "spread": 0.45,
+        "speed": [0.5, 1.6],
+        "jitter": [0.12, 0, 0.12],
+        "drag": 0.9,
+        "g": -1.2,
+        "add": true,
+        "tint": 16757575,
+        "tint1": 16730640,
+        "gain": 2,
+        "alphas": [[0, 0], [0.1, 0.9], [1, 0]]
       }
     ],
     "sparks": [

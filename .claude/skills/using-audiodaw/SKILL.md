@@ -1,6 +1,6 @@
 ---
 name: using-audiodaw
-description: Use in core, or any clone of it, whenever audiodaw comes up - the Tone.js song plugin (`plugins/audiodaw/`), a project (`rack` of devices, `tracks` of patterns, `clips`, `buses`, `master`, `loop`, `span`), an instrument's `voices`, a drum kit's pads, effects and sends, writing a song as data and playing it, a game playing a song behind its play, and `world.audiodaw` (`lookAhead`, `latencyHint`). Also when a song stutters, chokes, crackles or drops notes, when it plays in a studio page and not in a game, when nothing is heard until a key is pressed, or when a page full of synths is slow.
+description: Use in core, or any clone of it, whenever audiodaw comes up - the Tone.js song plugin (`plugins/audiodaw/`), a project (`rack` of devices, `tracks` of looping patterns, `clips` with their own `length` and `offset`, the session's `scenes`, `slots` and `launch`, `buses`, `master`, `loop`, `span`), launching slots and scenes (Ableton's Session View, `launch`, `launchScene`, `halt`, `arrange`), an instrument's `voices`, a drum kit's pads, effects and sends, writing a song as data and playing it, a game playing a song behind its play, and `world.audiodaw` (`lookAhead`, `latencyHint`). Also when a song stutters, chokes, crackles or drops notes, when it plays in a studio page and not in a game, when nothing is heard until a key is pressed, or when a page full of synths is slow.
 ---
 
 # Using audiodaw
@@ -32,8 +32,11 @@ A project is one JSON object (`Project` in `audiodaw.sim.ts`):
     1 of the knob's travel, `shape` how the line reaches it (`linear`, `exp`, `step`). Moving or removing a
     device, an effect, a bus or a send keeps every knob on its thing, or leaves the track with no
     target when its thing is gone.
-- `clips`: `{ track, pattern, start }`, a pattern placed on the song once, from its `from` to its
-  `length`. A pattern longer than its run is placed again at its end.
+- `clips`: `{ track, pattern, start, length?, offset? }`, a pattern placed on the song from `start`
+  for `length` ticks, its loop (the pattern from its `from` to its `length`) repeated to fill it,
+  begun `offset` ticks into the loop. With no `length`, the loop plays once.
+- `scenes` and each track's `slots`: the session, Ableton's Session View. `slots[scene]` names one of
+  the track's patterns, or is null. `launch` is the ticks a launch waits for, a bar when left out.
 - `buses`: return channels with effects (an echo, a room), fed by the devices' sends.
 - `master`: the volume and effects every sound goes out through.
 - `loop`: `{ start, end }` in ticks, where the transport loops when the cycle is on.
@@ -139,6 +142,11 @@ is made with it and handed to Tone, as the plugin does. `rawContext.baseLatency 
 - `play(tick?)`, `stop()`, `pause()`, `locate(tick)`, `cycle(on)` (loop on `project.loop`),
   `position()`, `playing`.
 - `attack(device, note, velocity)` and `release(device, note)`: a key played live.
+- `launch(track, scene)`, `launchScene(scene)`, `halt(track)`, `haltAll()`: the session's slots
+  started and stopped on the next multiple of the song's `launch` (play starting with them when
+  stopped); `arrange()` hands every track back to its arrangement; `session()`, what each track
+  plays and waits to. A track the session holds plays no arrangement until `arrange()`. `stop()`
+  lets go of every slot.
 - `meter(on)`, `optionsOf(device)`, `effectOptionsOf(chain, i)`: what Tone holds now.
 - `glides(knob)`: whether a knob sweeps (a Param or a Signal) or is set on 16ths, asked of the live
   Tone object; undefined for a knob the song does not have.

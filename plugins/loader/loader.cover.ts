@@ -23,7 +23,7 @@ import { pathToFileURL } from 'node:url'
 import type { Scene } from '#engine/engine.ts'
 import { sceneOf, type Entry as Visit } from '#addons/scenemanager/scenemanager.addon.ts'
 import { preloaded, type Entry } from './loader.sim.ts'
-import type { Loading } from './loader.ui.ts'
+import { pictureOf, wordsOf, type Loading } from './loader.ui.ts'
 
 // The numbers `loader.cover.js` draws and fetches by.
 export type Cover = {
@@ -32,7 +32,8 @@ export type Cover = {
   fill?: unknown
   pictures: { url: string; at: [number, number]; size: [number, number] }[]
   bar: Loading['bar'] | null
-  lines: { at: [number, number]; every: number; text: string[]; style: Record<string, unknown> } | null
+  // `pictures` is the url of each line's picture, or null for a line with none, in the order of `text`
+  lines: { at: [number, number]; every: number; text: string[]; pictures: (string | null)[]; style: Record<string, unknown> } | null
   fonts: { family: string; url: string }[]
   urls: string[]
 }
@@ -85,13 +86,20 @@ export async function cover(folder: string): Promise<Cover | undefined> {
 
   const fit = first.plugins?.includes('render2d') ? first.world?.render2d?.fit : undefined
   const l = look.lines
+  const linePictures = (l?.text ?? []).map(line => {
+    const name = pictureOf(line)
+    if (name === undefined) return null
+    const it = assets[name]
+    if (!it || it.type !== 'texture' || it.for !== 'ui' || !preloaded(it)) throw new Error(`ui panel ${panelName}'s loading lines picture ${name} is no preloaded texture entry for ui in world.loader.assets`)
+    return it.url
+  })
   return {
     area: { width: first.prefabs.engine.width, height: first.prefabs.engine.height, ...(fit ? { fit } : {}) },
     panel: { anchor: panel.anchor, size: panel.size, ...(panel.at ? { at: panel.at } : {}), ...(panel.scale ? { scale: panel.scale } : {}) },
     fill: look.fill,
     pictures,
     bar: look.bar ?? null,
-    lines: l ? { at: l.at, every: l.every, text: l.text, style: (ui.styles?.[l.style] ?? {}) as Record<string, unknown> } : null,
+    lines: l ? { at: l.at, every: l.every, text: l.text.map(wordsOf), pictures: linePictures, style: (ui.styles?.[l.style] ?? {}) as Record<string, unknown> } : null,
     fonts: [...fonts].map(([url, family]) => ({ family, url })),
     urls: [...urls],
   }

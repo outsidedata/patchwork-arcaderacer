@@ -1,11 +1,50 @@
 {
-  "plugins": ["particle3d", "instances3d", "lights3d", "render3d"],
+  "plugins": ["skydome3d", "particle3d", "instances3d", "lights3d", "render3d"],
   "dt": 0.016666666666666666,
   "world": {
-    "particle3d": { "mods": { "behaviors": ["instances3d"] } },
+    "particle3d": { "mods": { "behaviors": ["instances3d"], "light": "skydome3d" } },
     "instances3d": {},
-    "lights3d": { "grid": [16, 9], "slices": 24 }
+    "lights3d": { "grid": [16, 9], "slices": 24 },
+    "skydome3d": {
+      "day": 1200,
+      "look": {
+        "dayZenith": "#2a63b8",
+        "nightZenith": "#03050e",
+        "dayHorizon": "#e6d6bd",
+        "nightHorizon": "#0d0e1a",
+        "setZenith": "#47386b",
+        "setHorizon": "#fa7a38",
+        "sunHigh": "#fff4dc",
+        "sunLow": "#ff6b29",
+        "moon": "#8cadff",
+        "ground": "#2a1e12",
+        "exposure": 1.05,
+        "nightOpen": 0.35,
+        "sunIntensity": 2.6,
+        "moonIntensity": 0.35,
+        "hemiDay": 0.6,
+        "hemiNight": 0.12,
+        "stars": 1,
+        "haze": 0.0005,
+        "mist": 0.01,
+        "starSize": 0.15,
+        "twinkle": 0.4,
+        "twinkles": 900,
+        "twinkleSpread": 5,
+        "sunShrink": [0.05, 0.4],
+        "sunEdge": 0.85,
+        "moonEdge": 0.9,
+        "moonSize": 0.0045,
+        "radius": 1500,
+        "overcast": 0.2,
+        "envSun": 0.02,
+        "envMix": 0.05,
+        "envIntensity": 0.25
+      },
+      "shadow": { "map": 2048, "half": 45, "near": 1, "far": 1600, "bias": -0.00002, "normalBias": 0.04 }
+    }
   },
+  "sky": { "t": 600, "rate": 0, "doy": 172, "lat": 30, "phase": 0.72 },
   "render3d": {
     "tone": "neutral",
     "exposure": 1,

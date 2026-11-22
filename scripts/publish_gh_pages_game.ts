@@ -21,6 +21,8 @@
 // 6. A repo that is not on GitHub is made, public, with Pages deploying from the workflow and the
 //    `github-pages` environment letting `master` deploy, before the first push. `master` is pushed,
 //    which deploys.
+// 7. The folder's `node_modules` is deleted, whether the run published or failed, so it does not fill the
+//    disk. The next run's `yarn` installs it again.
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
@@ -131,6 +133,12 @@ export function push(dir: string, repo: string) {
   run(dir, 'git', ['push', '-q', '-u', 'origin', 'master'])
 }
 
+// Step 7: the folder's `node_modules` deleted, so a published game leaves none of them on the disk. The
+// next run's `yarn install` makes it again.
+export function clean(dir: string) {
+  rmSync(path.join(dir, 'node_modules'), { recursive: true, force: true })
+}
+
 // The GitHub owner of the repo's `origin`, from its url.
 export function ownerOf(root: string): string {
   const url = run(root, 'git', ['remote', 'get-url', 'origin'])
@@ -148,10 +156,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const name = `patchwork-${game}`
     const dir = path.join(homedir(), owner, name)
     const sha = stage(root, game, dir, values.engine)
-    execFileSync('yarn', ['install', '--frozen-lockfile'], { cwd: dir, stdio: 'inherit' })
-    execFileSync('yarn', ['produce_static_site', game, '--base', `/${name}/`], { cwd: dir, stdio: 'inherit' })
-    const committed = commit(dir, game, sha)
-    push(dir, `${owner}/${name}`)
+    let committed: boolean
+    try {
+      execFileSync('yarn', ['install', '--frozen-lockfile'], { cwd: dir, stdio: 'inherit' })
+      execFileSync('yarn', ['produce_static_site', game, '--base', `/${name}/`], { cwd: dir, stdio: 'inherit' })
+      committed = commit(dir, game, sha)
+      push(dir, `${owner}/${name}`)
+    } finally {
+      clean(dir)
+    }
     console.log(`${committed ? 'published' : 'nothing changed in'} ${dir}: https://github.com/${owner}/${name}, played at https://${owner}.github.io/${name}/`)
   } catch (e) {
     console.error((e as Error).message)

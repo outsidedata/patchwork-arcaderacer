@@ -22,8 +22,9 @@ import { edits, heightAt, land as landOf, paintAt, ramp, type Field, type Land, 
 
 const NORMAL = 0.5
 const LAND: Surface = { name: 'land', id: 'land', shape: { land: {} } }
-// This module, which lod3d's workers load to answer the land.
-const HERE = import.meta.url
+// This module, which lod3d's workers load to answer the land. It names its own file as a `new URL`, so
+// the static site's bundle (`scripts/bundle.ts`) finds it as a task of a worker and writes it as a file.
+const HERE = new URL('./terrain3d.lod3d.ts', import.meta.url).href
 
 const LANDS: Surface[] = [LAND]
 export const surfaces = (_w: W): Surface[] => LANDS

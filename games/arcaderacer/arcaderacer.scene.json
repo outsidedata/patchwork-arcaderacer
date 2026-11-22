@@ -4,15 +4,27 @@
     "loader": {
       "mods": { "shaders": "render3d" },
       "assets": {
-        "splash": {
+        "ar1": {
           "type": "texture",
-          "url": "/games/arcaderacer/assets/loading/splash.webp",
+          "url": "/games/arcaderacer/assets/loading/ar1.webp",
           "for": "ui",
           "preload": true
         },
-        "logo": {
+        "ar2": {
           "type": "texture",
-          "url": "/games/arcaderacer/assets/loading/logo.webp",
+          "url": "/games/arcaderacer/assets/loading/ar2.webp",
+          "for": "ui",
+          "preload": true
+        },
+        "ar3": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/loading/ar3.webp",
+          "for": "ui",
+          "preload": true
+        },
+        "ar4": {
+          "type": "texture",
+          "url": "/games/arcaderacer/assets/loading/ar4.webp",
           "for": "ui",
           "preload": true
         },
@@ -567,10 +579,6 @@
           "modal": true,
           "loading": {
             "fill": { "color": 659500 },
-            "pictures": [
-              { "picture": "splash", "at": [0, 0], "size": [1280, 720] },
-              { "picture": "logo", "at": [140, 70], "size": [1000, 200] }
-            ],
             "bar": {
               "at": [340, 600],
               "size": [600, 14],
@@ -584,9 +592,10 @@
               "at": [640, 650],
               "every": 4,
               "text": [
-                "Turn and tap the brake or handbrake to start a drift.",
-                "A drift that touches no wall or car earns boost.",
-                "Touching a wall or a car spoils the drift's boost."
+                { "text": "Turn and tap the brake or handbrake to start a drift.", "picture": "ar1" },
+                { "text": "A drift that touches no wall or car earns boost.", "picture": "ar2" },
+                { "text": "Touching a wall or a car spoils the drift's boost.", "picture": "ar3" },
+                { "text": "Keep a drift clear of walls and cars and the boost is yours.", "picture": "ar4" }
               ]
             },
             "shaders": { "style": "tagline", "at": [640, 650], "text": "Compiling shaders" },

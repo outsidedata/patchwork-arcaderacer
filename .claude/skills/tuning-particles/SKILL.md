@@ -223,6 +223,33 @@ bursts that many times as often and `force` throws every particle from then on t
 hard, both 1 as `emit` hands it back. A flame that grows with the throttle is one effect whose `rate`
 and `force` the plugin writes from a field of the row, its numbers on the definition, not two effects.
 
+## Particles take the sky's light: `mods.light`
+
+Without it every particle is drawn in its own colour always, as bright at night as at noon, so smoke
+and dust glow in the dark. A scene that has a `skydome3d` lists it as the particles' light:
+
+```json
+"particle3d": { "effects": "effects", "mods": { "light": "skydome3d" } }
+"gpuparticle3d": { "mods": { "light": "skydome3d" } }
+```
+
+- Each of `world.particle3d.mods` and `world.gpuparticle3d.mods` takes its own `light` line; a game
+  that draws with both names it under both. `mods` already holding keys (`sources`, `solids`,
+  `behaviors`) gets `light` beside them, never in place of them.
+- The mod is `plugins/skydome3d/skydome3d.particle3d.ts` (and `skydome3d.gpuparticle3d.ts`): its
+  `light(plugins)` hands each particle the sky's light as a share of its brightest, `[r, g, b]`, and
+  the particle's colour is times it, `gain` and `add` included. A particle dims as the sun sets, the
+  weather closes in and night comes.
+- `skydome3d` is listed before `particle3d` and `gpuparticle3d` in the scene's `plugins` (`ahead`).
+- A fire that must shine at night is a `lamp` and its light, which no sky dims, never its particles'
+  own colour (`using-lights3d`).
+- Where it goes in a game: a manager scene's `world` is inherited by every child scene that has no
+  `world.particle3d` of its own (a child that names the key replaces the manager's wholesale, so its
+  own `mods` must carry `light` too), so one line in the manager covers them. A scene with no sky
+  leaves it out.
+- The particle workshop's stage has a sky, and its time buttons set the hour, day, moon phase and sun
+  and moon strength, so an effect is looked at at night there.
+
 ## The loop
 
 1. Open `/games/<game>/dev.html` (with `?tab&cpu` for a bot in one tab), and turn the effect on in

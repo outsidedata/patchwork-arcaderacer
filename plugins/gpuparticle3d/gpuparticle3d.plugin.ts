@@ -49,6 +49,11 @@
 //                       land among them). Asked once, when the passes are made. With none named a
 //                       particle bounces off its effect's floor alone.
 //            behaviors  plugins whose `behaviors()` deliver words (`words.ts`)
+//            light      one plugin, whose `light(plugins)` hands back, once a frame after it has drawn, the share
+//                       of its own colour each channel of a particle is drawn in, `[r, g, b]`, as particle3d's
+//                       does (its header, The sky's light; skydome3d's, `skydome3d.gpuparticle3d.ts`): every
+//                       particle's colour is times it. Listed before gpuparticle3d. With none named, or none
+//                       yet, a particle is drawn in its own colour.
 //
 // The file's `cap` is the most particles this page holds at once: a particle thrown with every slot taken is
 // dropped, as particle3d drops it. It sizes the state textures, S × S texels, S the least power of two whose
@@ -328,6 +333,9 @@ function split(effects: Record<string, Layer[]>, name: string): { layers: Driven
 // What the `solids` mod hands back: the GLSL the step is made with, which defines `meet` (`glsl.ts`,
 // MOVE), and the uniforms it reads, whose values are the mod's plugin's to write.
 export type Solids = (plugins: Plugins) => { glsl: string; uniforms: Record<string, { value: any }> }
+// What a `light` mod hands back each frame: how much light each channel of a particle's colour takes, a
+// share of its own, or undefined while there is none yet (particle3d's header, The sky's light).
+export type SkyLight = (plugins: Plugins) => number[] | undefined
 
 // What `emit` hands back. `at`, `dir`, `to`, `floor` and `life` may be written, and its `drivers` written
 // into; `age` is read.
@@ -428,6 +436,9 @@ export function gpuparticle3d() {
   let asked = false
   let stale = false
   let checked = false
+  // The light every particle's colour is times this frame, one uniform every mesh's material reads: white
+  // while no `light` mod is named or it has nothing yet (particle3d's, The sky's light).
+  const lit = { value: [1, 1, 1] }
   const lamps = new Map<Live, any[]>()
 
   // The file as it is played (particle3d's own way): drivers' plan, the page's time, the drivers held, the
@@ -1014,6 +1025,7 @@ void main() { oA = vec4(0.0); oB = vec4(0.0); oC = vec4(0.0); oD = vec4(0.0, 0.0
       premultipliedAlpha: true, blending: three.CustomBlending, blendSrc: three.OneFactor, blendDst: three.OneMinusSrcAlphaFactor,
     })
     const uniforms = {
+      skyLit: lit,
       tableTex: { value: null }, S: { value: S }, sorted: { value: null }, batch: { value: b.id },
       look0: { value: null }, look1: { value: null }, look2: { value: null }, look3: { value: null }, look4: { value: null }, look5: { value: null },
     }
@@ -1042,8 +1054,9 @@ void main() { oA = vec4(0.0); oB = vec4(0.0); oC = vec4(0.0); oD = vec4(0.0, 0.0
         .replace('#include <begin_vertex>', QUAD_MAIN)
         .replace('#include <project_vertex>', `#include <project_vertex>\n${QUAD_AFTER}`)
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying float vKeep;\nvarying vec2 vFrame2;\nvarying vec2 vLook;')
+        .replace('#include <common>', '#include <common>\nuniform vec3 skyLit;\nvarying float vKeep;\nvarying vec2 vFrame2;\nvarying vec2 vLook;')
         .replace('#include <map_fragment>', `#ifdef USE_MAP\n${read}\n#endif`)
+        .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= skyLit;')
         .replace('#include <premultiplied_alpha_fragment>', '#include <premultiplied_alpha_fragment>\ngl_FragColor.a *= vKeep;')
     }
     m.customProgramCacheKey = () => `gpuparticle3d ${S} ${how.key}`
@@ -1334,6 +1347,7 @@ void main() { oA = vec4(0.0); oB = vec4(0.0); oC = vec4(0.0); oD = vec4(0.0, 0.0
       if (order.indexOf('render3d') < order.indexOf('gpuparticle3d'))
         throw new Error('gpuparticle3d is listed after render3d, which would draw every particle before it has moved')
       ahead(scene, 'gpuparticle3d', 'solids')
+      ahead(scene, 'gpuparticle3d', 'light')
     }
     if (!asked) {
       if (!plugins.loader) throw new Error('gpuparticle3d reads its effects through loader, which this scene does not name')
@@ -1380,6 +1394,7 @@ void main() { oA = vec4(0.0); oB = vec4(0.0); oC = vec4(0.0); oD = vec4(0.0, 0.0
       const dt = scene.prefabs.engine?.dt
       if (!dt) throw new Error('scene has no engine prefab with dt')
       dtNow = dt
+      lit.value = mod<SkyLight>(scene.world!, 'gpuparticle3d', 'light')?.(plugins) ?? [1, 1, 1]
       time += dt
       if (file && unchecked) {
         unchecked = false

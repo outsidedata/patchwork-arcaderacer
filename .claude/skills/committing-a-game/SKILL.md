@@ -16,7 +16,8 @@ So every file a game commits is one of two things:
   (`<name>.trees.json`, `<name>.foliage.json`, `<game>.sounds.json`, `cc0-textures.json`, a rig file)
   and every script that makes its art (`<game>.bake.ts`, and the `.py` and `.mjs` it runs).
 - **Baked**: a file `<game>.bake.ts` writes, in the form every game ships its art: a glb packed by
-  gltfpack (meshopt geometry, WebP textures), a picture as `.webp`, a sound, a wad.
+  gltfpack, or by pro-ng's `pack.mjs` for a kit car, bike or place (meshopt geometry either way, WebP
+  textures), a picture as `.webp`, a sound, a wad.
 
 Anything else is raw and is never committed: a glb exported by Blender and not packed, an FBX, a
 .blend, a full-size texture set, a downloaded pack, a jpg or png copied in from the library. A raw
@@ -80,8 +81,8 @@ run is a step missing from the bake, and the step is written.
 1. `yarn bake <game>`, from the root. It stops at its first failure and writes nothing past it; it
    prints `wrote <path>` for each file it makes.
 2. `node .claude/skills/committing-a-game/scripts/raw.mjs games/<game>`. It reads the files git would
-   commit in the game's folder, honouring its `.gitignore`, and names each raw one: a glb whose
-   `asset.generator` is not gltfpack's, a model or scene source, an archive, a working picture
+   commit in the game's folder, honouring its `.gitignore`, and names each raw one: a glb that is
+   neither gltfpack's (its `asset.generator`) nor pro-ng's `pack.mjs` (it requires `EXT_meshopt_compression`), a model or scene source, an archive, a working picture
    (`.psd`, `.exr`, ...), a jpg. It lists every png apart, since a script of the game's may draw one;
    each png is either written by a script the bake runs or it is raw. It exits 1 on any raw file.
    Every file it names is moved to the library and made by a step of the bake, then step 1 is run

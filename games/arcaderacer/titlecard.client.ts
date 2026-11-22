@@ -8,13 +8,17 @@
 //            the game: the leader goes to the course select, any other page to the car select.
 //   courses  the leader's: the courses' words. A press on one sends `choose` with its course, which the
 //            match tells every seat, and goes to the car select.
-//   cars     the car select. A press on a car sends `pick` with it. The seat is then on the match
+//   cars     the car select. A press on a car's name sends `pick` with it. The seat is then on the match
 //            plugin's lobby: who is here and what each picked, and what the match waits on; the leader's
 //            START (the match plugin) races the chosen course once every seat has picked. Behind them
 //            the courses' words stand, none selected. Solo (`index.html`, the match row's `solo`) there
 //            is no lobby: the pick itself starts the race on the chosen course.
-// Past the title the name stands over the select, the look `name.top`. Out of the lobby (racing, the
-// results) every page is on the title again.
+// Past the title a heading stands over the select, in the place the name stood and with no particles: on
+// the course select `name.heads.courses` ("CHOOSE A TRACK"), on the car select before this page's seat
+// has picked `name.heads.cars` ("CHOOSE A CAR"), each a look of the scene's looks file of its own name
+// (`look`) and a node of the title's model of that name, shown as ui3d's keys `name.courses` and
+// `name.cars`. After the pick, in the lobby, the name stands there again, the look `name.top`. Out of the
+// lobby (racing, the results) every page is on the title again.
 //
 // When it shows. Nothing of it shows while the scene's intro (its `cutscene` row) has not finished.
 // From the first frame it is done it comes up on this page's clock: the 2D on the `title` panel, which
@@ -64,12 +68,21 @@
 // named as its car (made from the car file's `name` by `assets/title/title.py`), `name.below` metres
 // under the car, `name.scale` times the capitals' metre, its finishes `name.face` and `name.side`,
 // swaying as the words do. The line comes in as the words do, from `reveal.from` over
-// `reveal.seconds`, starting `reveal.after` seconds after each car is first shown. Each car can be
-// selected, the first first; a press sends `pick` with its car at the title's `match` row, which the
-// match addon answers (The screens).
+// `reveal.seconds`, starting `reveal.after` seconds after each car is first shown. The car itself is
+// never selectable and has no hit box (a box round a skinned car body is every vertex of it, measured
+// in one frame); each car's name is what is selected, the first first, and a press on it sends `pick`
+// with its car at the title's `match` row, which the match addon answers (The screens).
+//
+// The veil. While the line of cars is shown, a plane of `veil.colour` at `veil.alpha`, `veil.size` metres
+// across, stands at `veil.at` in the camera's frame, far behind the cars and their names and so drawn
+// behind them and in front of the race, and darkens the race behind the select alone. It is shown as
+// the cars are, as ui3d's key `veil`, with the interface's `fade` (`veil.fade`, `after` and `seconds`):
+// it comes in from nothing to `veil.alpha` over `seconds`, from the frame it is first shown. It is no
+// part of the menu: never selected, and has no hit box.
 //
 // The keys of ui3d's selection. The things that can be selected are the name, keyed `name`, the course
-// words, keyed `course.<i>`, and the cars, keyed `car.<i>`, `i` each one's place in its list.
+// words, keyed `course.<i>`, and the cars' names, keyed `car.<i>`, `i` each one's place in its list.
+// The car's model is shown under `car.<i>.model`, and is not selectable.
 //
 // The camera, once the intro is done: this claims render3d's camera and holds it where the intro's
 // last shot left it, the shot's offset from the car it follows and its look and fov (the cutscene's
@@ -79,8 +92,9 @@
 //
 // Its definition, every word, place and number, as above: appear, band { top, color, alpha: [from, to],
 // steps } (under it all, the screen darkened from `top` down, `steps` strips of `color`, from `alpha[0]`
-// to `alpha[1]`), model, env, key, sweep, sway,
-// name { text, look, top } (the name's words in title.py, and its two looks), words { scale, side, dim,
+// to `alpha[1]`), model, env, key, sweep, sway, veil { colour, alpha, at, size, fade { after, seconds } },
+// name { text, look, top, heads { courses, cars: { text, look } } } (the name's words in title.py, its two
+// looks, and the heading of each select: its words in title.py and its look), words { scale, side, dim,
 // focus { scale, glow }, reveal { after, stagger, seconds, from, turn } }, courses [{ scene, word, at,
 // face }], camera { orbit }, lineup { kind, at, gap, show, scale, spin, slide,
 // reveal { after, seconds, from }, name { below, scale, face, side } }.
@@ -104,10 +118,11 @@ type Card = {
   key: { colour: string; power: number; at: number[]; distance: number }
   sweep: { colour: string; power: number; from: number[]; to: number[]; at: number; seconds: number; every: number; distance: number }
   sway: { yaw: number[]; pitch: number[]; roll: number[] }
-  name: { text: string; look: string; top: string }
+  name: { text: string; look: string; top: string; heads: { courses: { text: string; look: string }; cars: { text: string; look: string } } }
   words: { scale: number; side: Finish; dim: number; focus: { scale: number; glow: number }; reveal: Reveal & { after: number; stagger: number } }
   courses: Course[]
   camera: { orbit: number }
+  veil: { colour: string; alpha: number; at: number[]; size: number[]; fade: { after: number; seconds: number } }
   lineup: {
     kind: string; at: number[]; gap: number; show: number; scale: number; spin: number; slide: number
     reveal: { after: number; seconds: number; from: number[] }
@@ -118,7 +133,7 @@ type Card = {
 // One car of the car select: its car, the group ui3d shows it in, its model as drive drew it, put in the
 // group once it has come (undefined until then), and its name.
 type Shown = { car: string; group: THREE.Group; model?: { root: THREE.Object3D; dispose(): void }; name: Word }
-type Made = { words: Word[]; cars: Shown[]; key: THREE.PointLight; sweep: THREE.PointLight; env?: THREE.Texture }
+type Made = { words: Word[]; cars: Shown[]; key: THREE.PointLight; sweep: THREE.PointLight; veil: THREE.Mesh; env?: THREE.Texture }
 // The screen this page is on while the match is in the lobby: the title, the course select (the
 // leader's alone), then the car select.
 type Screen = 'title' | 'courses' | 'cars'
@@ -180,9 +195,12 @@ function make(plugins: Plugins, C: Card): Made | undefined {
   const cars: Shown[] = (def(plugins.wire, 'match').cars as string[]).map(car => ({ car, group: new T.Group(), name: face.word(root, car, N.face, N.side, env) }))
   const key = new T.PointLight(C.key.colour, C.key.power, C.key.distance, 2)
   const sweep = new T.PointLight(C.sweep.colour, 0, C.sweep.distance, 2)
+  const V = C.veil
+  const veil = new T.Mesh(new T.PlaneGeometry(V.size[0], V.size[1]), new T.MeshBasicMaterial({ color: V.colour, transparent: true, opacity: V.alpha, depthWrite: false }))
+  veil.frustumCulled = false
   // the cars of the car select reflect the finishes' environment, as the words do
   plugins.ui3d.environment(env ?? null)
-  return { words, cars, key, sweep, env }
+  return { words, cars, key, sweep, veil, env }
 }
 
 // The sway of a thing `phase` radians along it, from `after` seconds after it is first shown.
@@ -207,10 +225,10 @@ function lineup(plugins: Plugins, C: Card, m: Made, match: Row, now: number) {
       c.model = plugins.drive.model(plugins, c.car, L.kind)
       if (c.model) c.group.add(c.model.root)
     }
-    ui3d.show(`car.${i}`, () => c.group, { at, scale: L.scale, select: true, reveal, spin: { rate: L.spin } } satisfies Look)
+    ui3d.show(`car.${i}.model`, () => c.group, { at, scale: L.scale, reveal, spin: { rate: L.spin } } satisfies Look)
     c.group.visible = on
     const below = [at[0], at[1] - L.name.below, at[2]]
-    ui3d.show(`car.${i}.name`, () => c.name.node, { at: below, scale: L.name.scale, reveal, sway: swaying(C, 2.1 * (i + 1), L.reveal.after + L.reveal.seconds) } satisfies Look)
+    ui3d.show(`car.${i}`, () => c.name.node, { at: below, scale: L.name.scale, select: true, reveal, sway: swaying(C, 2.1 * (i + 1), L.reveal.after + L.reveal.seconds) } satisfies Look)
     c.name.node.visible = on
   })
   const pressed = ui3d.pressed() as string | undefined
@@ -253,7 +271,9 @@ export function tick(row: Row, plugins: Plugins) {
     if (screen === 'title') {
       ui3d.show('name', C.name.look)
       if (lobby && ui3d.pressed() === 'name') screen = lead ? 'courses' : 'cars'
-    } else ui3d.show('name.top', C.name.top)
+    } else if (choosing) ui3d.show('name.courses', C.name.heads.courses.look)
+    else if (picking) ui3d.show('name.cars', C.name.heads.cars.look)
+    else ui3d.show('name.top', C.name.top)
     const W = C.words
     if (screen === 'courses' || (screen === 'cars' && picked)) {
       C.courses.forEach((c, i) => {
@@ -276,8 +296,10 @@ export function tick(row: Row, plugins: Plugins) {
         screen = 'cars'
       }
     }
-    if (picking && match) lineup(plugins, C, made, match, now)
-    else last = 0
+    if (picking && match) {
+      ui3d.show('veil', () => made!.veil, { at: C.veil.at, fade: C.veil.fade } satisfies Look)
+      lineup(plugins, C, made, match, now)
+    } else last = 0
     ui3d.show('key', () => made!.key, { at: C.key.at } satisfies Look)
     const S = C.sweep
     const v = since >= S.at ? ((since - S.at) % S.every) / S.seconds : 1
@@ -313,6 +335,8 @@ export function remove(plugins: Plugins) {
     for (const c of made.cars) c.model?.dispose()
     made.key.dispose()
     made.sweep.dispose()
+    made.veil.geometry.dispose()
+    ;(made.veil.material as THREE.Material).dispose()
     made.env?.dispose()
     plugins.ui3d.environment(null)
   }

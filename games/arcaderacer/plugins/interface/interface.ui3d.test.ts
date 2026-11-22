@@ -1,6 +1,6 @@
 // The interface's words for ui3d, as the title scene loads them: its `world.ui3d.mods.behaviors` names
-// the interface (and particle3d), and the interface's `behaviors()` hands ui3d `word`, `reveal`, `sway`
-// and `spin`, each run here on a thing in a camera's frame as ui3d runs it.
+// the interface (and particle3d), and the interface's `behaviors()` hands ui3d `word`, `reveal`, `sway`,
+// `spin` and `fade`, each run here on a thing in a camera's frame as ui3d runs it.
 import { expect, test } from 'vitest'
 import * as THREE from 'three'
 import { boot, type Scene } from '#engine/engine.ts'
@@ -28,8 +28,8 @@ test('the title delivers the interface\'s reveal, sway and spin to ui3d, and eac
   const world = scenes.get('title')!.world
   const all = modsOf<() => Behaviors>(world, 'ui3d', 'behaviors')
   expect(all.length).toBe(2)
-  const { reveal, sway, spin, word } = all[0]()
-  expect(Object.keys(all[0]()).sort()).toEqual(['reveal', 'spin', 'sway', 'word'])
+  const { reveal, sway, spin, word, fade } = all[0]()
+  expect(Object.keys(all[0]()).sort()).toEqual(['fade', 'reveal', 'spin', 'sway', 'word'])
 
   // word: the copy of the model shows the node alone, its faces and sides each a material of its own
   const model = new THREE.Group()
@@ -89,4 +89,16 @@ test('the title delivers the interface\'s reveal, sway and spin to ui3d, and eac
   spin({ rate: 0.25 }, spun)
   expect(spun.object.quaternion.angleTo(new THREE.Quaternion())).toBeCloseTo(0.5, 6)
   expect(spun.holder.quaternion.angleTo(spun.camera.q)).toBeLessThan(1e-9)
+
+  // fade: each material's opacity times how far along the fade is: none until `after`, all of it once `seconds` are done
+  const veiled = (age: number) => {
+    const it = thing(age)
+    it.object = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.6 }))
+    fade({ after: 1, seconds: 2 }, it)
+    return ((it.object as THREE.Mesh).material as THREE.Material).opacity
+  }
+  expect(veiled(0.5)).toBe(0)
+  expect(veiled(2)).toBeCloseTo(0.6 * (1 - 0.5 ** 3), 6)
+  expect(veiled(3)).toBeCloseTo(0.6, 6)
+  expect(veiled(30)).toBeCloseTo(0.6, 6)
 })

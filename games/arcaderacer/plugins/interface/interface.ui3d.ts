@@ -14,8 +14,12 @@
 //           of its own set to the finishes `face` and `side` (the interface's `word`, `made` below),
 //           reflecting the environment `env` (the interface's `environment`), from the first frame it is
 //           shown; all of it let go when ui3d takes the thing out.
-// Each moves the thing's holder, which carries its hit box, but `spin`, which turns the object alone, and
-// `word`, which touches its materials.
+//   fade    { after, seconds }   every material of the thing is drawn at its own opacity times how far along
+//           it is: nothing until `after` seconds after the thing is first shown, then over `seconds` up to
+//           all of it, easing out as a cubic. ui3d puts each material's opacity back at the start of the
+//           next frame, so the fade is this frame's alone.
+// Each moves the thing's holder, which carries its hit box, but `spin`, which turns the object alone, `word`,
+// which touches its materials, and `fade`, which touches their opacity.
 // It is loaded on the server too, as every mod a scene names is, so it imports types alone.
 import type * as THREE from 'three'
 import type { Behaviors, Placed } from '#plugins/ui3d/ui3d.plugin.ts'
@@ -106,6 +110,7 @@ const wave = ([amp, rate]: number[], t: number, phase: number) => amp * Math.sin
 type Reveal = { after: number; seconds: number; from: number[]; turn: number }
 type Sway = { yaw: number[]; pitch: number[]; roll: number[]; phase: number; after: number }
 type Spin = { rate: number }
+type Fade = { after: number; seconds: number }
 type Worded = { node: string; face: Finish; side: Finish; env: Env }
 
 export const behaviors = (): Behaviors => ({
@@ -137,6 +142,14 @@ export const behaviors = (): Behaviors => ({
     const t = Math.max(0, it.age - n.after)
     const { T } = it
     it.holder.quaternion.multiply(new T.Quaternion().setFromEuler(new T.Euler(wave(n.pitch, t, n.phase), wave(n.yaw, t, n.phase + 0.7), wave(n.roll, t, n.phase + 1.9))))
+  },
+  fade(n: Fade, it: Placed) {
+    const k = ease(clamp01((it.age - n.after) / n.seconds))
+    it.object.traverse(o => {
+      const m = (o as THREE.Mesh).material
+      if (!m) return
+      for (const one of Array.isArray(m) ? m : [m]) one.opacity *= k
+    })
   },
   spin(n: Spin, it: Placed) {
     const { T } = it

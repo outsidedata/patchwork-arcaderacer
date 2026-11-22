@@ -264,7 +264,13 @@ export async function open({ base, game, scene, presses, settle, ready, after, d
       if (!think) return 'games/${game}/${game}.playtest.ts hands out no think for ${scene}: its playtest has ' + Object.keys(m.playtest || {}).join(', ')
       const play = () => {
         const c = window.__page.client
-        if (c && c.plugins.player) { const press = think(c.rows); if (press) c.plugins.player[press[0]](...press.slice(1)) }
+        if (c) {
+          const press = think(c.rows)
+          if (press) {
+            if (!c.plugins.player) throw new Error('the think for ${scene} named the act ' + press[0] + ', and this scene has no player plugin to take it')
+            c.plugins.player[press[0]](...press.slice(1))
+          }
+        }
         requestAnimationFrame(play)
       }
       requestAnimationFrame(play)

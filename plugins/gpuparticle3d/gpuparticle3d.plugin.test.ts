@@ -21,6 +21,10 @@ afterAll(() => rmSync(home, { recursive: true }))
 mkdirSync(join(home, 'plugins', 'beacon'), { recursive: true })
 writeFileSync(join(home, 'plugins', 'beacon', 'beacon.gpuparticle3d.ts'), 'export const sources = () => (globalThis as any).beacons\n')
 const beacons = (list: Source[]) => { (globalThis as any).beacons = list }
+// And `glow`, whose `light` mod counts how many times it is asked, once a frame, and hands the share the
+// test puts on `globalThis.sunlight`.
+mkdirSync(join(home, 'plugins', 'glow'), { recursive: true })
+writeFileSync(join(home, 'plugins', 'glow', 'glow.gpuparticle3d.ts'), 'export const light = () => { (globalThis as any).asked++; return (globalThis as any).sunlight }\n')
 
 // The effects file with drivers a source hands, and two streams; a page whose scene attaches `attach` to
 // the beacon's sources, with the mod loaded.
@@ -152,4 +156,27 @@ test('a flipbook\'s start, blend and channels need a sheet, blend is not played 
   expect(one({ ...sheet, channels: { ...lit, glow: [0, 0, 0, 0] } })).toThrow('gpuparticle3d effect e layer 0 has channels with glow, and its channels are { value, alpha, hot }')
   expect(one({ shape: 'puff', erode: [[0.5, 0], [0.2, 1]] })).toThrow('gpuparticle3d effect e layer 0 has erode of [[0.5,0],[0.2,1]], and they are [[<part of its life, 0 to 1>, <value>], ...] in order')
   expect(() => check({ cap: 8, flipbooks: [], effects: {} }, {})).not.toThrow()
+})
+
+// A page whose scene names the `light` mod, `glow` listed ahead of gpuparticle3d or after it.
+const glowing = async (order: string[]) => {
+  const world: Record<string, any> = { gpuparticle3d: { effects: 'effects', mods: { light: 'glow' } }, shipped: { plugins: ['glow'] }, scenemanager: { home: pathToFileURL(home + '/').href } }
+  await prepare({} as any, [], world)
+  const plugins: any = {
+    wire: { scene: { plugins: order, world, prefabs: { engine: { dt: DT } } }, rows: [] },
+    render3d: { THREE, scene: new THREE.Scene() },
+    loader: { on: (name: string, f: (it: any) => void) => { if (name === 'effects') f({ cap: 8, effects: {} }) }, onWritten: () => {} },
+  }
+  const me = gpuparticle3d()
+  return () => me.afterTick(plugins)
+}
+
+test('the `light` mod is asked once a frame, after the plugin it names has drawn; listed after gpuparticle3d it throws', async () => {
+  ;(globalThis as any).asked = 0
+  ;(globalThis as any).sunlight = [0.5, 0.5, 0.5]
+  const frame = await glowing(['loader', 'shipped', 'gpuparticle3d', 'render3d'])
+  for (let i = 0; i < 3; i++) frame()
+  expect((globalThis as any).asked).toBe(3)
+  const late = await glowing(['loader', 'gpuparticle3d', 'shipped', 'render3d'])
+  expect(() => late()).toThrow('gpuparticle3d is listed before glow, whose light it reads that frame')
 })

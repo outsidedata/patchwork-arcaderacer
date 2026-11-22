@@ -74,6 +74,8 @@
       const fly = query.get('fly') === null ? undefined : Number(query.get('fly'))
       if (query.get('nodither') !== null) file.world.dither3d.on = false
       const cpu = { on: query.get('cpu') !== null, was: false }
+      // The scene named in the address is the one entered (the benchmark profilers open `?scene=<scene>`).
+      file.prefabs.scenemanager.entry = query.get('scene') ?? file.prefabs.scenemanager.entry
 
       // This seat's network, both ways, kept in this browser between loads.
       const leg = () => ({ delay: 0, jitter: 0, tail: false, loss: 0, burst: 0, reorder: 0, dup: 0 })
@@ -100,8 +102,9 @@
       }
       // The truth in this tab with `?tab`, as index.html boots it; the server's otherwise, over the
       // socket.
-      const truth = query.get('tab') === null ? undefined : boot(file, sim)
-      if (truth) await load(truth, import.meta.url)
+      // A scene named in the address runs in this tab too, where the benchmark profilers time its rules.
+      const truth = query.get('tab') === null && query.get('scene') === null ? undefined : boot(file, sim)
+      if (truth) window.__scenes = await load(truth, import.meta.url)
       window.truth = truth
       const page = predict(link(loopback(truth ? match(manager(truth)) : socket, time, net)), file, import.meta.url, (me, scene) => {
         for (const c of document.querySelectorAll('canvas')) c.remove()
@@ -118,6 +121,7 @@
 
       // the page, for a driver to reach its plugins and camera
       window.page = page
+      window.__page = page
       const readout = document.getElementById('readout')
       const owner = 'dev.html'
 

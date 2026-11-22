@@ -288,6 +288,9 @@ out their lives. Every driver a source hands is a driver of the effects file.
 - **render3d**: the scene and camera the quads face, and its `bloom` for bright particles.
 - **shapes3d**: `shapes3d.particle3d.ts` hands over its shapes as the `solids` a `bounce` bounces off.
 - **instances3d**: `instances3d.particle3d.ts` delivers the `mesh` word, particles drawn as instanced meshes.
+- **skydome3d**: `skydome3d.particle3d.ts` (`world.particle3d.mods: { light: 'skydome3d' }`, skydome3d listed
+  before particle3d) hands the sky's light, a share of its brightest, which every particle's colour is times:
+  particles are unlit, so without it they stand out at night. A fire that must shine at night is a `lamp`.
 - **lights3d**: draws every `lamp`; where the scene does not list lights3d, particle3d draws no lamp.
 - **loader**: the effects file and the sheets.
 - **box3dvehicle**: `box3dvehicle.particle3d.ts` hands every car's wheels and tailpipes as `sources`,

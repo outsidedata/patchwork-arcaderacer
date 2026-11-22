@@ -2,8 +2,9 @@
 
 A song sequencer on Tone.js, laid out like a DAW (Ableton's MIDI and instrument tracks): a rack of
 instruments with effect chains, channels, sends and buses, note tracks and automation tracks of
-patterns placed on the song as clips, a drum kit, presets, play, stop, loop and locate on Tone's
-Transport, and offline render.
+looping patterns, placed on the song as clips (the arrangement) and launched from the slots of
+scenes (the session, Ableton's Session View), a drum kit, presets, play, stop, loop and locate on
+Tone's Transport, and offline render.
 
 ## Why use it
 
@@ -26,23 +27,53 @@ audiodaw has no row and runs only in the page. `audiodaw.sim.ts` is the song and
 - `tracks`: note tracks (`kind: 'notes'`) that send their notes to the device they `target`, and
   automation tracks (`kind: 'automation'`) that drive one `Knob`: an instrument's option, an
   effect's, a channel's volume or pan, a send, a bus's or the master's.
-- Patterns per track (`length`, `from`, notes), and `clips` that place a pattern on the song once
-  at a tick. Trimming a pattern trims every clip of it and hides notes, never deletes them.
+- Patterns per track (`length`, `from`, notes). A pattern is a loop, its ticks from `from` to
+  `length` played over and over. Trimming a pattern trims every clip of it and hides notes, never
+  deletes them.
+- `clips` that place a pattern on the song: from a tick (`start`) for their own `length`, the loop
+  repeated to fill it, begun `offset` ticks into the loop; a clip with no `length` plays the loop
+  once. `passes` lays out where each pass of a clip's loop falls on the song.
+- `scenes` and each track's `slots` (the session): a slot of a track for each scene holds one of its
+  patterns or none, and `launch` is the ticks a launch waits for (a bar when left out, 0 at once).
+  Which slots play is the page's, not the song's.
 - `buses` and `master`, each with effects.
 
 Every `options` is Tone's own constructor object, untranslated. Edits include `addNote`,
 `moveNote`, `removeNote`, `addClip`, `moveClip`, `moveClipsTo`, `removeClip`, `addTrack`,
 `moveTrack`, `setTarget`, `setKnob`, `addDevice`, `deviceFrom`, `loadPreset`, `setInstrument`,
 `setChannel`, `setSend`, `addEffect`, `setEffect`, `turnEffect`, `moveEffect`, `addBus`, and the
-automation edits (`addAutomationNote`, `addPoint`, `movePoint`, …).
+automation edits (`addAutomationNote`, `addPoint`, `movePoint`, …), and the session's (`addScene`,
+`removeScene`, `renameScene`, `moveScene`, `duplicateScene`, `setSlot`, `setLaunch`). Renaming a
+pattern renames it in its slots; removing one empties them.
 
 **Playing it (`audiodaw.plugin.ts`).** `load(project, ranges?)` sets the Transport from the project
 and makes every instrument, effect (LFOs started), channel, bus and the master chain, and one
-`Tone.Part` per clip. A Part reads its track as the song is when the note falls, so muting or
-retargeting while it plays is heard at the next note. `edit(project)` hands only what changed to the
-Tone object that holds it (`set`, `wet = 0` for an effect turned off, channel values, a send's gain,
-`part.add`/`part.remove`), and makes an instrument again only when its `is` or `voices` change. The
-transport stops itself at the song's span end and lets go of every held note.
+looping `Tone.Part` per note clip, started at the clip's start with its offset into the loop and
+stopped at its end; an automation clip's notes are transport events, pass by pass. A Part reads its
+track as the song is when the note falls, so muting or retargeting while it plays is heard at the
+next note. `edit(project)` hands only what changed to the Tone object that holds it (`set`,
+`wet = 0` for an effect turned off, channel values, a send's gain, a clip's Part made again), and
+makes an instrument again only when its `is` or `voices` change. The transport stops itself at the
+song's span end and lets go of every held note, unless a slot of the session plays.
+
+**The session.** `launch(track, scene)` plays that slot's pattern looped on its track from the next
+multiple of the song's `launch` the transport has not handed over yet, the slot playing there
+stopped; an empty slot stops the track. `launchScene(scene)` launches every track's slot of it at
+one tick, `halt(track)` and `haltAll()` stop slots at the next launch, and `arrange()` is Ableton's
+BACK TO ARRANGEMENT. Launched while stopped, a slot starts where `play` starts. While a slot plays
+or has played on a track, the session holds it: its arrangement is not heard until `arrange()`.
+`stop()` lets go of every slot. `session()` tells the page, for each track, the slot heard and how
+far through its loop, the launch waiting, and whether the session holds it.
+
+A slot is a looping `Tone.Part` of its pattern (an automation pattern's Part sends its knob each
+note's line), started and stopped on the launch's tick, so it follows Tone's swing, tempo and
+transport. Tone holds a Part's start and stop at ticks of the song, which the song's loop wraps:
+on every wrap and every locate each playing slot's Part is started again where the song lands, at
+the place in its loop it had reached, so a slot plays on in its own time; a launch whose tick is past
+the loop's end comes in on the wrap. `games/demo_audiodaw/experiments/session/` measured each of
+these in a live context (`launch.ts`, `wrap.ts`, `dip.ts`) and offline (`part.ts`): Tone's own
+`"@1m"` lands off the bar when called from a press, and a Part started on a tick Tone is already
+handing over puts that tick's notes off to its next pass, which audiodaw plays at their time.
 
 Tone's timing is `world.audiodaw`: `lookAhead` (seconds of notes handed ahead, so a busy page plays
 no note late) and `latencyHint` (the browser's audio buffer), set on a Tone context of audiodaw's own
@@ -56,6 +87,8 @@ again on it.
    then `play(tick?)`, `stop()`, `pause()`, `locate(tick)`, `cycle(on)`, `position()`, `stamp()`.
 3. Edit with the functions of `audiodaw.sim.ts` and hand the result to `edit(project)`.
 4. Play a device live with `attack(device, note, velocity)` and `release(device, note)` (a keyboard).
+   Launch the session's slots with `launch(track, scene)`, `launchScene(scene)`, `halt(track)`,
+   `haltAll()` and `arrange()`, and draw it from `session()`.
 5. Read Tone's current options with `optionsOf(device)` and `effectOptionsOf(chain, i)`, a level
    with `meter(on)`, whether a knob sweeps with `glides(knob)`.
 6. `render(project, seconds)` renders the song offline through `Tone.Offline`.
@@ -69,7 +102,8 @@ the `AudioContext` the **audio** plugin plays sound effects through.
 
 ## Keywords
 
-music, song, sequencer, DAW, Ableton, MIDI, tracker, piano roll, notes, patterns, clips, arrangement,
+music, song, sequencer, DAW, Ableton, MIDI, tracker, piano roll, notes, patterns, clips, loops,
+clip loop, session view, scenes, slots, clip launch, launch quantize, back to arrangement, arrangement,
 timeline, Tone.js, Transport, Part, synth, polyphony, voices, drum machine, drum kit, pads, choke
 group, closed hat, open hat, instrument, preset, effects chain, reverb, delay, chorus, filter,
 compressor, EQ, channel, volume, pan, mute, solo, send, bus, master, automation, envelope, knob,

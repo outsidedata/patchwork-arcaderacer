@@ -15,7 +15,15 @@
     "key": { "colour": "#fff4e6", "power": 60, "at": [-4, 6, -6], "distance": 30 },
     "sweep": { "colour": "#ffffff", "power": 120, "from": [-9, 3.5, -10], "to": [9, 3.5, -10], "at": 1.2, "seconds": 1.6, "every": 5, "distance": 12 },
     "sway": { "yaw": [0.07, 0.5], "pitch": [0.03, 0.37], "roll": [0.012, 0.29] },
-    "name": { "text": "ARCADE RACER", "look": "burnout", "top": "name" },
+    "name": {
+      "text": "ARCADE RACER",
+      "look": "burnout",
+      "top": "name",
+      "heads": {
+        "courses": { "text": "CHOOSE A TRACK", "look": "choose_track" },
+        "cars": { "text": "CHOOSE A CAR", "look": "choose_car" }
+      }
+    },
     "words": {
       "scale": 0.6,
       "side": { "colour": "#d8dce4", "metalness": 1, "roughness": 0.12, "env": 1.1 },
@@ -28,6 +36,7 @@
       { "scene": "tokyo", "word": "TOKYO", "at": [0, -1, -12], "face": { "colour": ["#0d3fae", "#4fc6ff"], "metalness": 0.3, "roughness": 0.25, "env": 0.9, "clearcoat": 1 } },
       { "scene": "paris", "word": "PARIS", "at": [6.8, -1, -12], "face": { "colour": ["#e8364f", "#ffb347"], "metalness": 0.3, "roughness": 0.25, "env": 0.9, "clearcoat": 1 } }
     ],
+    "veil": { "colour": "#000000", "alpha": 0.8, "at": [0, 0, -100], "size": [900, 450], "fade": { "after": 0, "seconds": 0.5 } },
     "lineup": {
       "kind": "car",
       "at": [0, -1.6, -11],

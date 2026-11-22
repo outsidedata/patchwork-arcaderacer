@@ -43,6 +43,13 @@ test('the sources drive the effects as the racers go', async () => {
   const drift = on(seen([racer(1, { throttle: 1, speed: 30, vel: [0, 30], drift: 1, slip: 0.5 })]), 'wheel')
   expect(drift[0].drivers.skid).toBeCloseTo(0.5 / defs.car.fx.smoke.slip - 1)
 
+  // boosting: embers at both rear tyres while the boost holds and the racer is past the trail's least speed
+  const trail = defs.car.fx.trail.least
+  const fast = { speed: trail + 1, vel: [0, trail + 1] }
+  expect(on(seen([racer(1, { ...fast, boost: 1 })]), 'wheel').map(s => s.drivers.boosting)).toEqual([1, 1])
+  expect(on(seen([racer(1, { ...fast, boost: 0 })]), 'wheel').map(s => s.drivers.boosting)).toEqual([0, 0])
+  expect(on(seen([racer(1, { speed: trail / 2, vel: [0, trail / 2], boost: 1 })]), 'wheel').map(s => s.drivers.boosting)).toEqual([0, 0])
+
   // scraping, alone on the road: off a wall
   const side = on(seen([racer(1, { speed: 30, vel: [0, 30], scrape: 0 })]), 'side')
   expect(side.map(s => s.drivers.racer)).toEqual([0])

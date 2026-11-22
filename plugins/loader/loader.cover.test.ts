@@ -68,10 +68,16 @@ test('the cover draws the entry scene\'s loading panel and fetches every scene\'
     fill: { color: 1 },
     pictures: [{ url: '/splash.webp', at: [0, 0], size: [640, 360] }],
     bar: loading.bar,
-    lines: { at: [320, 340], every: 3, text: ['Hold on.'], style: { fontFamily: 'Face', fontSize: 20, fill: 5 } },
+    lines: { at: [320, 340], every: 3, text: ['Hold on.'], pictures: [null], style: { fontFamily: 'Face', fontSize: 20, fill: 5 } },
     fonts: [{ family: 'Face', url: '/face.ttf' }],
     urls: ['/art.wad', '/splash.webp', '/face.ttf', '/level.json', '/kit.glb', '/yard.glb'],
   })
+})
+
+test('a line that gives a picture hands the cover its url, and a line with none hands it null', async () => {
+  const lines = { ...loading.lines, text: [{ text: 'Hold on.', picture: 'splash' }, 'Go.'] }
+  const c = await cover(game('lined', { loading: { ...panel, loading: { ...loading, pictures: [], lines } } }))
+  expect(c!.lines).toMatchObject({ text: ['Hold on.', 'Go.'], pictures: ['/splash.webp', null] })
 })
 
 test('a game whose entry scene shows no loading screen has no cover', async () => {
@@ -83,6 +89,12 @@ test('a game whose entry scene shows no loading screen has no cover', async () =
 test('a loading picture that is no preloaded texture for the ui is refused, naming the panel', async () => {
   const dir = game('wrong', { loading: { ...panel, loading: { ...loading, pictures: [{ picture: 'level', at: [0, 0], size: [1, 1] }] } } })
   await expect(cover(dir)).rejects.toThrow('ui panel loading\'s loading picture level is no preloaded texture entry for ui in world.loader.assets')
+})
+
+test('a line\'s picture that is no preloaded texture for the ui is refused, naming the panel', async () => {
+  const lines = { ...loading.lines, text: [{ text: 'Hold on.', picture: 'level' }] }
+  const dir = game('wrongline', { loading: { ...panel, loading: { ...loading, lines } } })
+  await expect(cover(dir)).rejects.toThrow('ui panel loading\'s loading lines picture level is no preloaded texture entry for ui in world.loader.assets')
 })
 
 test('the cover\'s HTML is one script that parses, its numbers rebased as the site writes paths, and no "<" left in them to end the script', async () => {

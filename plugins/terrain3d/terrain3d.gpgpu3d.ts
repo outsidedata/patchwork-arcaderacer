@@ -24,8 +24,9 @@ import type { Plugins } from '#engine/browser.ts'
 import type { Behavior, Near, Thing } from '#plugins/gpgpu3d/gpgpu3d.sim.ts'
 import { layoutOf } from './terrain3d.rings.ts'
 
-// This module, which terrain3d's workers load to fill a window.
-const HERE = import.meta.url
+// This module, which terrain3d's workers load to fill a window. It names its own file as a `new URL`, so
+// the static site's bundle (`scripts/bundle.ts`) finds it as a task of a worker and writes it as a file.
+const HERE = new URL('./terrain3d.gpgpu3d.ts', import.meta.url).href
 // How many times the stretch of a line that goes under the land is halved to find where: as many as a
 // float has bits to tell two places along it apart.
 const HALVINGS = 24

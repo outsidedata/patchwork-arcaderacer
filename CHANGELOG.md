@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-11-22-471eaf5
+
+- audiodaw — clips can loop for any length, and a song can be played as launchable scenes and slots, like Ableton's Session View.
+- using-audiodaw skill — explains looping clips and the session's scenes and launching.
+- loader — a loading screen can show a picture beside its bar and words.
+- using-the-loader skill — explains putting a picture on a loading screen.
+
+## 2026-11-22-d1ff3e5
+
+- box3dvehicle — cars are drawn from the library's vehicle models, with moving suspension, steering and lit lamps, and motorcycles can be driven too.
+- supershader3d — a vehicle model's suspension, steering and lamps move and light up as the car drives.
+- committing-a-game skill — a game's baked car and bike models are committed like any other baked art.
+- asset-workshop skill — fitting props now covers the library's vehicle models.
+- making-3d-assets-in-blender skill — making a vehicle follows the library's vehicle kit.
+
+## 2026-11-21-774a6eb
+
+- particle3d — particles dim at night with the sky's light.
+- gpuparticle3d — particles dim at night with the sky's light.
+- skydome3d — gives particles the sky's light, so they brighten and dim with the time of day.
+- particle workshop — the stage has a sky, with time buttons that set the hour, day, moon phase and sun and moon strength.
+- tuning-particles skill — covers making particles take the sky's light.
+- benchmarking-a-game skill — a scene with no player, like a title screen, can now be played in a playtest.
+
+## 2026-11-21-30b349d
+
+- terrain3d — a game published to GitHub Pages now loads its land without errors.
+- shapes3d — a game published to GitHub Pages now loads its shapes without errors.
+- yarn publish_gh_pages_game — clears the game folder's installed packages after publishing, so published games no longer fill your disk.
+
 ## 2026-11-21-d5fb580
 
 - terrain3d — grass grows on the land in a game published as a static site.

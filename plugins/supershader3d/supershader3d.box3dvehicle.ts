@@ -14,14 +14,72 @@ import type { Plugins } from '#engine/browser.ts'
 import type { Call, Looks } from './supershader3d.plugin.ts'
 import { assemble, unpack, type Unpacked } from './supershader3d.glb.ts'
 
+// A skinned model's clips, held posed: `has(name)` whether the glb has an animation of that name, `pose(name, at)` the
+// clip put `at` of the way through it, 0 its first key and 1 its last, 0.5 the pose it adds nothing at (it throws for a
+// name the glb has not), and `apply()` the poses made since the last, put on the bones. A clip stays where it was posed
+// until it is posed again, and clips add.
+export type Rig = { has(name: string): boolean; pose(name: string, at: number): void; apply(): void }
+
 export type Models = {
   unpack(bytes: Uint8Array): Promise<Unpacked>
   build(unpacked: Unpacked, own: Looks): THREE.Object3D | undefined
+  twin(dark: string, lit: string): [number, number]
+  rig(unpacked: Unpacked, mesh: THREE.Object3D): Rig
 }
 
 export function models(plugins: Plugins): Models {
   return {
     unpack,
+    // The glb's animations as three plays them on `mesh`'s bones, each made when it is first posed and held paused so a car
+    // poses it where its physics says: a bone's rotation a quaternion track, its translation or scale a vector track, linear
+    // between keys. A clip is additive on the bones' bind pose, its middle key (`at` 0.5) the pose that adds nothing, so
+    // clips that move one bone (a solid axle's two wheels) add up instead of averaging. A glb with no skin has no
+    // animations (`unpack`), so its rig has none.
+    rig(unpacked, mesh) {
+      const T = plugins.render3d.THREE as typeof THREE
+      const bones = (mesh as THREE.SkinnedMesh).skeleton?.bones ?? []
+      const mixer = new T.AnimationMixer(mesh)
+      const actions = new Map<string, { action: THREE.AnimationAction; seconds: number }>()
+      const made = (name: string) => {
+        const a = unpacked.animations.find(a => a.name === name)
+        if (!a) throw new Error(`supershader3d: the model has no animation ${name}`)
+        const tracks = a.tracks.map(t => {
+          const bone = bones[t.joint].uuid
+          return t.path === 'rotation'
+            ? new T.QuaternionKeyframeTrack(`${bone}.quaternion`, t.times, t.values)
+            : new T.VectorKeyframeTrack(`${bone}.${t.path === 'scale' ? 'scale' : 'position'}`, t.times, t.values)
+        })
+        const clip = new T.AnimationClip(name, -1, tracks)
+        T.AnimationUtils.makeClipAdditive(clip, clip.duration / 2, clip, 1)
+        const action = mixer.clipAction(clip)
+        action.play()
+        action.paused = true
+        const made = { action, seconds: clip.duration }
+        actions.set(name, made)
+        return made
+      }
+      return {
+        has: name => unpacked.animations.some(a => a.name === name),
+        pose(name, at) {
+          const c = actions.get(name) ?? made(name)
+          c.action.time = at * c.seconds
+        },
+        apply: () => { mixer.update(0) },
+      }
+    },
+    // The scene's look numbers of the materials `dark` and `lit`, a lamp's lens off and on. A model's vertices can be
+    // moved from one to the other only where both are drawn in one call, so two in different calls throw.
+    twin(dark, lit) {
+      const looks: Looks | undefined = plugins.supershader3d.looks()
+      if (!looks) throw new Error(`supershader3d: the twin of ${dark} was asked before the scene's looks file landed`)
+      const ids = [dark, lit].map(m => {
+        const id: number | undefined = plugins.supershader3d.idOf(m)
+        if (id === undefined) throw new Error(`supershader3d: a lamp draws the material ${m}, which the scene's looks file does not hold`)
+        return id
+      })
+      if (looks.materials[ids[0]].call !== looks.materials[ids[1]].call) throw new Error(`supershader3d: the lamp materials ${dark} and ${lit} are drawn in different calls (${looks.materials[ids[0]].call}, ${looks.materials[ids[1]].call}), so a model cannot change one for the other`)
+      return [ids[0], ids[1]]
+    },
     build(unpacked, own) {
       const looks: Looks | undefined = plugins.supershader3d.looks()
       if (!looks) return undefined

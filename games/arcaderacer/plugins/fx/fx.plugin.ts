@@ -28,7 +28,8 @@
 //   trail      { width, least, gap, segments, life, fade, colour, gain, opacity, edge, lift }: while a
 //              racer boosts faster than `least` m/s, each tyre lays a line of light on the road as
 //              it lays a mark, `colour` × `gain`, adding to the road under it, `opacity` at most, faded
-//              out as a mark is. Each racing kind's trail is one mesh, `fx.trail.<kind>`.
+//              out as a mark is. Each racing kind's trail is one mesh, `fx.trail.<kind>`. The `embers`
+//              effect rises from the same tyres over the same hold (`fx.particle3d.ts`'s `boosting`).
 //   smoke      { slip, sideways, brake, least, rise }: a tyre's `skid` (`fx.particle3d.ts`), and how high
 //              over the road its sources stand.
 //   sparks     { least, within, at, throw }: a racer's `side` source (`fx.particle3d.ts`).

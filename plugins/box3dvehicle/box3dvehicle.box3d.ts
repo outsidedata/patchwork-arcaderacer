@@ -22,7 +22,7 @@
 // Every body also takes the Vehicle's `bodies`.
 import type { Row, W } from '#engine/engine.ts'
 import type { Body, Joint, Kinds } from '#plugins/box3d/box3d.sim.ts'
-import { cabinPoints, corners, design, frameA, inertia, QUARTER, wheelInertia, type Corner, type Fleet, type Vehicle } from './box3dvehicle.sim.ts'
+import { cabinPoints, corners, design, frameA, frameRot, inertia, wheelInertia, type Corner, type Fleet, type Vehicle } from './box3dvehicle.sim.ts'
 
 // An inertia matrix of three moments about the body's own axes.
 const diagonal = ([x, y, z]: number[]): NonNullable<Body['mass']>['inertia'] => ({ cx: [x, 0, 0], cy: [0, y, 0], cz: [0, 0, z] })
@@ -55,7 +55,7 @@ export function wheelJoint(v: Vehicle, c: Corner): Joint {
   const { travel } = c.axle.spring
   return {
     type: 'wheel',
-    localFrameA: frameA(c, 0), localFrameB: { pos: [...c.hub], rot: QUARTER },
+    localFrameA: frameA(c, 0), localFrameB: { pos: [...c.hub], rot: frameRot(c.axle) },
     enableSuspensionSpring: false, enableSuspensionLimit: true, lowerSuspensionLimit: 0, upperSuspensionLimit: travel,
     enableSpinMotor: true, maxSpinTorque: 0, spinSpeed: 0,
     enableSteering: c.axle.steered, steeringHertz: v.steering.hertz, steeringDampingRatio: v.steering.dampingRatio,

@@ -176,5 +176,6 @@ export function seen(plugins: Plugins): Seen {
 }
 
 // What lod3d's workers load to answer these surfaces: this module, whose behaviors read nothing but each
-// surface's own shape, so a worker holds nothing for them.
-const WORKER = { url: import.meta.url }
+// surface's own shape, so a worker holds nothing for them. It names its own file as a `new URL`, so the
+// static site's bundle (`scripts/bundle.ts`) finds it as a task of a worker and writes it as a file.
+const WORKER = { url: new URL('./shapes3d.lod3d.ts', import.meta.url).href }

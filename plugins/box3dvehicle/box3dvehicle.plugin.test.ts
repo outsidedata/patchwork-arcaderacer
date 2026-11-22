@@ -11,7 +11,7 @@
 // nothing behind it, and marking 0.9 ahead of x 0, 0 behind it
 // on the +z side, and nothing of its own behind it on the -z side. Beside them, a car whose look names
 // a model, `machine`, a glb this file builds and writes to a folder of its own, which the page's real
-// loader reads and decodes; a closed car with no cabin; and an open one with none.
+// loader reads and decodes; and a closed car with no cabin.
 import { afterAll, expect, test, vi } from 'vitest'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -78,7 +78,9 @@ const POINTS: Record<string, Point> = {
   footL: { at: [0.1, -0.18, -0.4] },
   gripL: { at: [0.05, 0.45, -0.45], part: 'steer', turn: GRIP },
 }
-// Dust thrown from a wheel within 0.1 m of the land, and tracks.
+// A closed car drawn by the plugin, its body's box and its cabin's hull with fenders, bumpers, a grille and a
+// spare, its points on the chassis alone (it draws no steering wheel); dust thrown from a wheel within 0.1 m of
+// the land, and tracks.
 const vehicle: Vehicle = {
   body: { length: 3.6, width: 1.3, height: 0.5, mass: 600, center: [0.1, -0.1, 0], friction: 0.9, cabin: { at: -0.2, length: 1.9, width: 1.2, top: 1.2, topWidth: 1, height: 0.5 } },
   bodies: {},
@@ -88,7 +90,7 @@ const vehicle: Vehicle = {
   look: {
     paint: { body: 0, cabin: 0, trim: 0, glass: 0, light: 0, tail: 0, amber: 0, tyre: 0, rim: 0, chrome: 0, seat: 0, hook: 0, spring: 0, damper: 0, arm: 0 },
     segments: 16, spokes: 5, rim: 0.6, coils: 6, coilRadius: 0.07, wire: 0.01, arm: 0.03,
-    lock: LOCK, points: POINTS,
+    lock: LOCK, points: { seat: POINTS.seat, footL: POINTS.footL },
     tracks: TRACKS,
     lights: LIGHTS,
     finish: { glass: { roughness: 0.02, metalness: 0, opacity: 0.25 }, body: { roughness: 0.4, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.05 } },
@@ -97,20 +99,6 @@ const vehicle: Vehicle = {
     bumpers: { depth: 0.15, height: 0.15, overhang: 0.3, round: 0.03, bolts: 4, hooks: 0.45 },
     grille: { slots: 7, width: 0.6, height: 0.2, depth: 0.06, paint: 'body' },
     spare: { lift: 0.1 },
-    open: {
-      windshield: { height: 0.5, lean: 0.35, frame: 0.05, wiper: 0.3 },
-      cage: { height: 0.6, tube: 0.035, bend: 0.12, pad: 0.05 },
-      wall: 0.06, floor: 0.08, corner: 0.14,
-      door: { from: -1, to: 0.4, drop: 0.2, ease: 0.18 },
-      rib: { at: -0.12, depth: 0.012, height: 0.03 },
-      seat: { width: 0.45, depth: 0.45, base: 0.12, back: 0.5, round: 0.04, tilt: 0.18, head: 0.16 },
-      bench: true, steer: 0.17,
-      dash: { depth: 0.12, height: 0.18 },
-      tunnel: { width: 0.26, height: 0.08 }, stick: 0.28,
-      hood: { drop: 0.04, round: 0.035, dome: { inset: 0.14, height: 0.02 } },
-      rocker: { height: 0.08, depth: 0.05 },
-      mirror: { size: 0.12, arm: 0.1 },
-    },
   },
 }
 const R = 0.36
@@ -189,8 +177,9 @@ const PAINT: Paint = {
 }
 // The model drawn half size, its origin 0.2 m ahead of the chassis's and 0.25 m down.
 const MODEL = { asset: 'machine', at: [0.2, -0.25, 0] as [number, number, number], scale: 0.5 }
-// The jeep with the model in place of its body: every drawn part of the body still in its look.
-const modelCar: Vehicle = { ...vehicle, look: { ...vehicle.look, paint: PAINT, tracks: undefined, model: MODEL } }
+// The car with the model in place of its body: every drawn part of the body still in its look, and with it the
+// grip on the model's steering wheel.
+const modelCar: Vehicle = { ...vehicle, look: { ...vehicle.look, paint: PAINT, tracks: undefined, model: MODEL, points: POINTS } }
 // The same with a model that has no steering wheel, its points on the chassis alone, and with them the
 // grip on the steering wheel too.
 const plainCar: Vehicle = { ...modelCar, look: { ...modelCar.look, model: { ...MODEL, asset: 'plain' }, points: { seat: POINTS.seat } } }
@@ -211,15 +200,13 @@ const wheeledCar: Vehicle = {
 // A closed car with no cabin, and nothing else in the body's paint: its body's box alone; its points on
 // the chassis alone, as it draws no steering wheel.
 const { cabin: _, ...boxBody } = vehicle.body
-const boxCar: Vehicle = { ...vehicle, body: boxBody, look: { ...vehicle.look, paint: PAINT, open: undefined, fenders: undefined, grille: undefined, tracks: undefined, points: { seat: POINTS.seat } } }
-// The same with the grip on the steering wheel it does not draw; and the open car with a point riding
+const boxCar: Vehicle = { ...vehicle, body: boxBody, look: { ...vehicle.look, paint: PAINT, fenders: undefined, grille: undefined, tracks: undefined, points: { seat: POINTS.seat } } }
+// The same with the grip on the steering wheel it does not draw; and the drawn car with a point riding
 // a part no look draws, as a scene file can write one.
 const boxGripped: Vehicle = { ...boxCar, look: { ...boxCar.look, points: POINTS } }
 const doored: Vehicle = { ...vehicle, look: { ...vehicle.look, tracks: undefined, points: JSON.parse('{ "handle": { "at": [0, 0, 0], "part": "door" } }') } }
-// The open jeep with no cabin to build round.
-const roofless: Vehicle = { ...vehicle, body: boxBody, look: { ...vehicle.look, tracks: undefined } }
 // The beams raised onto a bar over the car, `RAISED`, 0.6 m either side of its middle, splayed `TOE` out:
-// the open car, its lamps drawn on the nose; and the model, its beam nodes on the nose.
+// the drawn car, its lamps drawn on the nose; and the model, its beam nodes on the nose.
 const RAISED: [number, number, number] = [0.4, 1.3, 0.6]
 const TOE = 0.2
 const raisedBeam = { ...LIGHTS.beam, at: RAISED, toe: TOE }
@@ -273,7 +260,8 @@ const ownCar: Vehicle = { ...heardCar, look: { ...heardCar.look, sound: { ...SOU
 const heardOf = (car: Vehicle, named: boolean, plugins = ['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d', 'audio']): Scene => {
   const s = yardOf(plugins, ['field'], undefined, false, car)
   const world = s.world!
-  world.loader.assets = { ...world.loader.assets, engine: { type: 'json', url: fileUrl('engine.json') }, lost: { type: 'json', url: fileUrl('lost.json') } }
+  // the manifests `preload: false`, so only box3dvehicle's asking for them starts them
+  world.loader.assets = { ...world.loader.assets, engine: { type: 'json', url: fileUrl('engine.json'), preload: false }, lost: { type: 'json', url: fileUrl('lost.json'), preload: false } }
   world.audio = { hold: 0.25, space: { model: 'linear', ref: 5, max: 40, rolloff: 1 }, cues: {} }
   if (named) world.box3dvehicle.mods = { sound: 'audio' }
   return s
@@ -298,7 +286,36 @@ const yardOf = (plugins: string[], shipped: string[], land?: string, muddy = fal
   plugins,
   seats: 1,
 })
+// A car whose pro-ng body model has lamps: four groups of lens materials, each dark and its lit twin, named in its
+// look's `lamps`; the field's `models` mod builds a mesh of twelve vertices, three in each group's dark material.
+// And the same naming a material of the mod's the mesh has no vertex of.
+const LAMPS = { head: { headlamp: 'headlamp_lit' }, tail: { lens: 'lens_lit' }, reverse: { clear: 'clear_lit' }, amber: { amber: 'amber_lit' } }
+const lampedCar: Vehicle = { ...modelCar, look: { ...modelCar.look, model: { asset: 'lamped', looks: 'lampedlooks' }, lamps: LAMPS, points: { seat: POINTS.seat } } }
+const ghostCar: Vehicle = { ...lampedCar, look: { ...lampedCar.look, lamps: { ...LAMPS, head: { ghost: 'ghost_lit' } } } }
+const lampedOf = (car: Vehicle, lightsOff: boolean): Scene => {
+  const s = yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, car, lightsOff)
+  const world = s.world!
+  world.loader.assets = { ...world.loader.assets, lamped: { type: 'binary', url: fileUrl('machine.glb') }, lampedlooks: { type: 'json', url: fileUrl('engine.json'), preload: true } }
+  world.box3dvehicle.mods = { models: 'field' }
+  return s
+}
+// A car whose pro-ng body model is rigged: the field's `models` mod's rig has the clips steer and travel 0 / 1 left /
+// right of the thing `ride`, but for the one the scene's field says it `lacks`.
+const riggedCar: Vehicle = { ...modelCar, look: { ...modelCar.look, model: { asset: 'lamped', looks: 'lampedlooks' }, rig: 'ride', points: { seat: POINTS.seat } } }
+const riggedOf = (lacks?: string): Scene => {  // lacks: the clip's full name
+  const s = lampedOf(riggedCar, true)
+  s.world!.field = { ...s.world!.field, lacks }
+  return s
+}
 const scenes: Record<string, Scene> = {
+  // The rigged car, and one whose model lacks a clip it needs.
+  rigged: riggedOf(),
+  lacking: riggedOf('ride travel 1 right'),
+  // The car with a pro-ng model and lamps, in a fleet with `lightsOff` and without; and the car whose lamps name a
+  // material its model has no vertex of.
+  lamped: lampedOf(lampedCar, true),
+  lit: lampedOf(lampedCar, false),
+  ghosted: lampedOf(ghostCar, true),
   // The field's land, field shipped before box3dvehicle.
   dusty: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], 'field'),
   // The same, its field muddy.
@@ -315,12 +332,10 @@ const scenes: Record<string, Scene> = {
   modelled: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, modelCar),
   // A closed car with no cabin.
   boxed: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, boxCar),
-  // An open car with no cabin.
-  roofless: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, roofless),
-  // The open car and the model with their beams raised over them.
+  // The drawn car and the model with their beams raised over them.
   raised: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, raised),
   raisedModel: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, raisedModel),
-  // The open car and the model in a fleet with `lightsOff`.
+  // The drawn car and the model in a fleet with `lightsOff`.
   dark: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, quiet, true),
   darkModel: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, modelCar, true),
   // A model with no steering wheel, its points on the chassis; and with the grip on the wheel too.
@@ -328,7 +343,7 @@ const scenes: Record<string, Scene> = {
   plainGripped: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, plainGripped),
   // The model car with wheel and hub models and no corners.
   wheeled: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, wheeledCar),
-  // A closed car with the grip on the wheel it does not draw; the open car with a point on a door.
+  // A closed car with the grip on the wheel it does not draw; the drawn car with a point on a door.
   boxGripped: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, boxGripped),
   doored: yardOf(['scenemanager', 'loader', 'shipped', 'box3dvehicle', 'particle3d', 'render3d'], ['field'], undefined, false, doored),
   // A car heard through audio's sound mod; the same naming no mod; one listing no loader; one with a
@@ -364,6 +379,36 @@ export const land = (plugins: any) => {
       drivers: (x: number) => (x > 0 ? { tint: 5583650, wet: 1 } : undefined),
       mark: (x: number, z: number) => (x > 0 ? 0.9 : z > 0 ? 0 : undefined),
     }),
+  }
+}
+// What supershader3d's \`models\` mod is, with a looks file of ten materials, each lamp's dark and lit: a mesh of
+// twelve vertices, the first three the headlamp's, then the lens's, the clear's and the amber's.
+export const models = (plugins: any) => {
+  const THREE = plugins.render3d.THREE
+  const names = ['headlamp', 'headlamp_lit', 'lens', 'lens_lit', 'clear', 'clear_lit', 'amber', 'amber_lit', 'ghost', 'ghost_lit']
+  return {
+    unpack: async (bytes: Uint8Array) => bytes,
+    build: () => {
+      const g = new THREE.BufferGeometry()
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(36), 3))
+      g.setAttribute('lookId', new THREE.BufferAttribute(new Float32Array([0, 0, 0, 2, 2, 2, 4, 4, 4, 6, 6, 6]), 1))
+      return new THREE.Mesh(g, new THREE.MeshBasicMaterial())
+    },
+    twin: (dark: string, lit: string) => {
+      const ids = [dark, lit].map(n => names.indexOf(n))
+      if (ids.includes(-1)) throw new Error('no such material ' + dark + ' or ' + lit)
+      return ids
+    },
+    // A rig of the clips steer and travel 0 / 1 left / right, each pose written on the mesh, applied counted.
+    rig: (_unpacked: any, mesh: any) => {
+      mesh.userData.poses = {}
+      mesh.userData.applied = 0
+      return {
+        has: (name: string) => name !== plugins.wire.scene.world.field.lacks && (name === 'ride steer' || /^ride travel [01] (left|right)$/.test(name)),
+        pose: (name: string, at: number) => { mesh.userData.poses[name] = at },
+        apply: () => { mesh.userData.applied++ },
+      }
+    },
   }
 }
 `)
@@ -794,7 +839,7 @@ test('with `beam.at`, the two beams stand there either side of the middle, aimed
   const beams = named(drawn.page, 'box3dvehicle.beam')
   check(beams)
   for (const b of beams) expect(b.parent).toBe(chassisOf(drawn.page))
-  // The lamps on the nose are drawn as without `at`: the open car's same meshes, each as many vertices,
+  // The lamps on the nose are drawn as without `at`: the drawn car's same meshes, each as many vertices,
   // and as many lights.
   const plain = await open('dusty')
   await plain.frames(2)
@@ -811,27 +856,19 @@ test('with `beam.at`, the two beams stand there either side of the middle, aimed
   for (const b of modelBeams) expect(b.parent).toBe(group.parent)
 })
 
-test('an open car\'s body is drawn as one mesh a material beside its named lenses and its steering wheel, every material physical, the glass see-through and casting no shadow, and each wheel likewise', async () => {
+test('a drawn car\'s body is drawn as one mesh a material beside its named lenses, every material physical, the see-through ones casting no shadow, no steering wheel, and each wheel likewise', async () => {
   const { page, frames } = await open('dusty')
   await frames(2)
   const chassis = chassisOf(page)
   const meshes: any[] = []
-  chassis.traverse((o: any) => { if (o.isMesh && !o.name && o.parent.name !== 'box3dvehicle.steer') meshes.push(o) })
+  chassis.traverse((o: any) => { if (o.isMesh && !o.name) meshes.push(o) })
   const materials = new Set(meshes.map(m => m.material))
   expect(materials.size).toBe(meshes.length)
-  // The steering wheel, one mesh a material of its own: its trim rim and spokes, its chrome hub.
-  const [steer] = named(page, 'box3dvehicle.steer')
-  expect(steer.parent).toBe(chassis)
-  const own = steer.children.filter((o: any) => o.isMesh)
-  expect(own).toHaveLength(2)
-  expect(new Set(own.map((m: any) => m.material)).size).toBe(2)
-  for (const m of own) { expect(m.castShadow).toBe(true); expect(m.receiveShadow).toBe(true) }
-  // body, trim, glass, chrome, seat, light, tail's lenses aside, hook, rim, tyre, amber and arm: a handful.
+  expect(named(page, 'box3dvehicle.steer')).toHaveLength(0)
+  // body, cabin, trim, chrome, light, hook, rim, tyre, amber and arm: a handful.
   expect(meshes.length).toBeLessThanOrEqual(14)
   for (const m of meshes) expect(m.material.isMeshPhysicalMaterial).toBe(true)
-  const glass = meshes.find(m => m.material.opacity === 0.25)!
-  expect(glass.material.transparent).toBe(true)
-  expect(glass.castShadow).toBe(false)
+  for (const m of meshes) if (m.material.transparent) expect(m.castShadow).toBe(false)
   const body = meshes.find(m => m.material.clearcoat === 1)!
   expect(body.castShadow).toBe(true)
   // The body's panels reach the fenders' flare past the wheels and the bumpers past them.
@@ -979,6 +1016,75 @@ test('every mesh of a model takes shadows and all but the see-through cast them;
   expect(lightCount(page)).toBe(lights)
 })
 
+// The look numbers of the lamped car's mesh, the mod's twelve vertices.
+const lookIdsOf = (page: { client?: any }): number[] => [...(meshesOf(named(page, 'box3dvehicle.model')[0])[0].geometry.getAttribute('lookId').array as Float32Array)]
+const waitLamped = async (page: { client?: any }, frames: (k: number) => Promise<void>) => {
+  await frames(1)
+  for (let i = 0; i < 200 && !named(page, 'box3dvehicle.model').length; i++) { await new Promise(r => setTimeout(r, 5)); await frames(1) }
+  await frames(2)
+}
+
+test('a pro-ng model\'s lamps are drawn in their lit twin while their group is lit: head and amber with the row\'s `lights` under `lightsOff`, tail while it brakes or the headlights are on, reverse while it drives backwards, and each back in its dark one after', async () => {
+  const { page, frames, car } = await open('lamped')
+  await waitLamped(page, frames)
+  // headlamp 0 / 1, lens 2 / 3, clear 4 / 5, amber 6 / 7: all dark
+  expect(lookIdsOf(page)).toEqual([0, 0, 0, 2, 2, 2, 4, 4, 4, 6, 6, 6])
+  car.data.lights = true
+  await frames(2)
+  expect(lookIdsOf(page)).toEqual([1, 1, 1, 3, 3, 3, 4, 4, 4, 7, 7, 7])
+  car.data.lights = false
+  car.data.brake = 1
+  await frames(2)
+  expect(lookIdsOf(page)).toEqual([0, 0, 0, 3, 3, 3, 4, 4, 4, 6, 6, 6])
+  Object.assign(car.data, { brake: 0, throttle: -1 })
+  await frames(2)
+  expect(lookIdsOf(page)).toEqual([0, 0, 0, 2, 2, 2, 5, 5, 5, 6, 6, 6])
+})
+
+test('a fleet without `lightsOff` has every car\'s headlights lit whatever its row says, its tail and amber lamps lit with them', async () => {
+  const { page, frames } = await open('lit')
+  await waitLamped(page, frames)
+  expect(lookIdsOf(page)).toEqual([1, 1, 1, 3, 3, 3, 4, 4, 4, 7, 7, 7])
+})
+
+test('a rigged model is posed each frame from the physics: its `steer` clip from the car row\'s steer, 0 full right and 1 full left, and each wheel\'s `travel <axle> <side>` from its compression over the spring\'s travel, clamped to 0 and 1', async () => {
+  const { page, frames, car } = await open('rigged')
+  await waitLamped(page, frames)
+  const mesh = () => meshesOf(named(page, 'box3dvehicle.model')[0])[0]
+  const cs = corners(vehicle)
+  const name = (c: (typeof cs)[number]) => `ride travel ${vehicle.axles.indexOf(c.axle)} ${c.side < 0 ? 'left' : 'right'}`
+  // compression of each wheel, in metres from full droop (the spring's sag 0.1, its travel 0.3): full droop, half the
+  // way to the sag, half the way from the sag to full bump, past full bump
+  const compression = [0, 0.05, 0.2, 0.45]
+  Object.assign(car.data, { steer: 0.5, compression })
+  const applied = mesh().userData.applied
+  await frames(2)
+  const poses = mesh().userData.poses
+  expect(poses['ride steer']).toBeCloseTo(0.75, 9)
+  const at = [0, 0.25, 0.75, 1]
+  cs.forEach((c, i) => expect(poses[name(c)]).toBeCloseTo(at[i], 9))
+  // and at the sag exactly, the middle: nothing added
+  compression.fill(vehicle.axles[0].spring.sag)
+  await frames(2)
+  cs.forEach(c => expect(mesh().userData.poses[name(c)]).toBeCloseTo(0.5, 9))
+  expect(mesh().userData.applied).toBeGreaterThan(applied)
+  car.data.steer = -3
+  await frames(2)
+  expect(mesh().userData.poses['ride steer']).toBe(0)
+})
+
+test('a rigged model lacking a clip the standard names throws on the frame it comes, naming the vehicle, the clip and the model', async () => {
+  const { frames } = await open('lacking')
+  await expect((async () => { for (let i = 0; i < 200; i++) { await frames(1); await new Promise(r => setTimeout(r, 5)) } })())
+    .rejects.toThrow('world.box3dvehicle.vehicles.car.look.rig poses the clip ride travel 1 right, which its model lamped has not')
+})
+
+test('lamps naming a material the model has no vertex of throw on the frame its model comes, naming the vehicle, the group and the material', async () => {
+  const { frames } = await open('ghosted')
+  await expect((async () => { for (let i = 0; i < 200; i++) { await frames(1); await new Promise(r => setTimeout(r, 5)) } })())
+    .rejects.toThrow('world.box3dvehicle.vehicles.car.look.lamps.head names the material ghost, which its model lamped has no vertex of')
+})
+
 test('a closed car with no cabin draws its body\'s box alone', async () => {
   const { page, frames } = await open('boxed')
   await frames(2)
@@ -1018,10 +1124,6 @@ test('every car is made again when world.box3dvehicle changes, in place deep ins
   expect(drawnCar()[0].uuid).not.toBe(second)
 })
 
-test('an open car with no cabin throws on the frame it is drawn, naming the vehicle', async () => {
-  await expect((await open('roofless')).frames(2)).rejects.toThrow('world.box3dvehicle.vehicles.car.look.open is built round body.cabin, and its body has none')
-})
-
 // ---------------------------------------------------------------- the steering wheel and the points
 
 const v3 = (a: number[]) => new THREE.Vector3(a[0], a[1], a[2])
@@ -1039,37 +1141,6 @@ const waitModel = async (page: { client?: any }, frames: (k: number) => Promise<
   for (let i = 0; i < 200 && !named(page, 'box3dvehicle.model').length; i++) { await new Promise(r => setTimeout(r, 5)); await frames(1) }
   return named(page, 'box3dvehicle.model')[0]
 }
-
-test('the open car\'s steering wheel, rim, spokes and hub, turns about its column by the car row\'s steer times `lock`, its top to the left on a left steer, and back', async () => {
-  const { page, frames, car } = await open('dusty')
-  await frames(2)
-  const [steer] = named(page, 'box3dvehicle.steer'), o = vehicle.look.open!, arm = vehicle.look.arm
-  // Made as the chassis's frame pitched 0.6 down the column.
-  const rest = about([0, 0, 1], -0.6)
-  sameTurn(steer.quaternion, rest)
-  // Its rim and spokes in its y–z plane, the rim `steer` round its origin: nothing of the column.
-  for (const m of steer.children.filter((c: any) => c.isMesh)) {
-    m.geometry.computeBoundingBox()
-    const { min, max } = m.geometry.boundingBox
-    expect(Math.max(-min.x, max.x)).toBeLessThanOrEqual(arm * 0.8 + 1e-6)
-    for (const k of ['y', 'z'] as const) expect(Math.max(-min[k], max[k])).toBeLessThanOrEqual(o.steer + arm * 0.6 + 1e-6)
-  }
-  // The top of the rim, in the chassis's frame.
-  const top = () => { steer.updateMatrix(); return new THREE.Vector3(0, o.steer, 0).applyMatrix4(steer.matrix) }
-  const hub = steer.position.clone(), straight = top()
-  for (const s of [0.5, -1, 1]) {
-    car.data.steer = s
-    await frames(1)
-    sameTurn(steer.quaternion, rest.clone().multiply(about([1, 0, 0], -s * LOCK)))
-    const now = top()
-    // Turned |steer| × lock round the hub, toward the left (-z) on a left steer (positive).
-    expect(now.clone().sub(hub).angleTo(straight.clone().sub(hub))).toBeCloseTo(Math.abs(s) * LOCK, 9)
-    expect(Math.sign(now.z - straight.z)).toBe(-Math.sign(s))
-  }
-  car.data.steer = 0
-  await frames(1)
-  sameTurn(steer.quaternion, rest)
-})
 
 test('each point of the look is an empty of its name on the chassis, where the chassis row\'s place and turn put its `at`, its frame the chassis\'s, and `point` hands it out', async () => {
   const { page, frames, car, chassis } = await open('dusty')
@@ -1091,29 +1162,6 @@ test('each point of the look is an empty of its name on the chassis, where the c
   // A car no longer drawn has none.
   plugin.close(page.client!.plugins)
   expect(plugin.point(car.id, 'seat')).toBeUndefined()
-})
-
-test('a point riding `steer` is on the steering wheel: at its `at` and turned its `turn` in the chassis\'s frame with the wheel straight, and turned with the wheel about its column', async () => {
-  const { page, frames, car, chassis } = await open('dusty')
-  Object.assign(chassis.data, { pos: PLACE.pos, rot: PLACE.rot })
-  await frames(2)
-  const scene = page.client!.plugins.render3d.scene
-  const grip = page.client!.plugins.box3dvehicle.point(car.id, 'gripL'), [steer] = named(page, 'box3dvehicle.steer')
-  expect(grip.parent).toBe(steer)
-  scene.updateMatrixWorld(true)
-  let w = worldOf(grip)
-  near(w.at.toArray(), inWorld(GRIP_AT).toArray())
-  sameTurn(w.turn, q4(PLACE.rot).multiply(q4(GRIP)))
-  near(w.scale.toArray(), [1, 1, 1])
-  // Full left: turned `lock` about the column through the hub, in the chassis's frame.
-  car.data.steer = 1
-  await frames(1)
-  scene.updateMatrixWorld(true)
-  const rest = about([0, 0, 1], -0.6), spin = rest.clone().multiply(about([1, 0, 0], -LOCK)).multiply(rest.clone().invert())
-  const hub = steer.position.clone(), turned = v3(GRIP_AT).sub(hub).applyQuaternion(spin).add(hub)
-  w = worldOf(grip)
-  near(w.at.toArray(), inWorld(turned.toArray()).toArray())
-  sameTurn(w.turn, q4(PLACE.rot).multiply(spin).multiply(q4(GRIP)))
 })
 
 test('a model\'s `steer` node turns about its own x by steer times `lock`, and a point riding `steer` hangs on it once the model comes, at its `at` in the chassis\'s frame whatever the model\'s place and scale', async () => {

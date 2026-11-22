@@ -70,6 +70,9 @@ sea and for what render3d's overlay draws.
   splashes stand on and the biomes the weather follows.
 - **ocean3d**: skydome3d's mods `skydome3d.ocean3d.ts` (`world.ocean3d.mods: { light: 'skydome3d',
   wind: 'skydome3d' }`) draw the sea in the sky's light and raise it with the wind.
+- **particle3d, gpuparticle3d**: `skydome3d.particle3d.ts` and `skydome3d.gpuparticle3d.ts`
+  (`world.particle3d.mods: { light: 'skydome3d' }`, and likewise `gpuparticle3d`) hand the sky's light, each
+  channel a share of its brightest, so unlit particles dim with the sky.
 - **audio**: loops can follow `mix` fields (`"mix.rain"`) for rain and wind beds.
 - **cel3d**: keeps skydome3d's cloud shadow when listed after it.
 - **loader**: the weathers file.

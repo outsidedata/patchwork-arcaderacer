@@ -38,5 +38,31 @@
     },
     "reveal": { "after": 0, "seconds": 0.8, "from": [0, 3, -10], "turn": 0 },
     "sway": { "yaw": [0.07, 0.5], "pitch": [0.03, 0.37], "roll": [0.012, 0.29], "phase": 0, "after": 0.8 }
+  },
+  "choose_track": {
+    "model": "title",
+    "at": [0, 3.5, -12],
+    "scale": 1,
+    "word": {
+      "node": "choose_track",
+      "face": { "colour": "#f2f4f8", "metalness": 1, "roughness": 0.08, "env": 1.2 },
+      "side": { "colour": "#a3060f", "metalness": 0.6, "roughness": 0.3, "env": 0.8, "clearcoat": 1 },
+      "env": { "sky": "#4f7fc4", "horizon": "#e8eef6", "ground": "#1a1416", "band": "#ffffff", "width": 0.12, "size": 50 }
+    },
+    "reveal": { "after": 0, "seconds": 0.8, "from": [0, 3, -10], "turn": 0 },
+    "sway": { "yaw": [0.07, 0.5], "pitch": [0.03, 0.37], "roll": [0.012, 0.29], "phase": 0, "after": 0.8 }
+  },
+  "choose_car": {
+    "model": "title",
+    "at": [0, 3.5, -12],
+    "scale": 1,
+    "word": {
+      "node": "choose_car",
+      "face": { "colour": "#f2f4f8", "metalness": 1, "roughness": 0.08, "env": 1.2 },
+      "side": { "colour": "#a3060f", "metalness": 0.6, "roughness": 0.3, "env": 0.8, "clearcoat": 1 },
+      "env": { "sky": "#4f7fc4", "horizon": "#e8eef6", "ground": "#1a1416", "band": "#ffffff", "width": 0.12, "size": 50 }
+    },
+    "reveal": { "after": 0, "seconds": 0.8, "from": [0, 3, -10], "turn": 0 },
+    "sway": { "yaw": [0.07, 0.5], "pitch": [0.03, 0.37], "roll": [0.012, 0.29], "phase": 0, "after": 0.8 }
   }
 }

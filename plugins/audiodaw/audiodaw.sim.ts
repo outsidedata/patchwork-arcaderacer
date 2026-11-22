@@ -8,9 +8,19 @@
 // its one instrument, so two tracks into one synth share its voices and two into a DrumKit play one
 // kit. A track's `mute` and `solo` hold back its notes, not a device's sound.
 //
-// A track's notes are in its patterns, and a clip places one of them on the song, played once: a
-// clip is as long as the ticks its pattern plays, `from` to `length`, so lengthening or trimming a
-// pattern lengthens or trims every clip of it. Notes outside those ticks are kept, unheard.
+// A track's notes are in its patterns, and a pattern is a loop: the ticks from its `from` to its
+// `length` played over and over, as Ableton's clip loops. Notes outside those ticks are kept, unheard.
+// A clip places a pattern on the song from its `start` for its own `length`, the loop repeated to
+// fill it, beginning `offset` ticks into the loop; a clip with no `length` plays the loop once, from
+// its offset to the loop's end. Lengthening a clip repeats its pattern more; editing the pattern edits
+// every clip of it.
+//
+// The session, as Ableton's Session View: the song's `scenes` are the columns of a grid whose rows are
+// the tracks, and a track's `slots` hold a pattern of its own for each scene (`slots[scene]`, the name
+// of one of its patterns, or none). A slot launched plays its pattern looped on its track from the next
+// launch boundary (`launch`, in ticks: a bar when left out, 0 at once) until another slot of the track
+// is launched or the track is stopped, and a scene launched launches every track's slot of it. Which
+// slots play is the playing page's, not the song's: `audiodaw.plugin.ts`'s `launch`.
 //
 // There are two kinds of track, in one list in the order the user keeps them. A note track
 // (`kind: 'notes'`) sends notes to a device. An automation track (`kind: 'automation'`) sends one
@@ -50,9 +60,15 @@ export type Pad = { name: string; is: string; pitch?: string; choke?: string; op
 export type KitOptions = { pads: Record<string, Pad>; volume?: number }
 export type Channel = { volume: number; pan: number; mute: boolean; solo: boolean }
 export type Bus = { volume: number; pan: number; effects: Effect[] }
-// A clip: its track's pattern played once, never repeated, the pattern's tick `from` at the song's
-// tick `start`, until the pattern's `length`. Every clip of a pattern is as long as the pattern plays.
-export type Clip = { track: number; pattern: string; start: number }
+// A clip: its track's pattern looped on the song from the song's tick `start` for `length` ticks, the
+// loop begun `offset` ticks in (0 when left out). With no `length`, the loop plays once from the offset
+// to its end.
+export type Clip = { track: number; pattern: string; start: number; length?: number; offset?: number }
+// A scene: a column of the session, a slot of each track.
+export type Scene = { name: string }
+// A track's slots, one for each scene: the name of one of its patterns, or null for an empty slot. A
+// track with fewer slots than there are scenes has the rest empty.
+export type Slots = (string | null)[]
 
 // A device of the rack: an instrument, its effects in order, its channel and its sends.
 export type Device = {
@@ -70,6 +86,7 @@ export type NoteTrack = {
   color: string
   target?: number
   patterns: Record<string, Pattern>
+  slots?: Slots
   mute: boolean
   solo: boolean
 }
@@ -98,6 +115,7 @@ export type AutomationTrack = {
   color: string
   target?: Knob
   patterns: Record<string, AutomationPattern>
+  slots?: Slots
   mute: boolean
 }
 
@@ -115,6 +133,10 @@ export type Project = {
   // The song's own bounds, in ticks: play starts at `start` and stops at `end`. Clips outside them
   // are kept and not heard. With none, the song runs from 0 to its last clip's end (`spanOf`).
   span?: { start: number; end: number }
+  // The session's scenes, and the ticks a launch waits for: the next multiple of `launch` in the song,
+  // a bar (`timeSignature` beats) when left out, at once for 0.
+  scenes?: Scene[]
+  launch?: number
   rack: Device[]
   tracks: Track[]
   buses: Record<string, Bus>
@@ -166,11 +188,41 @@ export function automationTrack(p: Project, t: number): AutomationTrack {
   return x
 }
 
-// A clip's length: the ticks its pattern plays.
-export const clipLength = (p: Project, c: Clip) => playedOf(patternOf(p, c))
+// `n` round a loop of `m` ticks: from 0 to under `m`, for any `n`.
+export const round = (n: number, m: number) => ((n % m) + m) % m
+
+// Where in its pattern's loop a clip begins: its offset round the loop.
+export const offsetOf = (p: Project, c: Clip) => round(c.offset ?? 0, playedOf(patternOf(p, c)))
+
+// A clip's length on its pattern `x`: its own, else its loop once from its offset to the loop's end.
+export const lengthOn = (x: Lane, c: Clip) => c.length ?? playedOf(x) - round(c.offset ?? 0, playedOf(x))
+
+// A clip's length in the song.
+export const clipLength = (p: Project, c: Clip) => lengthOn(patternOf(p, c), c)
 
 // Where a clip ends.
 export const clipEnd = (p: Project, c: Clip) => c.start + clipLength(p, c)
+
+// One pass of a clip's loop on the song: the song's tick its pattern's `from` falls on (`base`, so its
+// tick `t` falls on `base + t - from`), and the song's ticks of it the clip plays, `start` to `end`.
+export type Pass = { base: number; start: number; end: number }
+
+// The passes of a loop `x` placed on the song from `start` for `length` ticks, begun `offset` ticks
+// into it: the first from `start`, cut at its front by the offset, the last cut at the clip's end.
+export function passesOf(x: Lane, start: number, length: number, offset = 0): Pass[] {
+  const played = playedOf(x)
+  const end = start + length
+  const out: Pass[] = []
+  for (let base = start - round(offset, played); base < end; base += played) out.push({ base, start: Math.max(start, base), end: Math.min(end, base + played) })
+  return out
+}
+
+// A clip's passes on the song, on its pattern `x`.
+export const passesOn = (x: Lane, c: Clip) => passesOf(x, c.start, lengthOn(x, c), c.offset ?? 0)
+export const passes = (p: Project, c: Clip) => passesOn(patternOf(p, c), c)
+
+// The ticks a launch waits for: the song's `launch`, else a bar.
+export const launchOf = (p: Project) => p.launch ?? p.timeSignature * p.ppq
 
 // The song's bounds: its `span`, or from 0 to the end of its last clip.
 export function spanOf(p: Project): { start: number; end: number } {
@@ -198,8 +250,9 @@ export function setLength(p: Project, t: number, name: string, length: number): 
 }
 
 // A pattern's start moved to the pattern's tick `from`, kept a tick before its end; every clip of it
-// moves with it, so each note it still plays stays where it was in the song. Notes before `from` are
-// kept and not played. A clip is kept from before the song's start, which holds the move back.
+// starts that much later or earlier, so each note of its first pass stays where it was in the song,
+// and a clip of its own length keeps its end where it was (a tick long at least). Notes before `from`
+// are kept and not played. A clip is kept from before the song's start, which holds the move back.
 export function setFrom(p: Project, t: number, name: string, from: number): Project {
   const x = p.tracks[t]?.patterns[name]
   if (!x) throw new Error(`audiodaw: track ${t} has no pattern ${name}`)
@@ -209,7 +262,13 @@ export function setFrom(p: Project, t: number, name: string, from: number): Proj
   if (!by) return p
   const next = fromOf(x) + by
   const moved = pattern(p, t, name, ({ from: _was, ...rest }) => (next ? { ...rest, from: next } : rest))
-  return { ...moved, clips: moved.clips.map((c) => (c.track === t && c.pattern === name ? { ...c, start: c.start + by } : c)) }
+  return {
+    ...moved,
+    clips: moved.clips.map((c) => {
+      if (c.track !== t || c.pattern !== name) return c
+      return c.length === undefined ? { ...c, start: c.start + by } : { ...c, start: c.start + by, length: Math.max(1, c.length - by) }
+    }),
+  }
 }
 
 export function addPattern(p: Project, t: number, name: string, x: Pattern): Project {
@@ -230,23 +289,29 @@ function put(p: Project, t: number, name: string, x: Lane): Project {
   return track(p, t, (tr) => lanes(tr, (patterns) => ({ ...patterns, [name]: x })))
 }
 
-// A pattern renamed, every clip of it with it.
+// A track's slots with each that holds `name` changed by `change`: its new name, or null to empty it.
+function reslot(x: Track, name: string, to: string | null): Track {
+  if (!x.slots?.includes(name)) return x
+  return withSlots(x, x.slots.map((s) => (s === name ? to : s)))
+}
+
+// A pattern renamed, every clip and slot of it with it.
 export function renamePattern(p: Project, t: number, name: string, to: string): Project {
   const tr = p.tracks[t]
   if (!tr?.patterns[name]) throw new Error(`audiodaw: track ${t} has no pattern ${name}`)
   if (name === to) return p
   if (tr.patterns[to]) throw new Error(`audiodaw: track ${t} has a pattern ${to} already`)
   return {
-    ...track(p, t, (x) => lanes(x, (patterns) => Object.fromEntries(Object.entries(patterns).map(([k, v]) => [k === name ? to : k, v])))),
+    ...track(p, t, (x) => reslot(lanes(x, (patterns) => Object.fromEntries(Object.entries(patterns).map(([k, v]) => [k === name ? to : k, v]))), name, to)),
     clips: p.clips.map((c) => (c.track === t && c.pattern === name ? { ...c, pattern: to } : c)),
   }
 }
 
-// A pattern taken away with every clip of it.
+// A pattern taken away with every clip of it; its slots are emptied.
 export function removePattern(p: Project, t: number, name: string): Project {
   if (!p.tracks[t]?.patterns[name]) throw new Error(`audiodaw: track ${t} has no pattern ${name}`)
   return {
-    ...track(p, t, (x) => lanes(x, ({ [name]: _gone, ...patterns }) => patterns)),
+    ...track(p, t, (x) => reslot(lanes(x, ({ [name]: _gone, ...patterns }) => patterns), name, null)),
     clips: p.clips.filter((c) => !(c.track === t && c.pattern === name)),
   }
 }
@@ -495,19 +560,28 @@ export function removePoint(p: Project, t: number, name: string, i: number, j: n
 
 // Clips ------------------------------------------------------------------------------------------
 
-export function addClip(p: Project, clip: Clip): Project {
+// A clip the song can hold: its track has its pattern, its length is a whole tick or more, its offset
+// whole. Ticks come from a pointer or a file, so they are checked here.
+function placeable(p: Project, clip: Clip): Clip {
   if (!p.tracks[clip.track]?.patterns[clip.pattern]) {
     throw new Error(`audiodaw: track ${clip.track} has no pattern ${clip.pattern}`)
   }
-  return { ...p, clips: [...p.clips, clip] }
+  if (clip.length !== undefined && !(Number.isInteger(clip.length) && clip.length >= 1)) throw new Error(`audiodaw: a clip ${clip.length} ticks long`)
+  if (clip.offset !== undefined && !Number.isInteger(clip.offset)) throw new Error(`audiodaw: a clip offset of ${clip.offset} ticks`)
+  return clip
 }
 
-export function moveClip(p: Project, i: number, to: Partial<Clip>): Project {
+export function addClip(p: Project, clip: Clip): Project {
+  return { ...p, clips: [...p.clips, placeable(p, clip)] }
+}
+
+// A clip changed: moved, put on another pattern, made another length or begun elsewhere in its loop.
+// A field handed as undefined is taken away: a clip with no length plays its loop once.
+export function moveClip(p: Project, i: number, to: { [K in keyof Clip]?: Clip[K] | undefined }): Project {
   slot(p.clips, i)
-  const clip = { ...p.clips[i]!, ...to }
-  if (!p.tracks[clip.track]?.patterns[clip.pattern]) {
-    throw new Error(`audiodaw: track ${clip.track} has no pattern ${clip.pattern}`)
-  }
+  const merged: Record<string, unknown> = { ...p.clips[i]!, ...to }
+  for (const k of Object.keys(merged)) if (merged[k] === undefined) delete merged[k]
+  const clip = placeable(p, merged as Clip)
   return { ...p, clips: p.clips.map((c, j) => (j === i ? clip : c)) }
 }
 
@@ -516,10 +590,113 @@ export function removeClip(p: Project, i: number): Project {
   return { ...p, clips: p.clips.filter((_, j) => j !== i) }
 }
 
+// The session ------------------------------------------------------------------------------------
+
+// The song's scenes; none when it has none.
+export const scenesOf = (p: Project): Scene[] => p.scenes ?? []
+
+// The pattern in track `t`'s slot of scene `scene`, or undefined for an empty slot.
+export function slotOf(p: Project, t: number, scene: number): string | undefined {
+  return p.tracks[t]?.slots?.[scene] ?? undefined
+}
+
+// A track with its slots `slots`, kept as the song keeps them: no empty slots after its last pattern,
+// and no `slots` at all when none holds one.
+function withSlots(x: Track, slots: Slots): Track {
+  const kept = [...slots]
+  while (kept.length && kept.at(-1) === null) kept.pop()
+  const { slots: _was, ...rest } = x
+  return kept.length ? ({ ...rest, slots: kept } as Track) : (rest as Track)
+}
+
+// Every track's slots changed by `change`, handed each one's slots padded with empty ones to `length`.
+function everySlot(p: Project, length: number, change: (slots: Slots) => Slots): Track[] {
+  return p.tracks.map((x) => {
+    const padded: Slots = Array.from({ length }, (_, i) => x.slots?.[i] ?? null)
+    return withSlots(x, change(padded))
+  })
+}
+
+function scene(p: Project, i: number): void {
+  if (!Number.isInteger(i) || i < 0 || i >= scenesOf(p).length) throw new Error(`audiodaw: no scene ${i}`)
+}
+
+// A scene put in the session at `at` (its end when left out), every track's slot of it empty; the
+// scenes after it move along one.
+export function addScene(p: Project, s: Scene, at = scenesOf(p).length): Project {
+  const scenes = scenesOf(p)
+  if (!Number.isInteger(at) || at < 0 || at > scenes.length) throw new Error(`audiodaw: no place ${at} for a scene`)
+  return {
+    ...p,
+    scenes: [...scenes.slice(0, at), s, ...scenes.slice(at)],
+    tracks: everySlot(p, scenes.length, (slots) => [...slots.slice(0, at), null, ...slots.slice(at)]),
+  }
+}
+
+// A scene taken away with every track's slot of it; the scenes after it move back one.
+export function removeScene(p: Project, i: number): Project {
+  scene(p, i)
+  const scenes = scenesOf(p)
+  return {
+    ...p,
+    scenes: scenes.filter((_, j) => j !== i),
+    tracks: everySlot(p, scenes.length, (slots) => slots.filter((_, j) => j !== i)),
+  }
+}
+
+export function renameScene(p: Project, i: number, name: string): Project {
+  scene(p, i)
+  return { ...p, scenes: scenesOf(p).map((s, j) => (j === i ? { ...s, name } : s)) }
+}
+
+// A scene moved to place `to`, every track's slot of it with it.
+export function moveScene(p: Project, from: number, to: number): Project {
+  scene(p, from)
+  scene(p, to)
+  if (from === to) return p
+  const scenes = scenesOf(p)
+  const at = order(scenes.length, from, to)
+  const move = <T>(list: T[]): T[] => {
+    const out: T[] = []
+    at.forEach((now, was) => { out[now] = list[was]! })
+    return out
+  }
+  return { ...p, scenes: move(scenes), tracks: everySlot(p, scenes.length, move) }
+}
+
+// A copy of scene `i` put after it, named `name`: every track's slot of it the same pattern.
+export function duplicateScene(p: Project, i: number, name: string): Project {
+  scene(p, i)
+  const scenes = scenesOf(p)
+  return {
+    ...p,
+    scenes: [...scenes.slice(0, i + 1), { name }, ...scenes.slice(i + 1)],
+    tracks: everySlot(p, scenes.length, (slots) => [...slots.slice(0, i + 1), slots[i]!, ...slots.slice(i + 1)]),
+  }
+}
+
+// Track `t`'s slot of scene `s` set to its pattern `pattern`, or emptied with none.
+export function setSlot(p: Project, t: number, s: number, pattern: string | undefined): Project {
+  scene(p, s)
+  const x = p.tracks[t]
+  if (!x) throw new Error(`audiodaw: no track ${t}`)
+  if (pattern !== undefined && !Object.hasOwn(x.patterns, pattern)) throw new Error(`audiodaw: track ${t} has no pattern ${pattern}`)
+  const slots: Slots = Array.from({ length: scenesOf(p).length }, (_, i) => x.slots?.[i] ?? null)
+  slots[s] = pattern ?? null
+  return track(p, t, () => withSlots(x, slots))
+}
+
+// The ticks a launch waits for, a whole number from 0 (at once).
+export function setLaunch(p: Project, ticks: number): Project {
+  if (!(Number.isInteger(ticks) && ticks >= 0)) throw new Error(`audiodaw: a launch every ${ticks} ticks`)
+  return { ...p, launch: ticks }
+}
+
 // Tracks -----------------------------------------------------------------------------------------
 
 export function addTrack(p: Project, t: Track): Project {
   if (t.kind === 'notes' && t.target !== undefined && !p.rack[t.target]) throw new Error(`audiodaw: no device ${t.target}`)
+  for (const s of t.slots ?? []) if (s !== null && !Object.hasOwn(t.patterns, s)) throw new Error(`audiodaw: a slot of pattern ${s}, which the track has not`)
   if (t.kind === 'automation' && t.target) there(p, t.target)
   return { ...p, tracks: [...p.tracks, t] }
 }

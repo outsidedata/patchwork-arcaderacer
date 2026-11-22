@@ -7,41 +7,7 @@
 //
 // A car is, from `look` (each part in `look.paint`'s colour of its name):
 //   the body     on the chassis row: the body's box in `body`, and on it, where the body has a
-//                `cabin`, the cabin's hull in `cabin`; or, with `open`, an open jeep, every panel
-//                rounded, built to the body's box round its cabin (a body with no cabin and an `open`
-//                look throws on the frame it is drawn, naming the vehicle):
-//                  the tub, one wall round the cabin and the back, `wall` thick, from the cowl (the
-//                  cabin's front) back along each side, round the rear corners `corner` round and
-//                  across the back; its rim rounded, a rib round it `rib.depth` proud and
-//                  `rib.height` tall at `rib.at`, and its top dipping `door.drop` into a door each
-//                  side from `door.from` to `door.to` along x, easing in and out over `door.ease`;
-//                  a rubber floor `floor` thick in `trim`;
-//                  the hood from the cowl to the grille, its top falling `hood.drop` toward the nose,
-//                  its edges rounded `hood.round`, with a `dome` pressed up `height` in it, `inset`
-//                  in from its edges; chrome hinges at the cowl and a rubber latch each side;
-//                  a dash across the cowl's back `dash.depth` deep and `height` tall, its gauges
-//                  facing the seats and a chrome grab bar before the right seat;
-//                  two bucket seats in `seat` at the cabin's back (`seat`: `width` across, `depth`
-//                  long, a cushion `base` thick, a back `back` tall leaning `tilt` radians with
-//                  bolsters, a headrest `head` tall, 0 for none, every edge rounded `round`, on a
-//                  pedestal), and with `bench` a bench across the tub behind them;
-//                  with `tunnel` a hump `width` wide and `height` tall down the floor, and on it with
-//                  `stick` a gear stick that tall;
-//                  a steering wheel `steer` round before the left seat, on a column into the dash:
-//                  the column is the body's, and the wheel (its rim, three spokes and hub) is a piece
-//                  of its own on the chassis, `box3dvehicle.steer`, whose origin is the hub and whose
-//                  frame is the chassis's pitched down the column, so its +x runs down the column
-//                  into the dash, +y up the wheel's face and +z to the right; it turns with the
-//                  steering (`lock`, below);
-//                  a windshield `windshield.height` tall leaning back `lean` radians from the cowl,
-//                  its `frame` of `trim` rounded at the corners with `glass` in it, chrome hinges at
-//                  its foot, two wipers `wiper` long on it, and with `mirror` a mirror `size` across
-//                  out `arm` on a chrome stalk each side;
-//                  a roll bar `cage.height` over the cabin's back, tubes `cage.tube` round bent
-//                  `bend` round at the corners, with legs back to the tub's rear corners, a bar each
-//                  side to the windshield's top and `pad` thick padding along its top;
-//                  with `rocker` a rubber rocker panel `height` tall and `depth` proud along each
-//                  side, between the fenders where there are fenders.
+//                `cabin`, the cabin's hull in `cabin`.
 //                An upper arm at each corner from the body's side to the spring's top mount, where
 //                the mount is out past the side.
 //   fenders      a fender over each axle's wheels in `body`, a band `thickness` thick `gap` over the
@@ -56,15 +22,15 @@
 //                body's bottom, `overhang` past each side, its edges rounded `round`, in `trim`, with
 //                `bolts` chrome bolt heads across each; with `hooks`, a tow hook in `hook` either side
 //                of the front one, `hooks` from the middle.
-//   grille       a panel `depth` thick in its `paint` across the nose, from the bumper to the hood (in
-//                the open car's nose; ahead of the closed car's box), with `slots` rounded slots cut in
+//   grille       a panel `depth` thick in its `paint` across the nose, from the bumper to the body's
+//                top, ahead of the body's box, with `slots` rounded slots cut in
 //                it `width` across and `height` tall, and the headlights' holes either side, a dark
 //                radiator behind them.
 //   lights       two round headlights either side of the grille (or of the nose's middle, with none),
 //                each a chrome reflector bowl with a bulb in it under a lens `radius` round domed
 //                `depth` proud, lit in `light`, in a chrome ring `bezel` thick; and at the back each
-//                side a cluster in a housing of `trim`, `bezel` round its lenses, inside the tub's
-//                rear corners: a tail light in `tail` `radius` × 2 tall, and under it a reverse light
+//                side a cluster in a housing of `trim`, `bezel` round its lenses, at the body's rear
+//                corners: a tail light in `tail` `radius` × 2 tall, and under it a reverse light
 //                in `light` `radius` tall; and with `parking`, an amber parking light `radius` round
 //                in a housing `depth` deep under each front fender's nose, where it runs flat to the
 //                front, glowing `glow`. Each headlight throws a beam, a spot light in `light` of
@@ -93,7 +59,7 @@
 //   spare        the last axle's wheel on the back, `lift` above the body's top, on a bracket.
 //   model        `{ asset, at?, scale? }`: the loader catalogue's `model` entry `asset`, drawn on the
 //                chassis row in place of the body, its cabin, the fenders, the bumpers, the grille,
-//                the rocker panels, the spare and the lamps' housings and lenses, none of which is
+//                the spare and the lamps' housings and lenses, none of which is
 //                then drawn; the wheels, the corners (springs, dampers, upper and lower arms), the
 //                exhaust and the tracks are drawn as without it. Its origin is at `at` in the
 //                chassis's frame ([0, 0, 0] when left out), turned `turn` (a quaternion, none when left
@@ -116,24 +82,47 @@
 //                not see-through casts them; a pro-ng model's one mesh (Models, below), its see-through
 //                calls among its solid ones, casts as the `models` mod made it. Every node named starting `steer` (glTF's `steer` reaches
 //                three as `steer`) that is not under another is a steering wheel, which turns with the
-//                steering as the drawn one does (`lock`, below), about its own x: a model's steering
-//                wheel is its own node, its +x down the column into the dash, +y up its face, +z right.
+//                steering (`lock`, below), about its own x: a model's steering wheel is its own node,
+//                its +x down the column into the dash, +y up its face, +z right. A car with no model
+//                draws no steering wheel.
 //   lock         radians the steering wheel turns at full lock, the car row's `steer` at ±1: each frame
-//                the drawn wheel, and each of a model's `steer…` nodes, is turned `steer` × `lock` about
+//                each of a model's `steer…` nodes is turned `steer` × `lock` about
 //                its column, from the way it was made, so a steer to the left (positive) turns its top
 //                to the left; about its own −x, the column toward the driver. With none the wheel does
 //                not turn.
+//   rig          the name of the kit thing of a pro-ng body model whose skeleton is the car's suspension and steering: its
+//                bones are posed every frame by clips of the glb, `<rig> <clip>` (a glb names an animation by its thing
+//                and its clip), that the model must have, built to the car's own numbers, each
+//                additive on the bind pose, its middle key the pose that adds nothing (the rest), so the clips that
+//                move one bone, a solid axle's two wheels, add up. `steer`, when an axle `steered`: 0 full lock to the
+//                right, 0.5 straight, 1 full lock to the left. `travel <axle> <left|right>` for every wheel, `axle` its
+//                number among the vehicle's `axles` and `left` the car's −z: 0 the spring at full droop (compression
+//                0), 0.5 at its `sag`, 1 at full bump (its `travel`), straight between, the wheel's own compression.
+//                A model without one of them throws on the frame it comes, naming the vehicle and the clip. The
+//                library's pro-ng builds them from the axle numbers (`pro-ng/kit/modern/vehicles/BOX3DVEHICLE.md`).
+//   lamps        a pro-ng body model's lamps, which is one mesh with no node a lamp is found by: `{ head?, tail?,
+//                reverse?, amber? }`, each a table of the model's lamp material by name to the name of its twin, the
+//                same lens lit (`{ "tail": { "v240_lens_red": "v240_lens_red_lit" } }`). Both are in the scene's looks
+//                file and in one draw call (the `models` mod's `twin` throws naming them otherwise), and the model
+//                has a vertex in each dark material named (or the first frame its model comes throws, naming the
+//                vehicle, the group and the material). Each car's vertices in a group's dark material are drawn in
+//                its twin while the group is lit, and back in the dark one after: `head` while the headlights are
+//                (the row's `lights` under `lightsOff`, always without it), `tail` while the car brakes or the
+//                headlights are on, `reverse` while it drives backwards, `amber` while the headlights are on. It
+//                lights no light of its own: the beams are `lights.beam.at`'s, the brake and reverse lights `lights`'
+//                (they stand at the tail's middle, not at the lenses, which a pro-ng model has no nodes to find).
 //   points       `{ <name>: [x, y, z] | { at: [x, y, z], part?: 'steer', turn?: [x, y, z, w] } }`:
 //                named places of the car in the chassis's frame, where a body sits, takes hold or puts
 //                its feet. Each is drawn as an empty three.js object of its name: on the chassis, so
 //                with the car still it is at the chassis row's place turned by its turn, plus `at`
-//                turned by it; or, with `part: 'steer'`, on the steering wheel (the drawn one, or a
-//                model's first `steer…` node, once the model has come), set back by the wheel's own
+//                turned by it; or, with `part: 'steer'`, on the steering wheel (a model's first
+//                `steer…` node, once the model has come), set back by the wheel's own
 //                place and turn so that with the wheel straight it is at `at`, and turning with the
 //                wheel. With `turn`, a quaternion in the chassis's frame, the empty is turned so (with
 //                the wheel straight, for one on it): a hand bent onto it takes that turn. A `part`
 //                that names nothing the look draws throws naming the point: on the frame the car is
-//                made, or, for a model, on the frame it comes and has no `steer…` node.
+//                made (a car with no model has no steering wheel), or, for a model, on the frame it
+//                comes and has no `steer…` node.
 //   exhaust      a list of tailpipes, each `{ at, dir, pipe }`: a chrome tailpipe `pipe` round ending at
 //                `at`, along `dir`, both in the chassis's frame. What it blows is particle3d's (Effects,
 //                below).
@@ -169,8 +158,7 @@
 //                middle the model of its axle's and its side's, in the wheel's frame as a wheel model is,
 //                turned as the chassis is and steered about the chassis's up as far as the wheel row is,
 //                and never rolled: what of a corner steers and rides with its wheel and does not turn
-//                with it (a knuckle, a drum, a fender). Placed after the wheels, so on a solid or an
-//                independent axle it stands where its wheel is drawn.
+//                with it (a knuckle, a drum, a fender).
 //   corners      `look.corners: false` draws no spring, damper or arm at any corner and no upper arm on
 //                the body, for a model that has its own.
 //   the corners  between the chassis and each wheel, placed each frame from both rows: a coil spring
@@ -185,54 +173,6 @@
 //                their top that far in from the mount; the arms run to
 //                those two points instead. Only the drawing moves: the spring pushes at its mount
 //                (`box3dvehicle.sim.ts`).
-//   solid        with it, each axle is drawn as a solid axle instead of the corners (no coil, damper or
-//                arm at any corner, and no upper arm on the body): placed each frame from its two
-//                wheel rows by `solidParts` (`box3dvehicle.sim.ts`, which says how every number below
-//                is read), so it tilts as one wheel rises and the other falls and steers with them,
-//                while the wheels still ride on their own springs. Its parts: a housing `housing`
-//                round between the knuckles' pivots `pivot` in from each wheel's middle; the pumpkin, a
-//                ball `pumpkin.radius` round at the axle's own `axles[i].pumpkin` along it, with its
-//                `pinion` toward the driveshaft and a chrome cover `cover` round the other way; at each
-//                wheel a knuckle `knuckle.radius` round and `height` tall, a brake disc `brake.radius`
-//                round and `thick` thick `at` in from the wheel's middle with a caliper `caliper`
-//                round on its top, all turned with the wheel's steering, inside the wheel's dish; four
-//                links `links.radius` round, `lower` and `upper` each side, and the `track` bar, from
-//                the chassis to the axle, each with a rod end `end` round on the axle; at each wheel the
-//                `shocks`, each a body `radius` round and `body` long hanging from its top on the
-//                chassis, a shaft `shaft` round from the axle up to halfway along the body, with `coil` a coil `turns`
-//                turns `radius` round in wire `wire` thick between a perch `low` up the shaft and one
-//                `high` down the body, never longer than its `free` length (past it, it rides on its
-//                lower perch clear of the upper one), and with `reservoir` a can `radius` round and `length` long
-//                `gap` beside the body; a bump stop `bump.radius` round each side `across` out, from
-//                the `ceiling` down to where the housing's top is at full bump; a limit strap each
-//                side, `strap.length` long, `width` wide and `thick` thick, from a tab `drop` under the
-//                ceiling to the housing's top, straight once pulled tight and folded back and forth otherwise; on a steered axle a steering arm on each knuckle reaching `steer.arm`, a
-//                tie rod `steer.rod` round between them and a steering ram on the housing pushing it;
-//                and a driveshaft `shaft.radius` round from the transfer case's output at
-//                `axles[i].shaft` to the pinion, a slip yoke `shaft.slip` at its start and a joint
-//                `shaft.joint` at the pinion. Coils are in `spring`, the shocks' bodies, shafts,
-//                reservoirs, the pumpkin's cover and the joints in `chrome`, the discs in `damper`,
-//                the calipers and straps in `hook`, the bump stops in `trim`, and everything else in
-//                `arm`. Each part is a mesh of its own on the chassis, named `box3dvehicle.solid.<part>`.
-//   independent  with it, each axle is drawn as independent suspension instead of the corners (no
-//                coil, damper or arm at any corner, and no upper arm on the body), placed each frame
-//                from its two wheel rows by `independentParts` (`box3dvehicle.sim.ts`, which says how
-//                every number is read): a front corner's two wishbones swinging about their pivots on
-//                the frame, a knuckle between their ball joints with its spindle and steering arm, the
-//                tie rod from the rack's end, which moves so the knuckles steer as the wheel rows do;
-//                a rear corner's trailing arm turning about its pivot, held by its two radius rods,
-//                and its carrier; at every corner the hub, the brake disc and caliper, the coilover
-//                (a body, a shaft, a main and a tender spring with a crossover ring between them, and
-//                a piggyback reservoir), the anti-roll bar's lever and end link, and the half-shaft
-//                with a cup and a boot at each end; the anti-roll bar across the frame and the rack's
-//                housing. Every arm is rigid, so each wheel rides the arc its arms give it: the wheel
-//                mesh on a wheel row is drawn at the middle and with the turn its knuckle or carrier
-//                gives it (out or in, camber and toe), spinning as the wheel row spins, while the wheel
-//                row itself slides straight up and down on its spring. The springs are in `spring`,
-//                the coilovers' bodies and reservoirs in `damper`, the shafts, ball joints, hubs and
-//                discs in `chrome`, the calipers, rings and spring seats in `hook`, the bushes and boots
-//                in `trim`, and everything else in `arm`. Each part is a mesh of its own on the chassis,
-//                named `box3dvehicle.independent.<part>`.
 //   sound        `{ engine, stems?, ease?, at?, range? }`: the engine heard. `engine` is the loader
 //                catalogue's `json` entry of its manifest (`Engine`, `box3dvehicle.sim.ts`), which the
 //                library's `sounds/sounds.mjs` writes beside its loops, from a `piston` or `electric`
@@ -289,7 +229,7 @@
 // The lamps found by name: each beam's spot light is `box3dvehicle.beam`, the brake light
 // `box3dvehicle.brake`, the reverse light `box3dvehicle.reverse`, and the drawn lenses of the tail
 // and reverse lights `box3dvehicle.tail` and `box3dvehicle.backup`; a model's group on the chassis
-// is `box3dvehicle.model`; the drawn steering wheel is `box3dvehicle.steer`.
+// is `box3dvehicle.model`.
 //
 // One of these per client: the cars drawn are this scene's. `point(id, name)` is the empty of the look's
 // point `name` of the car whose `box3dvehicle` row is `id`, as it is drawn this frame (its world matrix
@@ -301,7 +241,7 @@ import type { Row } from '#engine/engine.ts'
 import type { Plugins } from '#engine/browser.ts'
 import { ahead, mod, provided } from '#addons/scenemanager/scenemanager.addon.ts'
 import { json } from '#plugins/loader/loader.sim.ts'
-import { cabinPoints, corners, cross, design as designOf, independentParts, pedals, pointOf, quatOf, solidParts, turn, wheelAt, type Engine, type Fleet, type Lamp, type Lights, type Model, type Paint, type Tracks, type Vehicle, type Wheel } from './box3dvehicle.sim.ts'
+import { cabinPoints, corners, cross, design as designOf, pedals, pointOf, turn, wheelAt, type Centred, type Corner, type Engine, type Fleet, type Lamp, type Lamps, type Lights, type Model, type Paint, type Sided, type Tracks, type Vehicle, type Wheel } from './box3dvehicle.sim.ts'
 import type { Quat, Vec3 } from '#plugins/box3d/box3d.sim.ts'
 
 // What a `land` mod is: the ground the tracks are laid on and the wheels' effects are thrown at, or
@@ -321,8 +261,22 @@ type Sounding = {
 type Hold = (plugins: Plugins) => Sounding | undefined
 // What a `models` mod is: how this page reads a pro-ng glb's bytes, once, and builds a mesh of what it read, `own`
 // its own looks file; undefined while the scene's shader is not ready.
-type Made = { unpack(bytes: Uint8Array): Promise<unknown>; build(unpacked: unknown, own: unknown): any | undefined }
+// `twin(dark, lit)` is the scene's look numbers of two materials of one draw call, a lamp's lens dark and lit; it
+// throws, naming them, for one the scene's looks file does not hold or two in different calls.
+type Made = { unpack(bytes: Uint8Array): Promise<unknown>; build(unpacked: unknown, own: unknown): any | undefined; twin(dark: string, lit: string): [number, number]; rig(unpacked: unknown, mesh: any): Rig }
+// A skinned model's clips, held posed: `pose(name, at)` puts the clip `name` `at` of the way through it (0 its first key, 1
+// its last) and throws for one the model has not; `apply()` puts what was posed on the bones.
+type Rig = { has(name: string): boolean; pose(name: string, at: number): void; apply(): void }
 type Makes = (plugins: Plugins) => Made
+// The name a wheel's side goes by in a look's models and a rig's clips: `left` (the car's -z) or `right` of a pair axle's, `centre` of a
+// one-wheel axle's.
+const sideOf = (c: Corner) => (c.side < 0 ? 'left' : c.side > 0 ? 'right' : 'centre')
+// The model of corner `c` in `models`, a look's `wheel` or one axle of its `hubs`: throws, naming the vehicle, when it has none for that side.
+function modelOf(models: Sided | Centred, c: Corner, name: string, what: string): Model {
+  const m = (models as Partial<Record<string, Model>>)[sideOf(c)]
+  if (!m) throw new Error(`world.box3dvehicle.vehicles.${name}.look.${what} gives no ${sideOf(c)} model, and a wheel of ${c.side === 0 ? 'a one-wheel axle' : `its ${sideOf(c)}`} is drawn by it`)
+  return m
+}
 // One tyre's track: its mesh, the time each piece was laid and its opacity then, the next piece to
 // lay over, how many are laid, and the edges of the last place laid at, [x, y, z] left and right, or
 // undefined where the track is broken.
@@ -332,9 +286,6 @@ type Drawn = {
   // With `look.wheel`: whether each wheel's model is on its row yet. With `look.hubs`: each wheel's hub, a
   // group on the scene, and whether its model is in it yet.
   fitted: boolean[]; hubs: any[]; hubbed: boolean[]
-  // With `look.solid` or `look.independent`: each axle's parts, one mesh a part on the chassis, in
-  // `solidParts`' or `independentParts`' order.
-  solid: any[][]
   tracks: Track[]
   // The lamps: the tail lenses' and reverse lenses' materials and their two lights, which change, and
   // the amber lenses' material.
@@ -344,7 +295,12 @@ type Drawn = {
   headlights: any[]
   // With `look.model`: the model's group on the chassis, once the loader has it.
   model?: any
-  // Each steering wheel, the drawn one or a model's `steer…` nodes, and its turn as it was made.
+  // With `look.lamps`: each lamp material of a pro-ng model, for the vertices of the model's mesh that are drawn in
+  // it, its look numbers `ids` as [dark, lit], and whether they are drawn lit now.
+  twins?: { group: keyof Lamps; attribute: any; vertices: number[]; ids: [number, number]; lit: boolean }[]
+  // With `look.rig`: the model's clips, posed each frame.
+  rig?: Rig
+  // Each steering wheel, a model's `steer…` nodes, and its turn as it was made.
   steers: { piece: any; rest: any }[]
   // The empty of each of the look's points drawn so far, by name.
   points: Map<string, any>
@@ -460,7 +416,7 @@ export function box3dvehicle() {
     const geo = <G extends { dispose(): void }>(g: G) => { owned.push(g); return g }
     const look = v.look, { segments, spokes, rim, coils, coilRadius, wire, arm } = look
     const { length: L, height: H, width: W } = v.body
-    const Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1)
+    const Y = new THREE.Vector3(0, 1, 0)
     const curve = Math.max(4, Math.round(segments / 4))
 
     // `g` in `paint`, at `at`, put in `into`.
@@ -478,21 +434,6 @@ export function box3dvehicle() {
       const m = put(into, new THREE.CylinderGeometry(radius, radius, d.length(), segments).translate(0, d.length() / 2, 0), a, paint)
       m.quaternion.setFromUnitVectors(Y, d.normalize())
       return m
-    }
-    // A tube `radius` thick through `points`, each corner between them bent round `bend`.
-    const bent = (into: any, points: number[][], bend: number, radius: number, paint: keyof Paint) => {
-      const P = points.map(p => new THREE.Vector3(p[0], p[1], p[2])), path = new THREE.CurvePath()
-      let from = P[0]
-      const line = (a: any, b: any) => { if (a.distanceTo(b) > 1e-6) path.add(new THREE.LineCurve3(a, b)) }
-      for (let i = 1; i < P.length - 1; i++) {
-        const [a, b, c] = [P[i - 1], P[i], P[i + 1]], r = Math.min(bend, a.distanceTo(b) / 2, b.distanceTo(c) / 2)
-        const enter = b.clone().add(a.clone().sub(b).setLength(r)), leave = b.clone().add(c.clone().sub(b).setLength(r))
-        line(from, enter)
-        path.add(new THREE.QuadraticBezierCurve3(enter, b, leave))
-        from = leave
-      }
-      line(from, P[P.length - 1])
-      return put(into, new THREE.TubeGeometry(path, P.length * segments, radius, Math.max(8, segments / 2), false), [0, 0, 0], paint)
     }
     // A rectangle from [x0, y0] to [x1, y1], its corners rounded `r`: a shape, or a hole `into` one.
     const rect = (x0: number, y0: number, x1: number, y1: number, r: number, into: any = new THREE.Shape()) => {
@@ -518,8 +459,6 @@ export function box3dvehicle() {
     const side = (shape: any, depth: number, round: number) => slab(shape, depth, round)
     // A slab drawn as seen from the front (shape x along the car's z, y up), `depth` along x.
     const front = (shape: any, depth: number, round: number) => slab(shape, depth, round).rotateY(-Math.PI / 2)
-    // A slab drawn in plan (shape x along the car's x, shape y along its z), `depth` up y.
-    const plan = (shape: any, depth: number, round: number) => slab(shape, depth, round).rotateX(Math.PI / 2)
     // A rounded box `size` big: a front-view slab, so its rounding runs round every edge.
     const block = (size: number[], round: number) => front(middle(size[2], size[1], round), size[0], round)
     // A disc `radius` round and `depth` thick facing along x.
@@ -629,15 +568,15 @@ export function box3dvehicle() {
     const chassis = new THREE.Group()
     // With a model, it is the body: none of the body's parts below is drawn.
     const drawn = !look.model
-    const open = drawn ? look.open : undefined, grille = drawn ? look.grille : undefined
+    const grille = drawn ? look.grille : undefined
     const bumpers = drawn ? look.bumpers : undefined, fenders = drawn ? look.fenders : undefined
     const gT = grille?.depth ?? 0
-    // The grille's back face: in the open car's nose, ahead of the closed car's box.
-    const gx0 = open ? L / 2 - gT : L / 2, nose = gx0 + gT
-    const hoodDrop = open?.hood.drop ?? 0
+    // The grille's back face, the body's box's front; the nose, the grille's front.
+    const gx0 = L / 2, nose = gx0 + gT
     const cs = corners(v)
-    // The drawn steering wheel, the open car's.
-    let wheelPiece: any
+    // The body, fenders, lamps and springs the look draws from numbers are a car's, on a pair of wheels to an axle: a vehicle with a one-wheel axle is
+    // drawn by a model.
+    if (!look.model && v.axles.some(a => a.one)) throw new Error(`world.box3dvehicle.vehicles.${name}.look gives no model, and it has a one-wheel axle: a vehicle with one is drawn by its model`)
 
     // Each axle's fender: a band `thickness` thick over its wheel, `gap` over its top where it rests,
     // from the body's side out past the wheel by `flare`. An axle whose wheel is within `ease` of the
@@ -681,213 +620,7 @@ export function box3dvehicle() {
     }
     const frontTop = fenders && tops.get(Math.max(...v.axles.map(a => a.at)))
 
-    if (open) {
-      const cabin = v.body.cabin
-      if (!cabin) throw new Error(`world.box3dvehicle.vehicles.${name}.look.open is built round body.cabin, and its body has none`)
-      const cabFront = cabin.at + cabin.length / 2, cabBack = cabin.at - cabin.length / 2
-      const o = open, t = o.wall, floorY = -H / 2 + o.floor, R = Math.max(o.corner, t)
-      const ease = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u))
-      const topAt = (x: number) => H / 2 - o.door.drop * ease((x - o.door.from) / o.door.ease) * ease((o.door.to - x) / o.door.ease)
-
-      // The tub's wall, one piece round its plan: from the cowl back down the left side, round the
-      // rear corners `corner` round, across the back and up the right side, `wall` thick, its top
-      // dipping into each door, its rim rounded, a rib `rib.depth` proud round it at `rib.at`.
-      {
-        const zs = W / 2 - t / 2, Rc = R - t / 2, cx = -L / 2 + R, zc = W / 2 - R, step = 0.015
-        const path: { x: number; z: number; nx: number; nz: number }[] = []
-        const line = (ax: number, az: number, bx: number, bz: number, nx: number, nz: number) => {
-          const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / step))
-          for (let i = 0; i < n; i++) path.push({ x: ax + ((bx - ax) * i) / n, z: az + ((bz - az) * i) / n, nx, nz })
-        }
-        const arc = (a0: number, a1: number, cz: number) => {
-          const n = Math.max(2, Math.ceil((Math.abs(a1 - a0) * Rc) / step))
-          for (let i = 0; i < n; i++) { const a = a0 + ((a1 - a0) * i) / n; path.push({ x: cx + Rc * Math.cos(a), z: cz + Rc * Math.sin(a), nx: Math.cos(a), nz: Math.sin(a) }) }
-        }
-        line(cabFront, -zs, cx, -zs, 0, -1)
-        arc(-Math.PI / 2, -Math.PI, -zc)
-        line(-L / 2 + t / 2, -zc, -L / 2 + t / 2, zc, -1, 0)
-        arc(Math.PI, Math.PI / 2, zc)
-        line(cx, zs, cabFront, zs, 0, 1)
-        path.push({ x: cabFront, z: zs, nx: 0, nz: 1 })
-        const K = 8
-        // The section at a point of the path: [out along its normal, y], from the outer foot over the
-        // rim to the inner foot.
-        const section = (x: number) => {
-          const h = topAt(x) - t / 2, rib = o.rib
-          const r1 = Math.min(rib.at + rib.height / 2, h - 1e-3), r0 = Math.min(rib.at - rib.height / 2, r1 - 1e-3), span = r1 - r0
-          const rows = [[t / 2, -H / 2], [t / 2, r0], [t / 2 + rib.depth, r0 + span * 0.3], [t / 2 + rib.depth, r1 - span * 0.3], [t / 2, r1], [t / 2, h]]
-          for (let k = 1; k < K; k++) { const f = (Math.PI * k) / K; rows.push([(t / 2) * Math.cos(f), h + (t / 2) * Math.sin(f)]) }
-          rows.push([-t / 2, h], [-t / 2, floorY])
-          return rows
-        }
-        const n = section(0).length, pos: number[] = [], index: number[] = []
-        for (const p of path) for (const [off, y] of section(p.x)) pos.push(p.x + p.nx * off, y, p.z + p.nz * off)
-        for (let j = 0; j < path.length - 1; j++) {
-          for (let k = 0; k < n - 1; k++) {
-            const a = j * n + k, b = (j + 1) * n + k
-            index.push(a, b, b + 1, a, b + 1, a + 1)
-          }
-        }
-        const g = new THREE.BufferGeometry()
-        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
-        g.setIndex(index)
-        g.computeVertexNormals()
-        put(chassis, g, [0, 0, 0], 'body')
-        // Its two front ends, closed flat.
-        for (const p of [path[0], path[path.length - 1]]) {
-          const rows = section(p.x), contour = rows.map(([off, y]) => new THREE.Vector2(off, y))
-          const faces = THREE.ShapeUtils.triangulateShape(contour, [])
-          const cap: number[] = []
-          for (const f of faces) for (const i of [...f, ...[...f].reverse()]) cap.push(p.x + p.nx * rows[i][0], rows[i][1], p.z + p.nz * rows[i][0])
-          const cg = new THREE.BufferGeometry()
-          cg.setAttribute('position', new THREE.Float32BufferAttribute(cap, 3))
-          cg.computeVertexNormals()
-          put(chassis, cg, [0, 0, 0], 'body')
-        }
-      }
-      // The floor inside it, a rubber mat.
-      const inLen = cabFront - (-L / 2 + t)
-      put(chassis, plan(rect(-inLen / 2, -(W / 2 - t), inLen / 2, W / 2 - t, R - t), o.floor, 0), [(cabFront + -L / 2 + t) / 2, -H / 2 + o.floor / 2, 0], 'trim')
-
-      // The hood ahead of the cowl, its top falling `hood.drop` to the grille, every edge rounded,
-      // with a dome pressed up in it.
-      const hoodLen = gx0 - cabFront, hood = new THREE.Shape()
-      hood.moveTo(cabFront, -H / 2); hood.lineTo(gx0, -H / 2); hood.lineTo(gx0, H / 2 - hoodDrop); hood.lineTo(cabFront, H / 2); hood.closePath()
-      put(chassis, side(hood, W, o.hood.round), [0, 0, 0], 'body')
-      if (o.hood.dome) {
-        const d = o.hood.dome, slope = Math.atan2(hoodDrop, hoodLen)
-        const dome = put(chassis, plan(middle(hoodLen - 2 * d.inset, W - 2 * d.inset, d.inset * 0.6), d.height * 2, d.height), [(cabFront + gx0) / 2, H / 2 - hoodDrop / 2, 0], 'body')
-        dome.rotation.z = -slope
-      }
-      // Its hinges at the cowl, and a latch each side, standing on the fender where there is one.
-      for (const s of [-1, 1]) {
-        tube(chassis, [cabFront + 0.02, H / 2 + 0.004, s * (W / 3) - 0.04], [cabFront + 0.02, H / 2 + 0.004, s * (W / 3) + 0.04], 0.012, 'chrome')
-        const latchY = frontTop ? (frontTop.top + H / 2 - hoodDrop) / 2 : H / 2 - hoodDrop - 0.06
-        put(chassis, side(rect(-0.018, -0.035, 0.018, 0.035, 0.01), 0.022, 0.006), [gx0 - 0.3, latchY, s * (W / 2 + 0.009)], 'trim')
-      }
-
-      // The dash across the cowl's back, in the body's colour, its gauges facing the seats and a grab
-      // bar over it before the right seat.
-      const dash = o.dash, dashX = cabFront - dash.depth
-      put(chassis, front(middle(W - 2 * t, dash.height, 0.02), dash.depth, 0.015), [cabFront - dash.depth / 2, H / 2 - dash.height / 2, 0], 'body')
-      const gR = dash.height * 0.28
-      for (const [z, r] of [[-W / 4 - gR * 1.15, gR], [-W / 4 + gR * 1.15, gR], [0, gR * 0.6], [gR * 1.4, gR * 0.6]]) {
-        const y = H / 2 - dash.height / 2
-        put(chassis, disc(r, 0.012), [dashX - 0.004, y, z], 'trim')
-        put(chassis, new THREE.TorusGeometry(r, r * 0.12, 6, segments).rotateY(Math.PI / 2), [dashX - 0.01, y, z], 'chrome')
-        const needle = box(chassis, [0.003, r * 0.75, r * 0.08], [dashX - 0.012, y + r * 0.3, z + r * 0.1], 'amber')
-        needle.rotation.x = -0.6
-      }
-      put(chassis, new THREE.TorusGeometry(W / 9, arm * 0.45, 8, segments, Math.PI).rotateY(Math.PI / 2), [cabFront - dash.depth / 2, H / 2, W / 4], 'chrome')
-
-      // A bucket seat: a pedestal, a cushion, a back leaning `tilt` with bolsters along its sides, and
-      // a headrest `head` tall on two posts; its back's foot `x` and its middle across `z`.
-      const s = o.seat, thick = s.base * 0.8, ped = s.base * 0.6, lean = s.back * Math.sin(s.tilt)
-      const bucket = (x: number, z: number, width: number, depth: number, back: number, head: number) => {
-        put(chassis, plan(middle(depth * 0.6, width * 0.6, 0.02), ped, 0.01), [x + depth / 2, floorY + ped / 2, z], 'trim')
-        put(chassis, plan(middle(depth, width, s.round * 1.5), s.base, s.round), [x + depth / 2, floorY + ped + s.base / 2, z], 'seat')
-        const g = new THREE.Group()
-        g.position.set(x - thick / 2, floorY + ped + s.base * 0.5, z)
-        g.rotation.z = s.tilt
-        put(g, front(middle(width, back, s.round * 1.5), thick, s.round), [0, back / 2, 0], 'seat')
-        for (const k of [-1, 1]) put(g, front(middle(width * 0.16, back * 0.8, s.round), thick * 0.7, s.round * 0.8), [thick * 0.45, back * 0.45, k * (width / 2 - width * 0.08)], 'seat')
-        if (head > 0) {
-          put(g, front(middle(width * 0.55, head, s.round * 2), thick * 0.85, s.round), [0, back + 0.03 + head / 2, 0], 'seat')
-          for (const k of [-1, 1]) tube(g, [0, back - 0.01, k * width * 0.15], [0, back + 0.04, k * width * 0.15], 0.008, 'chrome')
-        }
-        chassis.add(g)
-      }
-      const seatX = cabBack + t + thick + lean + 0.3
-      for (const k of [-1, 1]) bucket(seatX, k * (W / 4), s.width, s.depth, s.back, s.head)
-      if (o.bench) {
-        const bx = -L / 2 + t + thick + lean, depth = Math.min(s.depth, cabBack - bx)
-        bucket(bx, 0, W - 2 * t - 0.08, depth, s.back * 0.8, 0)
-      }
-
-      // The transmission tunnel down the floor's middle, and the gear stick on it.
-      if (o.tunnel) {
-        const tl = dashX - (cabBack + t)
-        put(chassis, plan(middle(tl, o.tunnel.width, o.tunnel.width * 0.4), o.tunnel.height * 2, o.tunnel.height * 0.8), [(dashX + cabBack + t) / 2, floorY, 0], 'trim')
-        if (o.stick) {
-          const sx = seatX + s.depth + 0.06, sy = floorY + o.tunnel.height
-          put(chassis, new THREE.CylinderGeometry(arm * 1.2, arm * 2, 0.04, segments), [sx, sy + 0.02, 0], 'trim')
-          tube(chassis, [sx, sy, 0], [sx - 0.06, sy + o.stick, 0], arm * 0.35, 'chrome')
-          put(chassis, new THREE.SphereGeometry(arm * 1.3, segments, segments / 2), [sx - 0.06, sy + o.stick, 0], 'trim')
-        }
-      }
-
-      // The steering wheel before the left seat, on a column down into the dash: a rim `steer` round,
-      // three spokes (one down, two 30° above level) and a hub, a piece of its own at the hub, its
-      // frame the chassis's pitched down the column, the wheel in its y–z plane; added to the chassis
-      // once the body is merged, so it is merged apart and turns.
-      const hub = new THREE.Vector3((seatX - 0.3 + s.depth + cabFront) / 2, H / 2 + o.steer / 2, -W / 4)
-      const toward = new THREE.Vector3(-Math.cos(0.6), Math.sin(0.6), 0)
-      const sw = new THREE.Group()
-      sw.name = 'box3dvehicle.steer'
-      sw.position.copy(hub)
-      sw.quaternion.setFromAxisAngle(Z, -0.6)
-      put(sw, new THREE.TorusGeometry(o.steer, arm * 0.6, 8, segments).rotateY(Math.PI / 2), [0, 0, 0], 'trim')
-      // Each spoke from the hub to the rim at `a` round the wheel's face from its right (+z) toward its top.
-      for (const a of [-Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6]) {
-        const spoke = box(sw, [arm * 0.5, o.steer, arm * 0.9], [0, (Math.sin(a) * o.steer) / 2, (Math.cos(a) * o.steer) / 2], 'trim')
-        spoke.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2 - a)
-      }
-      put(sw, new THREE.CylinderGeometry(o.steer * 0.22, o.steer * 0.22, arm * 1.6, segments).rotateZ(Math.PI / 2), [0, 0, 0], 'chrome')
-      wheelPiece = sw
-      const reach = Math.max(0.05, (dashX - hub.x) / Math.cos(0.6))
-      tube(chassis, hub.clone().addScaledVector(toward, -reach).toArray(), hub.toArray(), arm * 0.7, 'trim')
-
-      // The windshield, leaning back from the cowl: a frame with rounded corners, glass in it, its
-      // hinges at the foot, two wipers on it and a mirror out each side.
-      const ws = o.windshield, f = ws.frame
-      const shield = new THREE.Group()
-      shield.position.set(cabFront, H / 2, 0)
-      shield.rotation.z = ws.lean
-      const frame = rect(-W / 2, 0, W / 2, ws.height, f * 1.5)
-      frame.holes.push(rect(-W / 2 + f, f, W / 2 - f, ws.height - f, f * 0.6, new THREE.Path()))
-      put(shield, front(frame, f * 0.8, f * 0.25), [0, 0, 0], 'trim')
-      put(shield, front(rect(-W / 2 + f * 0.6, f * 0.6, W / 2 - f * 0.6, ws.height - f * 0.6, f * 0.8), 0.008, 0), [0, 0, 0], 'glass')
-      for (const k of [-1, 1]) {
-        tube(shield, [0, 0, k * (W / 2 - f * 2) - f * 0.8], [0, 0, k * (W / 2 - f * 2) + f * 0.8], f * 0.35, 'chrome')
-      }
-      for (const z of [-W / 4, W / 8]) {
-        const wiper = new THREE.Group()
-        wiper.position.set(f * 0.5, f * 1.2, z)
-        wiper.rotation.x = 0.35
-        box(wiper, [f * 0.25, ws.wiper, f * 0.2], [0, ws.wiper / 2, 0], 'trim')
-        box(wiper, [f * 0.15, ws.wiper * 0.9, f * 0.1], [f * 0.2, ws.wiper / 2, 0], 'trim')
-        shield.add(wiper)
-      }
-      if (o.mirror) {
-        const { size, arm: reachOut } = o.mirror, my = ws.height * 0.55
-        for (const k of [-1, 1]) {
-          tube(shield, [0, my, k * (W / 2)], [0, my - 0.02, k * (W / 2 + reachOut)], arm * 0.4, 'chrome')
-          put(shield, front(middle(size, size * 0.7, size * 0.2), size * 0.3, size * 0.08), [0, my, k * (W / 2 + reachOut + size / 2)], 'body')
-          put(shield, front(middle(size * 0.85, size * 0.55, size * 0.15), 0.004, 0), [-size * 0.15 - 0.002, my, k * (W / 2 + reachOut + size / 2)], 'chrome')
-        }
-      }
-      chassis.add(shield)
-
-      // The roll bar: a hoop bent over the cabin's back on plates on the rim, legs back to the tub's
-      // rear corners, a bar each side to the windshield's top, and padding along the hoop's top.
-      const { cage } = o, cz = W / 2 - t / 2, top = H / 2 + cage.height, bar = cabBack + cage.tube
-      const shieldTop = [cabFront - Math.sin(ws.lean) * ws.height, H / 2 + Math.cos(ws.lean) * ws.height]
-      bent(chassis, [[bar, H / 2, -cz], [bar, top, -cz], [bar, top, cz], [bar, H / 2, cz]], cage.bend, cage.tube, 'trim')
-      for (const k of [-1, 1]) {
-        bent(chassis, [[bar, top - cage.bend, k * cz], [-L / 2 + R, H / 2, k * cz]], 0, cage.tube, 'trim')
-        bent(chassis, [[bar, top, k * cz], [(bar + shieldTop[0]) / 2, top + (shieldTop[1] - top) * 0.4, k * cz], [shieldTop[0], shieldTop[1], k * cz]], cage.bend, cage.tube * 0.9, 'trim')
-        for (const x of [bar, -L / 2 + R]) put(chassis, new THREE.CylinderGeometry(cage.tube * 1.8, cage.tube * 1.8, 0.01, segments), [x, H / 2 + 0.005, k * cz], 'trim')
-      }
-      if (cage.pad > 0) put(chassis, new THREE.CylinderGeometry(cage.pad, cage.pad, 2 * cz - 2 * cage.bend - 0.04, segments).rotateX(Math.PI / 2), [bar, top, 0], 'trim')
-
-      // A rocker panel along each side between the fenders, or under the cabin with none.
-      if (o.rocker) {
-        const order = [...v.axles].sort((a, b) => b.at - a.at), between = fenders && order.length > 1
-        const fore = between ? tops.get(order[0].at)!.ends[0] : cabFront, aft = between ? tops.get(order[1].at)!.ends[1] : cabBack
-        const len = fore - aft
-        if (len > 0) for (const k of [-1, 1]) put(chassis, front(middle(o.rocker.depth, o.rocker.height, o.rocker.depth * 0.4), len, o.rocker.depth * 0.3), [(fore + aft) / 2, -H / 2 + o.rocker.height / 2, k * (W / 2 + o.rocker.depth / 2 - 0.006)], 'trim')
-      }
-    } else if (drawn) {
+    if (drawn) {
       box(chassis, [L, H, W], [0, 0, 0], 'body')
       // The cabin, where it has one: a box whose eight corners are moved onto the cabin's hull, base
       // and roof.
@@ -922,7 +655,7 @@ export function box3dvehicle() {
     // it, `width` across and `height` tall, and the headlights' holes either side, a dark radiator
     // behind them.
     const lights = look.lights
-    const panelBottom = -H / 2 + (bumpers?.height ?? 0), panelTop = H / 2 - hoodDrop, lampY = grille ? (panelBottom + panelTop) / 2 : 0
+    const panelBottom = -H / 2 + (bumpers?.height ?? 0), panelTop = H / 2, lampY = grille ? (panelBottom + panelTop) / 2 : 0
     const lampZ = lights ? (grille?.width ?? 0) / 2 + (lights.radius + lights.bezel) * 1.5 : 0
     if (grille) {
       const g = grille, step = g.width / g.slots, sw = step / 2
@@ -985,9 +718,8 @@ export function box3dvehicle() {
       // behind the car the brake light at the tail lenses' height and the reverse light at theirs.
       if (drawn) {
         const ty = -H / 2 + (bumpers?.height ?? 0) + 2 * r + 3 * bezel, ry = ty - 1.5 * r - bezel
-        const edge = W / 2 - (open ? Math.max(open.corner, open.wall) : 0)
         for (const k of [-1, 1]) {
-          const tz = k * (edge - r / 2 - bezel)
+          const tz = k * (W / 2 - r / 2 - bezel)
           put(chassis, front(middle(r + 2 * bezel, 3 * r + 3 * bezel, bezel), depth / 2, bezel * 0.4), [-L / 2 - depth / 4, ty - r / 2 - bezel / 2, tz], 'trim')
           put(chassis, front(middle(r, 2 * r, r * 0.25), depth, r * 0.1), [-L / 2 - depth / 2, ty, tz], 'tail').name = 'box3dvehicle.tail'
           const rev = new THREE.Mesh(geo(front(middle(r, r, r * 0.25), depth, r * 0.1)), backup)
@@ -1014,8 +746,8 @@ export function box3dvehicle() {
     }
 
     const inboard = look.inboard ?? 0
-    // the corners drawn: none on a solid or independent axle, which draws its own, or with `corners: false`
-    const cornered = look.solid || look.independent || look.corners === false ? [] : cs
+    // the corners drawn: none with `corners: false`
+    const cornered = look.corners === false ? [] : cs
     for (const c of cornered) {
       const out = Math.abs(c.mount[2]) - inboard - W / 2
       if (out > 0) {
@@ -1027,19 +759,14 @@ export function box3dvehicle() {
       }
     }
     bake(chassis)
+    // Each steering wheel, a model's `steer…` nodes, found as the model lands (`modelled`).
     const steers: Drawn['steers'] = []
-    if (wheelPiece) {
-      bake(wheelPiece)
-      chassis.add(wheelPiece)
-      steers.push({ piece: wheelPiece, rest: wheelPiece.quaternion.clone() })
-    }
-    // The look's points, each an empty on the chassis or on the drawn wheel; one on a model's wheel
-    // waits for the model (`modelled`).
+    // The look's points, each an empty on the chassis; one on a model's steering wheel waits for the model
+    // (`modelled`).
     const points = new Map<string, any>()
     for (const p of Object.keys(look.points ?? {})) {
       const spot = pointOf(v, p)!
       if (spot.part === undefined) points.set(p, hang(THREE, chassis, chassis, p, spot))
-      else if (spot.part === 'steer' && wheelPiece) points.set(p, hang(THREE, chassis, wheelPiece, p, spot))
       else if (spot.part !== 'steer' || drawn) throw new Error(`world.box3dvehicle.vehicles.${name}.look.points.${p} rides ${spot.part}, which the look draws nothing of`)
     }
     scene.add(chassis)
@@ -1068,29 +795,6 @@ export function box3dvehicle() {
       for (const m of [spring, sleeve, rod, lower]) if (m) scene.add(m)
       return { coil: spring, sleeve, rod, arm: lower }
     })
-    // Each solid axle's or independent axle's parts, made from how they stand at rest: a unit tube (a
-    // cone with `r2`), coil or band along y from 0 to 1 to be stretched from `a` to `b` each frame, or a
-    // ball.
-    const resting = (i: number, l: Vec3, r: Vec3) => look.solid ? solidParts(v, i, l, r, 0, 0) : independentParts(v, i, l, r, 0, 0).parts
-    const solid = look.solid || look.independent ? v.axles.map((axle, i) => {
-      const [l, r] = cs.filter(c => c.axle === axle)
-      return resting(i, wheelAt(l, axle.spring.sag), wheelAt(r, axle.spring.sag)).map(p => {
-        let g
-        if (p.shape === 'ball') g = new THREE.SphereGeometry(p.r, segments, segments / 2)
-        else if (p.shape === 'band') g = new THREE.BoxGeometry(p.r * 2, 1, p.thick!).translate(0, 0.5, 0)
-        else if (p.shape === 'coil') {
-          const turns = p.turns!, spiral = new THREE.Curve()
-          spiral.getPoint = (t: number, into = new THREE.Vector3()) => into.set(p.r * Math.cos(t * turns * 2 * Math.PI), t, p.r * Math.sin(t * turns * 2 * Math.PI))
-          g = new THREE.TubeGeometry(spiral, Math.ceil(turns * segments), p.wire!, Math.max(3, segments / 4), false)
-        } else g = new THREE.CylinderGeometry(p.r2 ?? p.r, p.r, 1, segments).translate(0, 0.5, 0)
-        const m = new THREE.Mesh(geo(g), mat(p.paint))
-        m.name = `box3dvehicle.${look.solid ? 'solid' : 'independent'}.${p.name}`
-        m.castShadow = true
-        m.receiveShadow = true
-        chassis.add(m)
-        return m
-      })
-    }) : []
     for (const part of [chassis, ...wheels, ...drawnCorners.flatMap(c => [c.coil, c.sleeve, c.rod, c.arm])]) {
       part?.traverse((m: any) => { if (m.isMesh) { m.castShadow = !m.material.transparent; m.receiveShadow = true } })
     }
@@ -1114,7 +818,7 @@ export function box3dvehicle() {
       scene.add(mesh)
       return { mesh, born: new Float32Array(t.max), strength: new Float32Array(t.max), next: 0, laid: 0 }
     }) : []
-    return { chassis, wheels, fitted: cs.map(() => false), hubs, hubbed: hubs.map(() => false), corners: drawnCorners, solid, owned, tracks, lamps, headlights, steers, points }
+    return { chassis, wheels, fitted: cs.map(() => false), hubs, hubbed: hubs.map(() => false), corners: drawnCorners, owned, tracks, lamps, headlights, steers, points }
   }
 
   // Lays the next piece of `tr` from its last edges to `edges`, `strength` opaque, laid at `now`.
@@ -1217,7 +921,7 @@ export function box3dvehicle() {
   // `looks`, a mesh the `models` mod built of the pro-ng glb, for this car alone, its geometry let go with `owned`; else the loader's
   // model, the very scene with `whole` (a body, drawn once) or a copy of it. `dress` says whether its materials are
   // render3d's to dress: the loader's are, the mod's are dressed already.
-  function made(plugins: Plugins, m: Model, name: string, owned: { dispose(): void }[], whole: boolean): { object: any; dress: boolean } | undefined {
+  function made(plugins: Plugins, m: Model, name: string, owned: { dispose(): void }[], whole: boolean): { object: any; dress: boolean; twin?: Made['twin']; rig?: () => Rig } | undefined {
     const loader = plugins.loader
     if (!loader) throw new Error(`world.box3dvehicle.vehicles.${name}.look has a model, and this scene does not list loader`)
     if (m.looks) {
@@ -1235,7 +939,7 @@ export function box3dvehicle() {
       const object = maker.build(unpacked, json(plugins.wire, m.looks))
       if (!object) return undefined
       owned.push({ dispose: () => object.traverse((o: any) => o.geometry?.dispose()) })
-      return { object, dress: false }
+      return { object, dress: false, twin: maker.twin, rig: () => maker.rig(unpacked, object) }
     }
     if (!loader.ready(m.asset)) {
       if (!asked.has(m.asset)) {
@@ -1264,17 +968,62 @@ export function box3dvehicle() {
     return placed(render3d.THREE, m, got.object)
   }
 
+  // Every lamp material of `lamps` and the vertices of the pro-ng model `scene` drawn in it, each with the look
+  // numbers of its dark and its lit twin. A material the model has no vertex of throws, naming the vehicle.
+  function twinsOf(lamps: Lamps, twin: Made['twin'], scene: any, name: string, asset: string): NonNullable<Drawn['twins']> {
+    const out: NonNullable<Drawn['twins']> = []
+    const found = new Set<string>()
+    scene.traverse((o: any) => {
+      const attribute = o.geometry?.getAttribute?.('lookId')
+      if (!attribute) return
+      for (const [group, pairs] of Object.entries(lamps) as [keyof Lamps, Record<string, string>][]) {
+        for (const [dark, lit] of Object.entries(pairs)) {
+          const ids = twin(dark, lit)
+          const vertices: number[] = []
+          for (let i = 0; i < attribute.count; i++) if (Math.round(attribute.array[i]) === ids[0]) vertices.push(i)
+          if (vertices.length) found.add(`${group}.${dark}`)
+          out.push({ group, attribute, vertices, ids, lit: false })
+        }
+      }
+    })
+    for (const [group, pairs] of Object.entries(lamps)) for (const dark of Object.keys(pairs)) {
+      if (!found.has(`${group}.${dark}`)) throw new Error(`world.box3dvehicle.vehicles.${name}.look.lamps.${group} names the material ${dark}, which its model ${asset} has no vertex of`)
+    }
+    return out
+  }
+
+  // Lamp material `t` drawn lit or dark: each of its vertices' look number the twin's.
+  function lampLit(t: NonNullable<Drawn['twins']>[number], on: boolean) {
+    if (t.lit === on) return
+    t.lit = on
+    const id = t.ids[on ? 1 : 0]
+    for (const i of t.vertices) t.attribute.array[i] = id
+    t.attribute.needsUpdate = true
+  }
+
   // The model `scene` put on car `d`'s chassis as `v.look.model` says, its lamps found by name: a
   // spot light on each node named `beam…`, aimed along its +x, and the tail, reverse and amber
   // meshes taking the car's lamp materials, the brake and reverse lights moved to the middle of their
   // lenses. Every other material is dressed by render3d, once, and left the loader's. Its `steer…` nodes
   // are the car's steering wheels, and the look's points on the wheel are hung on the first of them,
   // throwing naming the vehicle `name` when it has none. Hands back the model's group.
-  function modelled(render3d: Plugins['render3d'], v: Vehicle, d: Drawn, scene: any, name: string, dress: boolean): any {
+  function modelled(render3d: Plugins['render3d'], v: Vehicle, d: Drawn, scene: any, name: string, dress: boolean, twin?: Made['twin'], rig?: () => Rig): any {
     const THREE = render3d.THREE as any, m = v.look.model!, l = v.look.lights
     const root = placed(THREE, m, scene)
     root.name = 'box3dvehicle.model'
     d.chassis.add(root)
+    if (v.look.rig) {
+      if (!rig) throw new Error(`world.box3dvehicle.vehicles.${name}.look.rig poses a skeleton, and its model ${m.asset} names no looks: it is not a pro-ng glb`)
+      d.rig = rig()
+      // the clips the standard names, of the thing `look.rig` names: `steer` when an axle steers, and a `travel <axle>
+      // <left|right>` for every wheel
+      const clips = [...(v.axles.some(a => a.steered) ? ['steer'] : []), ...v.axles.flatMap((a, k) => (a.one ? ['centre'] : ['left', 'right']).map(side => `travel ${k} ${side}`))]
+      for (const c of clips) if (!d.rig.has(`${v.look.rig} ${c}`)) throw new Error(`world.box3dvehicle.vehicles.${name}.look.rig poses the clip ${v.look.rig} ${c}, which its model ${m.asset} has not`)
+    }
+    if (v.look.lamps) {
+      if (!twin) throw new Error(`world.box3dvehicle.vehicles.${name}.look.lamps names lamp materials, and its model ${m.asset} names no looks: it is not a pro-ng glb`)
+      d.twins = twinsOf(v.look.lamps, twin, scene, name, m.asset)
+    }
     // Whether `o`, or a node above it in the model, is named starting `prefix`.
     const under = (o: any, prefix: string) => { for (let p = o; p && p !== root; p = p.parent) if (p.name.startsWith(prefix)) return true; return false }
     const beams: any[] = [], wheels: any[] = [], lenses: Record<'tail' | 'reverse', any[]> = { tail: [], reverse: [] }
@@ -1349,19 +1098,20 @@ export function box3dvehicle() {
         const d = cars.get(car.id)!
         if (v.look.model && !d.model) {
           const got = made(plugins, v.look.model, car.data.vehicle, d.owned, true)
-          if (got) d.model = modelled(plugins.render3d, v, d, got.object, car.data.vehicle, got.dress)
+          if (got) d.model = modelled(plugins.render3d, v, d, got.object, car.data.vehicle, got.dress, got.twin, got.rig)
         }
         // each wheel's model and each hub's, of its side and its axle, put in its group once it has come
         const { wheel: wheelModels, hubs: hubModels } = v.look
         if (hubModels && hubModels.length !== v.axles.length) throw new Error(`world.box3dvehicle.vehicles.${car.data.vehicle}.look has ${hubModels.length} hubs, and the vehicle ${v.axles.length} axles`)
         cs.forEach((c, i) => {
-          const side = c.side < 0 ? 'left' : 'right'
           if (wheelModels && !d.fitted[i]) {
-            const got = made(plugins, wheelModels[side], car.data.vehicle, d.owned, false)
-            if (got) { d.wheels[i].add(fitted(plugins.render3d, wheelModels[side], got)); d.fitted[i] = true }
+            // one model for every wheel, or a list of them, one for each axle of `axles` (a bike's front wheel and its rear differ)
+            const m = modelOf(Array.isArray(wheelModels) ? wheelModels[v.axles.indexOf(c.axle)] : wheelModels, c, car.data.vehicle, 'wheel')
+            const got = made(plugins, m, car.data.vehicle, d.owned, false)
+            if (got) { d.wheels[i].add(fitted(plugins.render3d, m, got)); d.fitted[i] = true }
           }
           if (hubModels && !d.hubbed[i]) {
-            const m = hubModels[v.axles.indexOf(c.axle)][side]
+            const m = modelOf(hubModels[v.axles.indexOf(c.axle)], c, car.data.vehicle, 'hubs')
             const got = made(plugins, m, car.data.vehicle, d.owned, false)
             if (got) { d.hubs[i].add(fitted(plugins.render3d, m, got)); d.hubbed[i] = true }
           }
@@ -1379,6 +1129,24 @@ export function box3dvehicle() {
           d.lamps.backup.emissiveIntensity = reverse ? l.reverse.glow : 0
           if (d.lamps.brake) d.lamps.brake.intensity = l.tail.light.intensity * brake
           if (d.lamps.reverse) d.lamps.reverse.intensity = reverse ? l.reverse.light.intensity : 0
+        }
+        if (d.rig) {
+          // the steering: the clip `steer` at 0 is full lock to the right, 0.5 straight, 1 full lock to the left; each
+          // wheel's `travel <axle> <side>` at 0 is its spring at full droop, 0.5 at `sag`, 1 at full bump (`compression`
+          // is metres from full droop, `travel` the most it can be)
+          const rig = d.rig, thing = v.look.rig, compression = car.data.compression as number[] | undefined
+          if (v.axles.some(a => a.steered)) rig.pose(`${thing} steer`, (Math.max(-1, Math.min(1, car.data.steer ?? 0)) + 1) / 2)
+          cs.forEach((c, i) => {
+            const { sag, travel } = c.axle.spring, x = Math.max(0, Math.min(travel, compression?.[i] ?? sag))
+            rig.pose(`${thing} travel ${v.axles.indexOf(c.axle)} ${sideOf(c)}`, x <= sag ? (0.5 * x) / sag : 0.5 + (0.5 * (x - sag)) / (travel - sag))
+          })
+          rig.apply()
+        }
+        if (d.twins) {
+          const head = fleet.lightsOff ? car.data.lights === true : true
+          const { brake, reverse } = pedals(v, car)
+          const lit = { head, tail: head || brake > 0, reverse, amber: head }
+          for (const t of d.twins) lampLit(t, lit[t.group])
         }
         const inboard = v.look.inboard ?? 0
         cs.forEach((c, i) => {
@@ -1422,38 +1190,6 @@ export function box3dvehicle() {
             fade(tr, tracks, seconds)
           }
         })
-        // Each solid axle from its two wheels: their middles in the chassis's frame and how far each is
-        // steered, its spin axis turned about the chassis's y from the chassis's z.
-        if (v.look.solid || v.look.independent) {
-          const back: Quat = [-rot[0], -rot[1], -rot[2], rot[3]]
-          const local = (i: number) => {
-            const wd = wheels[i]!.data, p = turn(back, [wd.pos[0] - at[0], wd.pos[1] - at[1], wd.pos[2] - at[2]]), spin = turn(back, turn(wd.rot, [0, 0, 1]))
-            return { p, steer: Math.atan2(spin[0], spin[2]) }
-          }
-          const place = (i: number, parts: { shape: string; a: Vec3; b: Vec3 }[]) => parts.forEach((p, k) => {
-            const m = d.solid[i][k]
-            if (p.shape === 'ball') m.position.fromArray(p.a)
-            else span(THREE, m, p.a, p.b)
-          })
-          v.axles.forEach((axle, i) => {
-            const ks = [cs.findIndex(c => c.axle === axle && c.side < 0), cs.findIndex(c => c.axle === axle && c.side > 0)]
-            const [l, r] = ks.map(local)
-            if (v.look.solid) return place(i, solidParts(v, i, l.p, r.p, l.steer, r.steer))
-            // the independent suspension, and each wheel drawn where its arms hold it: at the drawn
-            // middle, turned by its knuckle's turn from rest (camber, toe and the knuckle's steer) over
-            // its own spin, which is the physics wheel's turn in the chassis's frame unsteered
-            const made = independentParts(v, i, l.p, r.p, l.steer, r.steer)
-            place(i, made.parts)
-            ks.forEach((w, k) => {
-              const { centre, turn: knuckle } = made.wheels[k], steer = [l, r][k].steer
-              const own = new THREE.Quaternion().fromArray(back).multiply(new THREE.Quaternion().fromArray(wheels[w]!.data.rot))
-              const spin = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -steer).multiply(own)
-              const t = turn(rot, centre)
-              d.wheels[w].position.set(at[0] + t[0], at[1] + t[1], at[2] + t[2])
-              d.wheels[w].quaternion.fromArray(rot).multiply(new THREE.Quaternion().fromArray(quatOf(knuckle))).multiply(spin)
-            })
-          })
-        }
         // Each hub where its wheel is drawn, turned as the chassis is and steered about its up as far as the
         // wheel row is (its spin axis in the chassis's frame, turned about the chassis's y from the chassis's z)
         if (d.hubs.length) {

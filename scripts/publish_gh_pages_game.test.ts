@@ -7,7 +7,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { commit, stage } from './publish_gh_pages_game.ts'
+import { clean, commit, stage } from './publish_gh_pages_game.ts'
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'publish-')))
 afterAll(() => rmSync(root, { recursive: true, force: true }))
@@ -66,4 +66,13 @@ test('a run with nothing changed commits nothing; a run after the engine and the
   expect(read('engine/engine.ts')).toBe('export const v = 2\n')
   expect(read('games/foo/foo.sim.ts')).toBe('export const sim = { more: true }\n')
   expect(git(dir, 'rev-list', '--count', 'master')).toBe('2')
+})
+
+test('clean deletes the folder\'s node_modules and nothing else', () => {
+  write(dir, 'node_modules/pkg/index.js', 'module.exports = {}\n')
+  clean(dir)
+  expect(existsSync(path.join(dir, 'node_modules'))).toBe(false)
+  expect(read('engine/engine.ts')).toBe('export const v = 2\n')
+  expect(existsSync(path.join(dir, '.git'))).toBe(true)
+  clean(dir)
 })

@@ -14,7 +14,7 @@ import type { Ground, Land } from '#plugins/grass3d/grass3d.sim.ts'
 import { groundOf, type Field, type Test } from './grounds.sim.ts'
 
 // This module, which grass3d's workers load to answer the land.
-const HERE = import.meta.url
+const HERE = new URL('./grounds.grass3d.ts', import.meta.url).href
 
 export type Held = { test: Test; field: Field }
 

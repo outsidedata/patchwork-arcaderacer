@@ -347,14 +347,14 @@ as salvage's start fits it (`S1: seat`, `B1`/`B2: shield`).
 
 ## Drive, as it stands
 
-The jeep and the cart are `open` looks drawn in code; the truck is the glb `truck` (`look.model`).
-Each has `seat`, `footL`, `footR` on the chassis and `gripL`, `gripR` riding `steer` with turns, in
-`world.box3dvehicle.vehicles.<car>.look.points` of `games/vehicles/vehicles.scene.json` (the manager; road,
-stylized, desert and gym inherit it). Its interactions are `world.interact.kinds.box3dvehicle`, every
-car's: `enter` (`in`, travelling `to` the seat on the `enter` clip, then `seated`), `sit` (`seated`)
-and `exit` (`out`, travelling `from` the seat), played by the anim kind `player` (mech's contractor
-body and rig). The summary takes them from road, so road's look plugins draw them (particle3d for the
-exhaust). The points in the file are the starting points; Bill tunes them in the workshop.
+Every car of `games/vehicles` (the jeep, the cart, the truck, the UTV and the rover) is a pro-ng kit model
+from the library, its body rigged and its wheels models of their own (`look.model`, `look.wheel`, `look.rig`,
+`pro-ng/kit/modern/vehicles/BOX3DVEHICLE.md`), in `world.box3dvehicle.vehicles.<car>.look` of
+`games/vehicles/vehicles.scene.json` (the manager; road, stylized, desert and gym inherit it). Its looks give no
+`points` and its scenes list no `interact`, so no body gets into one there: a car's `seat`, `footL`, `footR`
+on the chassis and `gripL`, `gripR` riding `steer` (the model's `steer wheel` node), with
+`world.interact.kinds.box3dvehicle`'s `enter`, `sit` and `exit`, are what a game adds for a body to drive
+one, tuned in the workshop.
 
 Mech's 34 solids models: strider, jimmy and lifter (legs3d, by `<kind>.model`); depot, hq, hangar,
 pad, yard, crate and dropship; 20 modules, the seat among them (`<module>.model`, hung by the page;

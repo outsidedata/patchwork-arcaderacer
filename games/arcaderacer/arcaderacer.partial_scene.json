@@ -6,6 +6,7 @@
       "attach": [
         { "on": "wheel", "effect": "smoke", "when": "skid > 0" },
         { "on": "wheel", "effect": "burnout", "when": "burnout > 0.1" },
+        { "on": "wheel", "effect": "embers", "when": "boosting > 0" },
         { "on": "side", "effect": "sparks", "when": "racer" },
         { "on": "side", "effect": "wallsparks", "when": "not racer" },
         { "on": "tail", "effect": "pop", "when": "paid" }

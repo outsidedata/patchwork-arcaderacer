@@ -221,18 +221,12 @@ RENDER <name>-eye.png          from the eye: level, --down, 45° left, 45° righ
 RENDER <name>-out.png          from outside: front three-quarter, side, above, behind
 ```
 
-A box3dvehicle vehicle, `plugins/box3dvehicle/truck/look.py` (with `parts.ts` beside it for a look with `solid`):
-
-```
-SIZE x.min ... PASS            the model's bounds against the physics shapes it stands for
-                               (body box ∪ cabin hull), within a tolerance (0.35 m)
-CLEAR axle=<i> L <state> PASS  each wheel at rest, full lock each way, full bump, bump + lock:
-                               the least distance from the model's surface to the wheel ≥ 0
-ROOM axle=<i> L <state> coil   what the plugin draws round the model (coil, upper/lower arm where
-ROOM pipe <i>                  it draws them, each tailpipe), as solid cylinders: room ≥ 0
-TYRE axle=<i> L <state> coil   each drawn coil against its own tyre in every state: gap ≥ 0
-RENDER <name>-plan.png         side, top, front, back, with ghost wheels at full lock and full bump
-```
+A box3dvehicle vehicle is a pro-ng kit item of the library, not a script of core's: it is held to the
+contract in the library's `pro-ng/kit/modern/vehicles/BOX3DVEHICLE.md` (its body rigged, its clips `steer`
+and `travel <axle> <side>`, its lamps lit twins) and checked by the game's standard tests, as
+`games/vehicles/vehicles.models.test.ts` (the lamps, the steering wheel, the wheels as round and as wide
+as the physics wheels, the clips) and `vehicles.rig.test.ts` (each wheel's carrier rising with its spring
+and steering as box3dvehicle steers it) check every car of that game.
 
 Check a thing where it can fail, not where it is easy to check. A screen seen at its middle can still
 have its top edge behind the hood: the cockpit's first SCREEN line cast one ray to each middle and

@@ -22,6 +22,7 @@
 //   burnout    a wheel's: the throttle held × how far under `fx.burnout.launch` m/s it goes, 0 to 1, so a
 //              racer held on the throttle on the grid, or pulling away slowly, looks as if it spins its tyres.
 //   smokeTint  a wheel's: the course file's `look.smoke`, the colour its tyre smoke is.
+//   boosting   a wheel's: 1 while the racer boosts faster than `fx.trail.least` m/s, as it lays its boost trail, else 0.
 //   racer      a side's: 1 while what it touches is another racer, 0 a wall.
 //   paid       a tail's: 1 the frame its boost grows by more than `fx.pop.least` seconds, a drift paid, else 0.
 //
@@ -94,13 +95,15 @@ export function sources(plugins: Plugins): Source[] {
     const m = measure(d, F)
     const S = F.smoke
     const skid = m.speed > S.least ? Math.max(0, over(m, S)) : 0
+    // 1 while the racer lays its boost trail (`fx.plugin.ts`'s `trail`), the same two holds
+    const boosting = d.boost > 0 && m.speed >= F.trail.least ? 1 : 0
     // back along its tail, and up by half as much
     const nose = point({ ...d, pos: [0, 0, 0] }, 0, 0, 1), back = [-nose[0], 0.5, -nose[2]]
     ;(json(wire, d.car).tracks as number[][]).forEach(([x, z], w) => {
       const road = point(d, x, 0, z)
       out.push({
         key: `${row.id}:${w}`, on: 'wheel', of, at: point(d, x, S.rise, z), dir: back, floor: road[1],
-        drivers: { speed: m.speed, skid, burnout: m.burnout, smokeTint },
+        drivers: { speed: m.speed, skid, burnout: m.burnout, smokeTint, boosting },
       })
     })
 

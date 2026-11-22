@@ -45,6 +45,14 @@
     img.style.cssText = `position: absolute; left: ${p.at[0]}px; top: ${p.at[1]}px; width: ${p.size[0]}px; height: ${p.size[1]}px; visibility: hidden`
     return img
   })
+  // each line's own picture, at the panel's top left corner at the size it was made, shown while its turn
+  // lasts, under the bar and the words
+  const lineImages = (c.lines?.pictures ?? []).map(url => {
+    if (!url) return null
+    const img = box.appendChild(document.createElement('img'))
+    img.style.cssText = 'position: absolute; left: 0; top: 0; visibility: hidden'
+    return img
+  })
   let full
   if (c.bar) {
     const b = c.bar, e = b.edge ?? 0
@@ -89,7 +97,11 @@
     box.style.height = `${h}px`
     box.style.transform = `scale(${k})`
     if (full) full.style.width = `${Math.max(0, Math.min(c.bar.size[0], Math.round(c.bar.size[0] * held.progress())))}px`
-    if (line) line.textContent = c.lines.text[Math.floor((performance.now() - began) / 1000 / c.lines.every) % c.lines.text.length]
+    if (line) {
+      const now = Math.floor((performance.now() - began) / 1000 / c.lines.every) % c.lines.text.length
+      line.textContent = c.lines.text[now]
+      lineImages.forEach((img, i) => { if (img) img.style.visibility = i === now && img.src ? 'visible' : 'hidden' })
+    }
   }
 
   // One fetch of `url` once `after` has settled, kept where the loader reads it from this moment on:
@@ -115,6 +127,11 @@
       images[i].src = URL.createObjectURL(new Blob([bytes]))
       images[i].style.visibility = 'visible'
     })),
+    ...(c.lines?.pictures ?? []).map((url, i) => url && get(url).then(bytes => {
+      if (!bytes) return
+      lineImages[i].src = URL.createObjectURL(new Blob([bytes]))
+      draw()
+    })),
     ...c.fonts.map(f => get(f.url).then(bytes => {
       if (!bytes || typeof FontFace === 'undefined') return
       const face = new FontFace(f.family, bytes.slice(0))
@@ -132,7 +149,7 @@
     if (root.isConnected) return
     clearInterval(turning)
     removeEventListener('resize', draw)
-    for (const img of images) if (img.src) URL.revokeObjectURL(img.src)
+    for (const img of [...images, ...lineImages]) if (img?.src) URL.revokeObjectURL(img.src)
     watch.disconnect()
   }).observe(document.body, { childList: true })
 })()

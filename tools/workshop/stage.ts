@@ -18,10 +18,20 @@
 // the one that steps and draws, and closes the other, its particles gone. gpuparticle3d's world is the
 // stage's particle3d world under its name: the same effects file, `hold` and `attach`, and its `behaviors`
 // and `sources` mods those particle3d's names, since each plugin that hands particle3d words or sources
-// hands gpuparticle3d them too (`instances3d.gpuparticle3d.ts`, `box3dvehicle.gpuparticle3d.ts`). What its
+// hands gpuparticle3d them too (`instances3d.gpuparticle3d.ts`, `box3dvehicle.gpuparticle3d.ts`), and its `light`
+// the sky's light is the same (`skydome3d.gpuparticle3d.ts`). What its
 // particles bounce off is gpgpu3d's: where particle3d names `solids`, the stage has a gpgpu3d whose
 // `things` and `behaviors` are those plugins (`shapes3d.gpgpu3d.ts`), holding what stands within REACH
 // metres of the camera, and gpuparticle3d's `solids` is gpgpu3d (`gpgpu3d.gpuparticle3d.ts`).
+//
+// A scene that lists skydome3d is under its sky on the page's stage (`stage(found, view, ui, { sky: true })`):
+// skydome3d, listed in the scene's order, with the scene's `world.skydome3d` less its mods (the stage has no
+// land and no weather) and its dome held within the camera's far plane, drawn first each step from the one
+// row the stage holds, `found.sky`, so the `light` mods a scene names for particle3d and gpuparticle3d are
+// asked after it. The stage's own sky and sun start at 0, the sky being the light, and `clock` is what the
+// page turns to set the sky: the row's `data` (`t`, `doy`, `phase`), the sky's `day` in seconds, and the
+// sky's `look` (`sunIntensity`, `moonIntensity`), each read the next frame it is drawn. Every other stage (the score's, the views') is not under
+// the sky: it is lit as it always was, and the `light` mod is left out of its world.
 //
 // A scene that lists dither3d is drawn through it on the stage too, its `world.dither3d` the scene's: its
 // pass after render3d's tone mapping and its ratio, from the stage's first tick, as in the game. It is on
@@ -61,6 +71,7 @@ import { lights3d } from '#plugins/lights3d/lights3d.plugin.ts'
 import { instances3d } from '#plugins/instances3d/instances3d.plugin.ts'
 import { ui3d } from '#plugins/ui3d/ui3d.plugin.ts'
 import { dither3d } from '#plugins/dither3d/dither3d.plugin.ts'
+import { skydome3d } from '#plugins/skydome3d/skydome3d.plugin.ts'
 import { prepare } from '#addons/scenemanager/scenemanager.addon.ts'
 import { render3d } from '#plugins/render3d/render3d.plugin.ts'
 import { thrown, type Thrown } from './thrown.ts'
@@ -71,7 +82,7 @@ type Json = any
 const REACH = 2000
 // One entry of the server's particles summary: the effects file, and `listed`, each file it lists
 // (`files`), its path as `file` is written and the file as it is on disk.
-export type Found = { file: string; key: string; scenes: string[]; effects: Effects; world: Json; plugins: string[]; render3d: Json; dt: number; thrown: Thrown; listed: { file: string; effects: Effects }[]; ui3d: Ui3dScene[] }
+export type Found = { file: string; key: string; scenes: string[]; effects: Effects; world: Json; plugins: string[]; render3d: Json; sky?: Json; dt: number; thrown: Thrown; listed: { file: string; effects: Effects }[]; ui3d: Ui3dScene[] }
 // A scene's looks file, as the summary names it: the scene, the file's repo path, the file as it is on disk,
 // and the world the stage lays over its own to show its looks.
 export type Ui3dScene = { scene: string; file: string; looks: Record<string, Json>; world: Json }
@@ -103,7 +114,19 @@ export function gather(found: Found): { whole: Effects; owner: Owner } {
 export const streams = (effects: Record<string, Layer[]>, name: string, seen: string[] = []): boolean =>
   (effects[name] ?? []).some(l => ('lamp' in l ? false : 'effect' in l ? !seen.includes(l.effect) && streams(effects, l.effect, [...seen, name]) : !!l.every))
 
-export async function stage(found: Found, view: HTMLElement, ui?: Ui3dScene) {
+export async function stage(found: Found, view: HTMLElement, ui?: Ui3dScene, { sky: withSky = false }: { sky?: boolean } = {}) {
+  if (!withSky && found.plugins.includes('skydome3d')) {
+    // the sky is the page's to ask for: every other stage (the score's, the views') is lit as it always was,
+    // so its `light` mods go and its sky is not listed
+    const { light: _, ...mods } = found.world.particle3d?.mods ?? {}
+    found = { ...found, plugins: found.plugins.filter(p => p !== 'skydome3d'), world: { ...found.world, particle3d: { ...found.world.particle3d, mods } } }
+  }
+  if (withSky && found.world.skydome3d) {
+    // the sky as the scene has it, but for what the stage has not: no land, no weather, and a dome the
+    // camera's far plane holds
+    const { mods: _, ...own } = found.world.skydome3d
+    found.world.skydome3d = { ...own, look: { ...own.look, radius: Math.min(own.look.radius, REACH * 0.75) } }
+  }
   if (ui) {
     found.world.ui3d = ui.world.ui3d
     found.world.loader = { ...found.world.loader, assets: { ...found.world.loader?.assets, ...ui.world.loader.assets } }
@@ -134,6 +157,7 @@ export async function stage(found: Found, view: HTMLElement, ui?: Ui3dScene) {
       ...(solid ? { solids: 'gpgpu3d' } : {}),
       ...(cpuWorld.mods?.behaviors ? { behaviors: cpuWorld.mods.behaviors } : {}),
       ...(cpuWorld.mods?.sources ? { sources: cpuWorld.mods.sources } : {}),
+      ...(cpuWorld.mods?.light ? { light: cpuWorld.mods.light } : {}),
     },
   }
   const scene = {
@@ -162,7 +186,11 @@ export async function stage(found: Found, view: HTMLElement, ui?: Ui3dScene) {
   const drawers = { particle3d: particle3d(), gpuparticle3d: gpuparticle3d() }
   type Drawer = keyof typeof drawers
   let drawer: Drawer = 'particle3d'
-  const P: Json = { wire: { n: 1, rows: [], scene, between: 1 }, loader: handed, ...drawers, render3d: render3d() }
+  // The sky's row, the one row the stage has: its clock the page turns (`clock`), the sky as the scene's
+  // `world.skydome3d` and this row say.
+  const skyRow = found.plugins.includes('skydome3d') ? { id: 1, kind: 'skydome3d', data: structuredClone(found.sky) } : undefined
+  const P: Json = { wire: { n: 1, rows: skyRow ? [skyRow] : [], scene, between: 1 }, loader: handed, ...drawers, render3d: render3d() }
+  if (skyRow) P.skydome3d = skydome3d()
   if (solid) P.gpgpu3d = gpgpu3d()
   if (found.plugins.includes('lights3d')) P.lights3d = lights3d()
   if (found.plugins.includes('instances3d')) P.instances3d = instances3d()
@@ -181,9 +209,10 @@ export async function stage(found: Found, view: HTMLElement, ui?: Ui3dScene) {
   const grid = new THREE.GridHelper(20, 20, 0x3a3d44, 0x24262b)
   three.add(grid)
   // the stage's own light, for what a word draws lit (instances3d's meshes): a sky over a dim ground, and a sun
-  const sky = new THREE.HemisphereLight(0xdfe6f0, 0x4a4540, 1.2)
+  // (with a sky, the sky's own light is the light, and these start at 0)
+  const sky = new THREE.HemisphereLight(0xdfe6f0, 0x4a4540, skyRow ? 0 : 1.2)
   three.add(sky)
-  const sun = new THREE.DirectionalLight(0xfff2e0, 2)
+  const sun = new THREE.DirectionalLight(0xfff2e0, skyRow ? 0 : 2)
   sun.position.set(5, 8, 4)
   three.add(sun)
   const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8, 12), new THREE.MeshBasicMaterial({ color: 0xdddddd }))
@@ -203,6 +232,13 @@ export async function stage(found: Found, view: HTMLElement, ui?: Ui3dScene) {
   const engine = scene.prefabs.engine
   return {
     plugins: P, loader: real, three, camera, canvas, grid, stick, bomb, toss, show, sky, sun,
+    get clock() {
+      return skyRow && {
+        data: skyRow.data as { t: number; doy: number; phase: number },
+        day: found.world.skydome3d.day as number,
+        look: found.world.skydome3d.look as { sunIntensity: number; moonIntensity: number },
+      }
+    },
     get fx() { return drawers[drawer] },
     get drawer() { return drawer },
     use(next: Drawer) {
@@ -220,6 +256,8 @@ export async function stage(found: Found, view: HTMLElement, ui?: Ui3dScene) {
     },
     step(dt: number) {
       engine.dt = dt
+      // the sky drawn first, so the light the drawer asks of it is this frame's
+      P.skydome3d?.afterTick(P)
       if (drawer === 'gpuparticle3d') P.gpgpu3d?.afterTick(P)
       drawers[drawer].afterTick(P)
     },

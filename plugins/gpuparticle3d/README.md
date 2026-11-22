@@ -98,6 +98,8 @@ is particles bouncing off the land and shapes gpgpu3d holds. The particle worksh
 - **gpgpu3d:** `gpgpu3d.gpuparticle3d.ts` is the solids for `bounce`: the things gpgpu3d holds on the
   GPU, shapes3d's boxes, planes, hyperplanes and cylinders and terrain3d's land.
 - **instances3d:** `instances3d.gpuparticle3d.ts` delivers the `mesh` word.
+- **skydome3d:** `skydome3d.gpuparticle3d.ts` (`world.gpuparticle3d.mods: { light: 'skydome3d' }`, skydome3d
+  listed before gpuparticle3d) hands the sky's light, which every particle's colour is times, as particle3d's.
 - **box3dvehicle:** `box3dvehicle.gpuparticle3d.ts` hands each car's wheels and tailpipes as sources
   for `attach`.
 - **lights3d:** draws every `lamp`. Without it, lamps are not drawn.

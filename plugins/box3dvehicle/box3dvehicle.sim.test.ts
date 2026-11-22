@@ -17,7 +17,7 @@ import { boot, type Scene, type Truth, type W } from '#engine/engine.ts'
 import { load } from '#addons/scenemanager/scenemanager.addon.ts'
 import { scenemanager } from '#plugins/scenemanager/scenemanager.sim.ts'
 import type { Static } from '#plugins/box3d/box3d.sim.ts'
-import { box3dvehicle, corners, independentParts, loads, pedals, shift, steerOf, turn, wheelAt, type Axle, type Fleet, type Independent, type Vehicle } from './box3dvehicle.sim.ts'
+import { box3dvehicle, corners, loads, pedals, shift, turn, turned, wheelAt, type Axle, type Fleet, type Vehicle } from './box3dvehicle.sim.ts'
 import { kinds } from './box3dvehicle.box3d.ts'
 
 const DT = 1 / 60
@@ -240,6 +240,30 @@ test('a car steered on its rear axle, behind the wheelbase\'s middle, turns left
   // Its heading grows, to the left, as the front-steered car's does.
   expect(await turned(rear)).toBeGreaterThan(0.1)
   expect(await turned(vehicle)).toBeGreaterThan(0.1)
+})
+
+test('with `steering.ackermann` the wheel on the outside of a turn turns less than the inside one, by the share of what stands both on a circle about one point, and with none both turn the same', () => {
+  const ats = vehicle.axles.map(a => a.at), mid = (Math.max(...ats) + Math.min(...ats)) / 2
+  const front = corners(vehicle).filter(c => c.axle.steered)
+  const left = front.find(c => c.side < 0)!, right = front.find(c => c.side > 0)!
+  const angle = vehicle.steering.angle
+  expect(turned(vehicle, left, 1, mid)).toBe(angle)
+  expect(turned(vehicle, right, 1, mid)).toBe(angle)
+  // the front axle steers and the rear does not: the lever is the wheelbase, and the circle's radius at the inside wheel
+  // is that over the tangent of its turn, the outside wheel a track further out
+  const lever = Math.abs(left.axle.at - vehicle.axles.find(a => !a.steered)!.at)
+  const circle = Math.atan(lever / (lever / Math.tan(angle) + left.axle.track))
+  expect(circle).toBeLessThan(angle)
+  const full: Vehicle = { ...vehicle, steering: { ...vehicle.steering, ackermann: 1 } }
+  expect(turned(full, left, 1, mid)).toBe(angle)
+  expect(turned(full, right, 1, mid)).toBeCloseTo(circle, 12)
+  // a right turn is the other way about: the right wheel inside, the left the outside, both negative
+  expect(turned(full, right, -1, mid)).toBe(-angle)
+  expect(turned(full, left, -1, mid)).toBeCloseTo(-circle, 12)
+  // half the share, half the way; and straight is straight
+  const half: Vehicle = { ...vehicle, steering: { ...vehicle.steering, ackermann: 0.5 } }
+  expect(turned(half, right, 1, mid)).toBeCloseTo(angle + 0.5 * (circle - angle), 12)
+  expect(turned(full, right, 0, mid)).toBe(0)
 })
 
 test('a car with no cabin is its body\'s box alone, the one shape box3d makes its chassis of, and it drives', async () => {
@@ -490,85 +514,6 @@ test('rolling resistance slows a car rolling free: a tyre with it loses more spe
   expect(dragged).toBeGreaterThan(free + 0.5)
 })
 
-// ---------------------------------------------------------------- independent suspension
-// A long-travel side-by-side on independent suspension (`look.independent`): double wishbones and a
-// rack at the front, trailing arms held by two radius rods at the rear, each corner with its coilover,
-// anti-roll bar link and half-shaft. The page calls `independentParts` every frame with where the
-// physics' wheels are, and draws what it hands back.
-const longTravel = (at: number, steered: boolean, travel: number, sag: number): Axle => ({
-  at, track: 1.72, mount: 0.3,
-  wheel: { radius: 0.406, width: 0.254, mass: 28, friction: 1.1, rollingResistance: 0 },
-  spring: { stiffness: 20000, length: 0.84, travel, sag },
-  damper: { bump: 1200, rebound: 2200 },
-  bumpStop: { length: 0.05, stiffness: 120000 },
-  antiRoll: 9000, driven: true, steered,
-})
-const coilover = (lower: [number, number, number], top: [number, number, number], body: [number, number], main: number, tender: number) => ({
-  lower, top, body, shaft: 0.011, eye: 0.018, seat: 0.055, perch: 0.05,
-  main: { radius: 0.038, wire: 0.0065, turns: 7, free: main, rate: 26000 },
-  tender: { radius: 0.038, wire: 0.005, turns: 9, free: tender, rate: 14000, cross: 0.1 },
-  ring: [0.046, 0.012] as [number, number],
-  reservoir: { radius: 0.028, length: 0.2, gap: -0.07 },
-})
-const hub = { hub: [0.045, 0.04, 0.1] as [number, number, number], brake: { radius: 0.13, thick: 0.02, at: 0.065, caliper: [0.025, 0.04] as [number, number] } }
-const INDEPENDENT: Independent = {
-  ball: 0.02,
-  axles: [
-    {
-      wishbones: {
-        ...hub,
-        lower: { pivots: [[-0.17, -0.29, 0.21], [0.2, -0.29, 0.21]], ball: [0, -0.46, 0.775], radius: 0.017, bush: [0.026, 0.05] },
-        upper: { pivots: [[-0.16, -0.05, 0.27], [0.3, -0.05, 0.27]], ball: [0.02, -0.195, 0.748], radius: 0.015, bush: [0.022, 0.045], elbows: [[-0.03, -0.17, 0.55], [0.06, -0.17, 0.55]] },
-        knuckle: 0.03,
-        steer: { arm: [-0.13, -0.33, 0.762], rod: 0.011, rack: { along: -0.13, y: -0.173, half: 0.239, housing: 0.14, radius: 0.025, boot: 0.027 } },
-        shock: coilover([0.065, -0.345, 0.45], [0.08, 0.25, 0.25], [0.033, 0.395], 0.36, 0.25),
-        sway: { bar: [0.34, -0.17], half: 0.3, radius: 0.012, lever: [-0.23, 0], on: [0.11, -0.31, 0.33], link: [0.008, 0.014] },
-        shaft: { from: [0, -0.2, 0.13], at: 0.1, radius: 0.014, cup: [0.035, 0.06], boot: [0.032, 0.08] },
-      },
-    },
-    {
-      trailing: {
-        ...hub,
-        pivot: [1.3, -0.27, 0.5], end: [0.1, -0.38, 0.66], radius: 0.035, bush: [0.04, 0.08], carrier: 0.03,
-        rods: [{ frame: [-0.06, -0.08, 0.2], on: [-0.06, -0.2, 0.72] }, { frame: [-0.06, -0.32, 0.2], on: [-0.06, -0.44, 0.7] }], rod: 0.015,
-        shock: coilover([0.4, -0.32, 0.62], [0.75, 0.4, 0.4], [0.035, 0.51], 0.44, 0.3),
-        sway: { bar: [1.08, -0.15], half: 0.44, radius: 0.012, lever: [-0.18, 0], on: [0.9, -0.26, 0.51], link: [0.008, 0.014] },
-        shaft: { from: [0, -0.2, 0.17], at: 0.1, radius: 0.015, cup: [0.038, 0.065], boot: [0.034, 0.085] },
-      },
-    },
-  ],
-}
-const sideBySide: Vehicle = {
-  ...vehicle,
-  axles: [longTravel(1.37, true, 0.635, 0.21), longTravel(-1.37, false, 0.66, 0.22)],
-  steering: { ...vehicle.steering, angle: 0.42 },
-  look: { ...vehicle.look, independent: INDEPENDENT },
-}
-
-test('a car on independent suspension is drawn on rigid arms through its whole travel and lock: each wheel at its physics wheel\'s height, the front steered as the physics\' wheels are, no arm stretched, and the same parts every frame', () => {
-  const cs = corners(sideBySide)
-  const span = (p: { a: number[]; b: number[] }) => Math.hypot(p.a[0] - p.b[0], p.a[1] - p.b[1], p.a[2] - p.b[2])
-  // the arms, rods and links, which keep their length however the wheel moves; the coilovers, boots
-  // and half-shafts stretch and squeeze
-  const rigid = /^(lower\.tube|upper\.tube|upper\.bend|knuckle|steerarm|tierod\.[LR]|trailing\.[LR]|rod[01]\.[LR]|link\.[LR]|lever)/
-  for (const [i, axle] of sideBySide.axles.entries()) {
-    const [l, r] = [cs.find(c => c.axle === axle && c.side < 0)!, cs.find(c => c.axle === axle && c.side > 0)!]
-    const { sag, travel } = axle.spring, lock = axle.steered ? sideBySide.steering.angle : 0
-    const rest = independentParts(sideBySide, i, wheelAt(l, sag), wheelAt(r, sag), 0, 0)
-    const lengths = new Map(rest.parts.filter(p => rigid.test(p.name)).map(p => [p.name, span(p)]))
-    expect(lengths.size).toBeGreaterThan(axle.steered ? 10 : 6)
-    // at rest, bump and droop, crossed both ways, and on the front at full lock both ways
-    for (const [cl, cr] of [[sag, sag], [travel, travel], [0, 0], [travel, 0], [0, travel]]) for (const steer of lock ? [0, lock, -lock] : [0]) {
-      const left = wheelAt(l, cl), right = wheelAt(r, cr), made = independentParts(sideBySide, i, left, right, steer, steer)
-      const state = `axle ${i} at ${cl}, ${cr} steered ${steer}`
-      made.wheels.forEach((w, k) => expect(w.centre[1], state).toBeCloseTo([left, right][k][1], 6))
-      if (axle.steered) expect((steerOf(made.wheels[0].turn) + steerOf(made.wheels[1].turn)) / 2, state).toBeCloseTo(steer, 6)
-      expect(made.parts.map(p => p.name), state).toEqual(rest.parts.map(p => p.name))
-      for (const p of made.parts) if (lengths.has(p.name)) expect(span(p), `${state}: ${p.name}`).toBeCloseTo(lengths.get(p.name)!, 6)
-    }
-  }
-})
-
 test('each wheel sits under its mount, at its axle and half the track out', async () => {
   const { truth } = await settled()
   const c = chassis(truth)
@@ -580,4 +525,172 @@ test('each wheel sits under its mount, at its axle and half the track out', asyn
     expect(local[2]).toBeCloseTo((k.side * k.axle.track) / 2, 2)
     expect(local[1]).toBeLessThan(k.mount[1])
   })
+})
+
+// ---------------------------------------------------------------- a motorcycle
+//
+// Two axles of one wheel each on the middle line, 1.44 m apart, the front raked back 0.4 rad (a fork's line), on a chassis of 190 kg
+// with a roll inertia of its own, held up and leaned into its turns by `balance`. Each spring's top mount stands where the wheel's
+// rest place puts it: `length` less `sag` up the axle's axis from the wheel's middle, 0.48 m, which is 0.2 m over the chassis's
+// origin on the rear axle and, along the raked axis, 0.5331 m ahead of it and 0.1624 m up on the front.
+const GB = 9.8, RAKE = 0.4, LENGTH = 0.56, SAG = 0.08
+const bikeAxle = (wheelX: number, over: Partial<Axle>): Axle => ({
+  at: wheelX, track: 0, mount: -0.28 + LENGTH - SAG, one: true,
+  wheel: { radius: 0.32, width: 0.16, mass: 10, friction: 1.2, rollingResistance: 0.005 },
+  spring: { stiffness: 11000, length: LENGTH, travel: 0.22, sag: SAG },
+  damper: { bump: 500, rebound: 500 },
+  bumpStop: { length: 0.05, stiffness: 0 },
+  antiRoll: 0, driven: false, steered: false,
+  ...over,
+})
+const bike: Vehicle = {
+  body: { length: 1.5, width: 0.24, height: 0.4, mass: 190, center: [0, 0, 0], friction: 0.4, inertia: [35, 90, 90] },
+  bodies: { enableSleep: false },
+  axles: [
+    bikeAxle(0.72, { at: 0.72 - (LENGTH - SAG) * Math.sin(RAKE), mount: -0.28 + (LENGTH - SAG) * Math.cos(RAKE), rake: RAKE, steered: true, brakeTorque: 300 }),
+    bikeAxle(-0.72, { driven: true, brakeTorque: 40 }),
+  ],
+  engine: { spinSpeed: 80, spinTorque: 260, brakeTorque: 300, coastTorque: 3 },
+  steering: { angle: 0.5, hertz: 20, dampingRatio: 1, maxTorque: 1000 },
+  balance: { hertz: 3, dampingRatio: 1, torque: 3000, lean: 0.75, rate: 1, reference: 10, floor: 3 },
+  look: vehicle.look,
+}
+const ridden = async (v = bike) => { const y = await yard(v, 0.62, false, GB); run(y.truth, 60); return y }
+const lean_ = (truth: Truth) => car(truth).data.lean as number
+
+test('a vehicle of one-wheel axles is a chassis, a wheel and a joint to each axle, its wheels on the middle line, the chassis\'s inertia its own', async () => {
+  expect(corners(bike).map(c => c.side)).toEqual([0, 0])
+  expect(corners(bike).map(c => c.mount[2])).toEqual([0, 0])
+  const { truth, w } = await ridden()
+  expect(car(truth).data.wheels).toHaveLength(2)
+  expect(car(truth).data.joints).toHaveLength(2)
+  for (const id of car(truth).data.wheels) expect(Math.abs(part(truth, id).pos[2])).toBeLessThan(0.01)
+  const made = truth.rows.find(r => r.id === car(truth).data.chassis)!
+  expect(kinds(w()).bodies!.body(made).mass).toEqual({ mass: 190, center: [0, 0, 0], inertia: { cx: [35, 0, 0], cy: [0, 90, 0], cz: [0, 0, 90] } })
+})
+
+test('a one-wheel axle\'s spring carries the lever rule\'s share of the weight, and a raked one the cosine of its rake of that', () => {
+  // The centre of mass midway between the wheels: each wheel holds half of 190 · 9.8 N up, and the front spring, which works along an
+  // axis 0.4 rad from up, carries cos 0.4 of its half.
+  const half = (190 * GB) / 2
+  const [front, rear] = loads(bike, GB)
+  expect(rear).toBeCloseTo(half, 6)
+  expect(front).toBeCloseTo(half * Math.cos(RAKE), 6)
+  // Moved a quarter of the wheelbase forward, the front wheel holds three quarters.
+  const forward = loads({ ...bike, body: { ...bike.body, center: [0.36, 0, 0] } }, GB)
+  expect(forward[0]).toBeCloseTo(190 * GB * 0.75 * Math.cos(RAKE), 6)
+  expect(forward[1]).toBeCloseTo(190 * GB * 0.25, 6)
+})
+
+test('a raked axle\'s wheel rises and falls along the axis its joint is turned to: its place in the chassis\'s frame is `wheelAt` of the compression it reports', async () => {
+  // Dropped from 0.2 m up so each spring goes in and out through a bounce, sampled each step.
+  const { truth } = await yard(bike, 0.82, false, GB)
+  truth.step(DT)
+  const axis = [-Math.sin(RAKE), Math.cos(RAKE)], rest = wheelAt(corners(bike)[0], SAG)
+  let off = 0, along = 0, across = 0
+  const before: number[][] = []
+  for (let i = 0; i < 90; i++) {
+    truth.step(DT)
+    const ch = chassis(truth), back = [-ch.rot[0], -ch.rot[1], -ch.rot[2], ch.rot[3]] as [number, number, number, number]
+    corners(bike).forEach((k, n) => {
+      const pos = part(truth, car(truth).data.wheels[n]).pos
+      const local = turn(back, [pos[0] - ch.pos[0], pos[1] - ch.pos[1], pos[2] - ch.pos[2]])
+      // The row's compression is the step's start's, which is where the wheel stood at the end of the step before.
+      const at = wheelAt(k, car(truth).data.compression[n]), was = before[n]
+      if (was) off = Math.max(off, Math.hypot(was[0] - at[0], was[1] - at[1], was[2] - at[2]))
+      before[n] = local
+      if (n === 0) {
+        // The front wheel's move from its rest place: the part along the axis, and the part across it, which is none.
+        const dx = local[0] - rest[0], dy = local[1] - rest[1], on = dx * axis[0] + dy * axis[1]
+        along = Math.max(along, Math.abs(on))
+        across = Math.max(across, Math.hypot(dx - on * axis[0], dy - on * axis[1]))
+      }
+    })
+  }
+  expect(off).toBeLessThan(0.02)
+  // It went in by a good part of its travel, so the agreement is not the wheel standing still, and all of the movement was along the axis.
+  expect(along).toBeGreaterThan(0.03)
+  expect(across).toBeLessThan(0.006)
+})
+
+test('standing on its two wheels it carries its weight on its springs at their sag, and a kick that rolls it over is caught, which without its balance it is not', async () => {
+  const { truth } = await ridden()
+  run(truth, 120)
+  // 190 kg and two 10 kg wheels' springs: each pushed in its sag within 5 mm, upright.
+  car(truth).data.compression.forEach((x: number) => expect(Math.abs(x - SAG)).toBeLessThan(0.005))
+  expect(Math.abs(lean_(truth))).toBeLessThan(0.005)
+  chassis(truth).spin = [1, 0, 0]
+  let peak = 0
+  for (let i = 0; i < 20; i++) { truth.step(DT); peak = Math.max(peak, Math.abs(lean_(truth))) }
+  expect(peak).toBeGreaterThan(0.005)
+  run(truth, 300)
+  expect(Math.abs(lean_(truth))).toBeLessThan(0.005)
+  // The same bike with no balance falls over: nothing in two wheels on a line holds it.
+  const { truth: fell } = await ridden({ ...bike, balance: undefined })
+  run(fell, 120)
+  chassis(fell).spin = [1, 0, 0]
+  run(fell, 180)
+  expect(Math.abs(Math.atan2(turn(chassis(fell).rot, [0, 1, 0])[2], turn(chassis(fell).rot, [0, 1, 0])[1]))).toBeGreaterThan(1)
+})
+
+test('full throttle takes a bike to its motor\'s speed in a straight line, upright', async () => {
+  const { truth } = await ridden()
+  car(truth).data.throttle = 1
+  run(truth, 60 * 12)
+  const top = 80 * 0.32
+  expect(forward(truth)).toBeGreaterThan(0.9 * top)
+  expect(forward(truth)).toBeLessThan(top)
+  expect(Math.abs(lean_(truth))).toBeLessThan(0.01)
+  expect(Math.abs(yaw(truth))).toBeLessThan(0.01)
+})
+
+test.each([[1], [-1]])('steering %i at speed leans a bike into the turn, at the lean its own turn calls for, and no past what it may', async steer => {
+  const { truth } = await ridden()
+  car(truth).data.throttle = 1
+  run(truth, 60 * 3)
+  car(truth).data.steer = steer
+  run(truth, 60 * 4)
+  const v = forward(truth), omega = chassis(truth).spin[1], wanted = Math.atan((v * omega) / GB)
+  // Left is a lean to -z, a negative lean and a positive yaw rate.
+  expect(Math.sign(lean_(truth))).toBe(-Math.sign(omega))
+  expect(Math.sign(omega)).toBe(steer)
+  expect(Math.abs(lean_(truth))).toBeGreaterThan(0.6 * Math.abs(wanted))
+  expect(Math.abs(lean_(truth))).toBeLessThan(1.05 * Math.abs(wanted))
+  expect(Math.abs(lean_(truth))).toBeLessThanOrEqual(0.75)
+})
+
+test('let go of the bars a leaning bike comes upright and runs straight again', async () => {
+  const { truth } = await ridden()
+  car(truth).data.throttle = 1
+  run(truth, 60 * 3)
+  car(truth).data.steer = 1
+  run(truth, 60 * 3)
+  car(truth).data.steer = 0
+  run(truth, 60 * 4)
+  expect(Math.abs(lean_(truth))).toBeLessThan(0.02)
+  expect(Math.abs(chassis(truth).spin[1])).toBeLessThan(0.02)
+})
+
+test('an axle\'s own brakeTorque brakes its wheel, and a bike brakes in a straight line within the least its front brake can do', async () => {
+  const { truth } = await ridden()
+  car(truth).data.throttle = 1
+  run(truth, 60 * 2)
+  const v0 = forward(truth), x0 = chassis(truth).pos[0]
+  expect(v0).toBeGreaterThan(8)
+  Object.assign(car(truth).data, { throttle: 0, brake: 1 })
+  run(truth, 60 * 8)
+  // The front brake alone, 300 N·m at the tyre's radius, over the bike's mass and its wheels': the least it does.
+  const least = 300 / 0.32 / (190 + 2 * 10)
+  expect(Math.abs(forward(truth))).toBeLessThan(0.05)
+  expect(chassis(truth).pos[0] - x0).toBeLessThan((v0 * v0) / (2 * least))
+  expect(Math.abs(yaw(truth))).toBeLessThan(0.05)
+  expect(Math.abs(lean_(truth))).toBeLessThan(0.02)
+  // A rear wheel's joint holds with the axle's 40 N·m, a front one's with its 300, at brake 1.
+  const [front, rear] = car(truth).data.joints.map((id: number) => part(truth, id))
+  expect([front.maxSpinTorque, rear.maxSpinTorque]).toEqual([300, 40])
+})
+
+test('a balanced vehicle with no gravity named throws on its first step, saying so', async () => {
+  const { truth } = await yard(bike, 0.62, false, GB, {})
+  expect(() => truth.step(DT)).toThrow('box3dvehicle: world.box3dvehicle.mods names no gravity')
 })

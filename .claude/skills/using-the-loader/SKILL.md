@@ -200,7 +200,10 @@ of it is code.
    number, `0xRRGGBB` written in decimal.
 5. **The words.** `lines.text` is the messages, one shown at a time, the next every `every` seconds,
    round again after the last: tips, the place's name, a line of the story. Each is centred on `at`, so
-   keep each to one line at its font size; nothing measures text. `shaders.text` is what shows once the
+   keep each to one line at its font size; nothing measures text. An entry can be `{ "text": "...",
+   "picture": "ar1" }`: while that line shows, its picture (a preloaded `texture` entry `for: "ui"`) is
+   drawn at the panel's top left corner at the size the file was made, never resized, so a game sizes it
+   when it commits it. A game that uses this leaves `pictures` out. `shaders.text` is what shows once the
    files are in and shaders are still compiling, in the same place.
 6. **Shaders.** `world.loader.mods.shaders: "render3d"` in each scene with render3d, so the screen waits
    for the shaders and says so; left out, it fades once the files are in.

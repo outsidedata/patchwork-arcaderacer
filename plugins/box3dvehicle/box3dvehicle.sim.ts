@@ -78,7 +78,13 @@
 //              `regen` N·m braking it with the throttle shut, and `brakeTorque` (`electric`, below).
 //              A petrol or electric car's row carries `gear` and writes `rpm` and `torque` each step.
 //   steering   `angle` radians, a steered wheel's target at steer 1, and its joint's `hertz`,
-//              `dampingRatio` and `maxTorque`.
+//              `dampingRatio` and `maxTorque`; `ackermann`, 0 to 1 (0 when left out), how far the wheel on the
+//              outside of a turn is turned toward the angle that has every wheel turn about one point: the
+//              inside wheel turns `angle` × steer, the outside one that less the share `ackermann` of what
+//              it must turn less to stand on a circle about the same centre (the lever the steered axle
+//              stands from the axles that do not steer, or from the wheelbase's middle when every axle does,
+//              and the axle's `track`), so 0 turns both the same and 1 is the geometry a steering linkage
+//              makes. A car whose kit rig has a steering linkage that does this sets it (BOX3DVEHICLE.md).
 //   pedal      `{ stop }`, m/s: how the one pedal of a car that picks its own forward gear changes
 //              its way (Driving, below). A car driven by its `pedal` that picks its gear and gives
 //              none throws on the step, saying so.
@@ -186,6 +192,9 @@ export type Axle = {
   antiRoll: number
   driven: boolean
   steered: boolean
+  one?: boolean
+  rake?: number
+  brakeTorque?: number
 }
 export type Direct = { spinSpeed: number; spinTorque: number; brakeTorque: number; coastTorque: number }
 export type Electric = {
@@ -212,6 +221,9 @@ export type Petrol = {
   automatic?: { up: [light: number, full: number]; down: [light: number, full: number] }
 }
 export type Cabin = { at: number; length: number; width: number; top: number; topWidth: number; height: number }
+// What holds a vehicle that cannot stand on its wheels upright (a two-wheeler's, `balance` below): a roll torque on the chassis, a spring and
+// damper on its lean about its own heading, and how the bars follow the lean.
+export type Balance = { hertz: number; dampingRatio: number; torque: number; lean: number; rate: number; reference: number; floor: number }
 export type Paint = {
   body: number; cabin: number; trim: number; glass: number; light: number; tail: number; amber: number
   tyre: number; rim: number; chrome: number; seat: number; hook: number; spring: number; damper: number; arm: number
@@ -219,24 +231,6 @@ export type Paint = {
 export type Finish = {
   roughness: number; metalness: number
   clearcoat?: number; clearcoatRoughness?: number; sheen?: number; sheenRoughness?: number; opacity?: number
-}
-export type Open = {
-  windshield: { height: number; lean: number; frame: number; wiper: number }
-  cage: { height: number; tube: number; bend: number; pad: number }
-  wall: number
-  floor: number
-  corner: number
-  door: { from: number; to: number; drop: number; ease: number }
-  rib: { at: number; depth: number; height: number }
-  seat: { width: number; depth: number; base: number; back: number; round: number; tilt: number; head: number }
-  bench?: boolean
-  steer: number
-  dash: { depth: number; height: number }
-  tunnel?: { width: number; height: number }
-  stick?: number
-  hood: { drop: number; round: number; dome?: { inset: number; height: number } }
-  rocker?: { height: number; depth: number }
-  mirror?: { size: number; arm: number }
 }
 export type Lamp = { intensity: number; distance: number; decay: number }
 export type Lights = {
@@ -256,6 +250,14 @@ export type Tracks = { colour: number; opacity: number; skid: number; slide: num
 export type Model = { asset: string; at?: Vec3; turn?: Quat; scale?: number; looks?: string }
 // A model for each side of the car: `left` for a wheel on the car's −z, `right` for one on its +z.
 export type Sided = { left: Model; right: Model }
+// The model of a one-wheel axle's wheel, on the car's middle line: the one `centre`.
+export type Centred = { centre: Model }
+// The lamps of a pro-ng body model (`look.model` naming its `looks`), which has no mesh a lamp is found by: for each
+// of the four groups a car lights, the model's lamp material by name and the name of its twin, the same lens lit,
+// both in the scene's looks file and in one draw call. A group's lenses are drawn in their twin while it is lit: `head`
+// while the headlights are (the row's `lights`, or always without `lightsOff`), `tail` while the car brakes or the
+// headlights are on, `reverse` while it drives backwards, `amber` while the headlights are on.
+export type Lamps = Partial<Record<'head' | 'tail' | 'reverse' | 'amber', Record<string, string>>>
 // One tailpipe: its tip `at` and the way it points `dir` in the chassis's frame, `pipe` round. What it
 // blows is particle3d's (`box3dvehicle.particle3d.ts`).
 export type Exhaust = { at: Vec3; dir: Vec3; pipe: number }
@@ -300,115 +302,27 @@ export type Look = {
   bumpers?: { depth: number; height: number; overhang: number; round: number; bolts: number; hooks?: number }
   grille?: { slots: number; width: number; height: number; depth: number; paint: keyof Paint }
   lights?: Lights
+  lamps?: Lamps
+  // A pro-ng body model whose skeleton is the car's suspension and steering (`box3dvehicle.plugin.ts`, `rig`): the name
+  // of the kit thing whose clips pose its bones every frame, `<rig> steer` and `<rig> travel <axle> <side>`.
+  rig?: string
   spare?: { lift: number }
   exhaust?: Exhaust[]
   tracks?: Tracks
-  open?: Open
   model?: Model
-  wheel?: Sided
-  hubs?: Sided[]
+  wheel?: Sided | Centred | (Sided | Centred)[]
+  hubs?: (Sided | Centred)[]
   corners?: boolean
   lock?: number
   points?: Record<string, Point>
-  solid?: Solid
-  independent?: Independent
 }
-// A link of a solid axle: from `frame`, its end on the chassis, to `on`, its end on the axle (`solid`,
-// below, says how each is read).
-export type Link = { frame: Vec3; on: Vec3 }
-// One shock of each wheel's cluster on a solid axle (`solid`, below).
-export type Shock = {
-  along: number; on: [up: number, across: number]; top: [y: number, across: number]
-  radius: number; body: number; shaft: number
-  coil?: { radius: number; wire: number; turns: number; low: number; high: number; free: number }
-  reservoir?: { radius: number; length: number; gap: number }
-}
-// The drawing of a car on solid axles (`look.solid`, `box3dvehicle.plugin.ts`), every axle's.
-export type Solid = {
-  pivot: number
-  housing: number
-  pumpkin: { radius: number; pinion: { radius: number; length: number }; cover: number }
-  knuckle: { radius: number; height: number }
-  brake: { radius: number; thick: number; at: number; caliper: number }
-  links: { radius: number; end: number; lower: Link; upper: Link; track: Link }
-  shocks: Shock[]
-  ceiling: number
-  bump: { across: number; radius: number }
-  strap: { along: number; across: number; drop: number; width: number; thick: number; length: number }
-  steer: { arm: [along: number, up: number, inward: number]; rod: number; ram: { on: Vec3; to: number; radius: number; length: number; rod: number } }
-  shaft: { radius: number; joint: [radius: number, length: number]; slip: [radius: number, length: number] }
-  axles: { pumpkin: number; shaft: Vec3 }[]
-}
-// The independent suspension of a car (`look.independent`, `independentParts` below says how each
-// number is read). A point is `[along, y, across]`: `along` metres from the axle along the chassis's x
-// in toward the car's middle (back from a front axle, forward from a rear one), `y` the height in the
-// chassis's frame, and `across` metres out from the car's middle toward the wheel's side, given for
-// one side and mirrored for the other. A point on something that moves is where it is with the
-// wheel at rest (`spring.sag`) and the steering straight.
-// A wishbone: its two inner pivots on the frame, which it swings about, its ball joint on the
-// knuckle, its tubes `radius` round and a bush `bush` [radius, length] round each pivot; with
-// `elbows`, each tube bent at its elbow (a point of the wishbone), running from its pivot to the
-// elbow and on to the ball joint, as a wishbone is bent to clear the tyre swept past it at lock.
-export type Wishbone = { pivots: [Vec3, Vec3]; ball: Vec3; radius: number; bush: [radius: number, length: number]; elbows?: [Vec3, Vec3] }
-// One spring of a coilover: `radius` round its wire's middle, `wire` the wire's radius, `turns`
-// turns, `free` its length unloaded, `rate` N/m; a tender spring's `cross` is the length the
-// crossover ring stops it at.
-export type Coil = { radius: number; wire: number; turns: number; free: number; rate: number; cross?: number }
-// A coilover from its `lower` eye (on the wishbone or the trailing arm) to its `top` eye on the frame:
-// a body `body` [radius, length] hanging from the top, a shaft `shaft` round up into it, an eye `eye`
-// round at the foot, and round it a `main` spring on a seat `seat` up from the lower eye under a
-// `tender` spring under a perch `perch` down from the top eye, a crossover ring `ring` [radius,
-// thick] between them, and a piggyback `reservoir` `gap` beside the body, toward the car's middle
-// (back from a front axle, forward from a rear one), or away from it with a negative `gap`.
-export type Coilover = {
-  lower: Vec3; top: Vec3; body: [radius: number, length: number]; shaft: number; eye: number; seat: number; perch: number
-  main: Coil; tender: Coil & { cross: number }; ring: [radius: number, thick: number]
-  reservoir: { radius: number; length: number; gap: number }
-}
-// An anti-roll bar: the bar `radius` round across the frame at `bar` [along, y] between its ends
-// `half` out each side, a lever `radius` round from each end to its tip `lever` [along, y] from the
-// end, turning about the bar, and an end link `link` [radius, ball] from the tip down to `on`, a point
-// of the wishbone or trailing arm.
-export type Sway = { bar: [along: number, y: number]; half: number; radius: number; lever: [along: number, y: number]; on: Vec3; link: [radius: number, ball: number] }
-// A half-shaft from the differential's output `from` on the frame to the hub, its outer end `at` in
-// from the wheel's middle along the hub: a shaft `radius` round, a CV joint's cup `cup` [radius,
-// length] at each end and a boot `boot` [radius, length] between each cup and the shaft.
-export type HalfShaft = { from: Vec3; at: number; radius: number; cup: [radius: number, length: number]; boot: [radius: number, length: number] }
-// The hub `[radius, from, to]`, from `from` to `to` in from the wheel's middle along its axle, and the
-// brake: a disc `radius` round and `thick` thick `at` in from the wheel's middle, a caliper `caliper`
-// [radius, length] on its rim.
-export type Hub = { hub: [radius: number, from: number, to: number]; brake: { radius: number; thick: number; at: number; caliper: [radius: number, length: number] } }
-// A front corner: two wishbones and a knuckle `knuckle` round between their ball joints, a steering
-// arm on the knuckle reaching `steer.arm`, a tie rod `steer.rod` round from it to the end of a rack
-// `steer.rack` (its housing `radius` round across the frame at [`along`, `y`] out to `housing` each
-// side, its ends `half` out with the steering straight, a boot `boot` round at the housing from each
-// housing's end to the rack's end, so `half` less the rack's travel at full lock stays over `housing`),
-// the coilover on the lower wishbone, the anti-roll bar's link on the lower wishbone, the half-shaft,
-// the hub and the brake. On an axle that does not steer the rack holds the knuckles straight.
-export type Wishbones = Hub & {
-  lower: Wishbone; upper: Wishbone; knuckle: number
-  steer: { arm: Vec3; rod: number; rack: { along: number; y: number; half: number; housing: number; radius: number; boot: number } }
-  shock: Coilover; sway: Sway; shaft: HalfShaft
-}
-// A rear corner: a trailing arm `radius` round from its `pivot` on the frame, about which it turns
-// every way, to its `end` beside the wheel, a carrier `carrier` round from there to the hub, and the
-// radius rods `rods`, each `rod` round from its `frame` end to its end `on` the carrier, which hold
-// the arm's turn to the one way the wheel rises and falls; the coilover and the anti-roll bar's link on
-// the arm, the half-shaft, the hub and the brake.
-export type Trailing = Hub & {
-  pivot: Vec3; end: Vec3; radius: number; bush: [radius: number, length: number]; carrier: number
-  rods: [{ frame: Vec3; on: Vec3 }, { frame: Vec3; on: Vec3 }]; rod: number
-  shock: Coilover; sway: Sway; shaft: HalfShaft
-}
-// The drawing of a car on independent suspension (`look.independent`, `box3dvehicle.plugin.ts`): each
-// axle's corners, `{ wishbones }` or `{ trailing }`, and the ball joints' radius `ball`.
-export type Independent = { ball: number; axles: ({ wishbones: Wishbones } | { trailing: Trailing })[] }
 export type Vehicle = {
-  body: { length: number; width: number; height: number; mass: number; center: Vec3; friction: number; cabin?: Cabin }
+  body: { length: number; width: number; height: number; mass: number; center: Vec3; friction: number; cabin?: Cabin; inertia?: Vec3 }
   bodies: Omit<Partial<Body>, 'shapes' | 'mass'>
   axles: Axle[]
   engine: Direct | Petrol | Electric
-  steering: { angle: number; hertz: number; dampingRatio: number; maxTorque: number }
+  steering: { angle: number; hertz: number; dampingRatio: number; maxTorque: number; ackermann?: number }
+  balance?: Balance
   pedal?: { stop: number }
   look: Look
 }
@@ -448,21 +362,38 @@ const scale = (a: Vec3, k: number): Vec3 => [a[0] * k, a[1] * k, a[2] * k]
 const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 export const cross = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
 
-// One wheel of the car: its axle, its side (-1 left, 1 right), its spring's top mount in the
-// chassis's frame, and the point of the wheel the spring holds, its inner face's middle, in the
-// wheel's own frame.
+// One wheel of the car: its axle, its side (-1 left, 1 right, 0 for the one wheel of a one-wheel axle), its
+// spring's top mount in the chassis's frame, and the point of the wheel the spring holds, its inner face's
+// middle (a one-wheel axle's, its middle), in the wheel's own frame.
 export type Corner = { axle: Axle; side: number; mount: Vec3; hub: Vec3 }
 export function corners(v: Vehicle): Corner[] {
-  return v.axles.flatMap(axle => [-1, 1].map(side => ({
+  return v.axles.flatMap(axle => (axle.one ? [0] : [-1, 1]).map(side => ({
     axle, side,
-    mount: [axle.at, axle.mount, side * (axle.track / 2 - axle.wheel.width / 2)] as Vec3,
-    hub: [0, 0, -side * axle.wheel.width / 2] as Vec3,
+    mount: [axle.at, axle.mount, side === 0 ? 0 : side * (axle.track / 2 - axle.wheel.width / 2)] as Vec3,
+    hub: [0, 0, side === 0 ? 0 : -side * axle.wheel.width / 2] as Vec3,
   })))
 }
 
-// Where a wheel's middle is in the chassis's frame when its spring is pushed in `compression`.
-export const wheelAt = (c: Corner, compression: number): Vec3 =>
-  [c.mount[0], c.mount[1] - (c.axle.spring.length - compression), c.side * c.axle.track / 2]
+/** The way an axle's spring works and its wheel steers about, a unit vector in the chassis's frame: its up
+ * (+y), tipped back by the axle's `rake` about z (a telescopic fork's line), so a rake of 0.4 is
+ * (-sin 0.4, cos 0.4, 0). */
+export function axisOf(a: Axle): Vec3 {
+  const r = a.rake ?? 0
+  return r === 0 ? [0, 1, 0] : [-math.sin(r), math.cos(r), 0]
+}
+
+// Where a wheel's middle is in the chassis's frame when its spring is pushed in `compression`: below the
+// mount along the axle's axis by what is left of the spring's length.
+export function wheelAt(c: Corner, compression: number): Vec3 {
+  const a = axisOf(c.axle), d = compression - c.axle.spring.length
+  return [c.mount[0] + a[0] * d, c.mount[1] + a[1] * d, c.side * c.axle.track / 2]
+}
+
+/** The index of the corner across from each corner on its axle: the other wheel of a pair, and a one-wheel
+ * axle's own. */
+export function partners(cs: Corner[]): number[] {
+  return cs.map((c, i) => (c.side < 0 ? i + 1 : c.side > 0 ? i - 1 : i))
+}
 
 // A cabin's eight corners in the chassis's frame, on top of `v`'s body, base then roof, as a flat
 // [x, y, z, …].
@@ -472,396 +403,10 @@ export function cabinPoints(v: Vehicle, cabin: Cabin): number[] {
   return [...ring(base, cabin.length, cabin.width), ...ring(roof, cabin.top, cabin.topWidth)]
 }
 
-// One drawn part of a solid axle, in the chassis's frame: a `tube` `r` round from `a` to `b`; a `ball`
-// `r` round at `a`; a `coil` of `turns` turns `r` round in wire `wire` thick from `a` to `b`; or a
-// `band` `r` × 2 wide and `thick` thick from `a` to `b`. `mount` when its `a` end sits on the body. A
-// tube with `r2` is a cone, `r` round at `a` and `r2` at `b`. `body` names the thing an independent
-// suspension's part moves with (`independentParts`).
-export type Part = {
-  name: string; shape: 'tube' | 'ball' | 'coil' | 'band'; a: Vec3; b: Vec3; r: number; paint: keyof Paint
-  turns?: number; wire?: number; thick?: number; mount?: boolean; r2?: number; body?: string
-}
-const norm = (a: Vec3): Vec3 => scale(a, 1 / (Math.hypot(a[0], a[1], a[2]) || 1))
-const length = (a: Vec3) => Math.hypot(a[0], a[1], a[2])
-// How many pieces a limit strap is drawn in.
-export const STRAP = 16
-
-// Every part of axle `i` of `v`'s solid axles (`look.solid`), in the chassis's frame, with its left
-// wheel's middle at `left` and its right's at `right`, steered `steerL` and `steerR` radians (positive
-// left, about the chassis's y), always as many parts in the same order. The housing runs between the
-// two knuckles' pivots, `pivot` in from each wheel's middle, so it tilts as one wheel rises and the
-// other falls; everything on the axle is placed in its frame (its x the chassis's forward square to
-// it, z along it to the right, y up from it), each knuckle, its brake and steering arm in the frame of
-// its wheel turned by its steering about the wheel's middle, and the chassis's ends of the links,
-// shocks, bump stops, straps and driveshafts where the chassis holds them. A length along x is
-// in toward the car's middle (back from a front axle, forward from a rear one) and a length across is
-// out toward each wheel's side, except the track bar's and the steering ram's, which are given as
-// they stand: z positive to the right.
-export function solidParts(v: Vehicle, i: number, left: Vec3, right: Vec3, steerL: number, steerR: number): Part[] {
-  const s = v.look.solid!, axle = v.axles[i], t = axle.at >= 0 ? -1 : 1, mine = s.axles[i]
-  const across = norm(sub(right, left))
-  const pivots = [add(left, scale(across, s.pivot)), sub(right, scale(across, s.pivot))]
-  const O = scale(add(pivots[0], pivots[1]), 0.5), Z = across
-  const X = norm(sub([1, 0, 0], scale(Z, Z[0]))), Y = cross(Z, X)
-  const on = (p: Vec3): Vec3 => add(O, add(scale(X, p[0]), add(scale(Y, p[1]), scale(Z, p[2]))))
-  const chassis = (p: Vec3): Vec3 => [axle.at + p[0], p[1], p[2]]
-  // A point of side `side`'s knuckle: `p` along, up and in toward the car's middle from its wheel's middle.
-  const knuckle = (side: number, p: Vec3): Vec3 => {
-    const c = side < 0 ? left : right, a = side < 0 ? steerL : steerR, q: Vec3 = [p[0], p[1], -side * p[2]]
-    return add(c, [q[0] * Math.cos(a) + q[2] * Math.sin(a), q[1], -q[0] * Math.sin(a) + q[2] * Math.cos(a)])
-  }
-  const parts: Part[] = []
-  const tube = (name: string, a: Vec3, b: Vec3, r: number, paint: keyof Paint, mount = false) => parts.push({ name, shape: 'tube', a, b, r, paint, mount })
-  const ball = (name: string, a: Vec3, r: number, paint: keyof Paint) => parts.push({ name, shape: 'ball', a, b: a, r, paint })
-
-  // the housing, the pumpkin, its pinion toward the driveshaft and its cover the other way
-  const pk = s.pumpkin, middle = on([0, 0, mine.pumpkin])
-  tube('housing', pivots[0], pivots[1], s.housing, 'arm')
-  ball('pumpkin', middle, pk.radius, 'arm')
-  const pinion = on([t * (pk.radius + pk.pinion.length), 0, mine.pumpkin])
-  tube('pinion', on([t * pk.radius * 0.5, 0, mine.pumpkin]), pinion, pk.pinion.radius, 'arm')
-  tube('cover', on([-t * pk.radius * 0.6, 0, mine.pumpkin]), on([-t * (pk.radius * 0.6 + 0.04), 0, mine.pumpkin]), pk.cover, 'chrome')
-
-  // each knuckle with its brake, and on a steered axle its arm
-  const arms: Vec3[] = []
-  for (const side of [-1, 1]) {
-    const k = s.knuckle, b = s.brake, n = side < 0 ? 'L' : 'R'
-    tube(`knuckle.${n}`, knuckle(side, [0, -k.height / 2, s.pivot]), knuckle(side, [0, k.height / 2, s.pivot]), k.radius, 'arm')
-    tube(`disc.${n}`, knuckle(side, [0, 0, b.at - b.thick / 2]), knuckle(side, [0, 0, b.at + b.thick / 2]), b.radius, 'damper')
-    tube(`caliper.${n}`, knuckle(side, [0, b.radius * 0.82, b.at - 0.05]), knuckle(side, [0, b.radius * 0.82, b.at + 0.05]), b.caliper, 'hook')
-    if (axle.steered) {
-      const [along, up, inward] = s.steer.arm, end = knuckle(side, [t * along, up, inward])
-      tube(`arm.${n}`, knuckle(side, [0, up, s.pivot]), end, s.steer.rod, 'arm')
-      arms.push(end)
-    }
-  }
-  if (axle.steered) {
-    const r = s.steer.ram
-    tube('tierod', arms[0], arms[1], s.steer.rod, 'arm')
-    const from = on([t * r.on[0], r.on[1], r.on[2]]), to = add(arms[0], scale(sub(arms[1], arms[0]), r.to))
-    tube('ram', from, add(from, scale(norm(sub(to, from)), r.length)), r.radius, 'arm')
-    tube('ram.rod', from, to, r.rod, 'chrome')
-  }
-
-  // the four links each side and the track bar, a rod end where each meets the axle
-  const L = s.links
-  for (const side of [-1, 1]) {
-    for (const [name, link] of [['lower', L.lower], ['upper', L.upper]] as const) {
-      const b = on([t * link.on[0], link.on[1], side * link.on[2]])
-      tube(`${name}.${side < 0 ? 'L' : 'R'}`, chassis([t * link.frame[0], link.frame[1], side * link.frame[2]]), b, L.radius, 'arm', true)
-      ball(`${name}.end.${side < 0 ? 'L' : 'R'}`, b, L.end, 'arm')
-    }
-  }
-  const bar = on([t * L.track.on[0], L.track.on[1], L.track.on[2]])
-  tube('track', chassis([t * L.track.frame[0], L.track.frame[1], L.track.frame[2]]), bar, L.radius, 'arm', true)
-  ball('track.end', bar, L.end, 'arm')
-
-  // each wheel's shocks: a body hanging from its top, a shaft up into it from the axle, and on a
-  // coilover a coil between a perch on the shaft and one on the body, on a bypass shock a reservoir.
-  // A coil is never longer than its `free` length: past it, it sits on its lower perch and rides
-  // down with the axle, clear of the upper one, as an unloaded spring does.
-  for (const side of [-1, 1]) for (const [k, sh] of s.shocks.entries()) {
-    const n = `shock${k}.${side < 0 ? 'L' : 'R'}`
-    const low = on([t * sh.along, sh.on[0], side * sh.on[1]]), top = chassis([t * sh.along, sh.top[0], side * sh.top[1]])
-    const down = norm(sub(low, top))
-    tube(`${n}.body`, top, add(top, scale(down, sh.body)), sh.radius, 'chrome', true)
-    // the shaft runs from the axle up into the body, ending halfway up it
-    tube(`${n}.shaft`, low, add(top, scale(down, sh.body / 2)), sh.shaft, 'chrome')
-    if (sh.coil) {
-      const c = sh.coil, a = sub(low, scale(down, c.low)), b = add(top, scale(down, c.high))
-      parts.push({ name: `${n}.coil`, shape: 'coil', a, b: sub(a, scale(down, Math.min(length(sub(b, a)), c.free))), r: c.radius, paint: 'spring', turns: c.turns, wire: c.wire })
-      tube(`${n}.perch.low`, a, sub(a, scale(down, 0.015)), c.radius + c.wire, 'arm')
-      tube(`${n}.perch.high`, b, add(b, scale(down, 0.015)), c.radius + c.wire, 'arm')
-    }
-    if (sh.reservoir) {
-      const r = sh.reservoir, aside = scale(norm(cross(down, X)), side * r.gap)
-      tube(`${n}.reservoir`, add(top, add(aside, scale(down, 0.02))), add(top, add(aside, scale(down, 0.02 + r.length))), r.radius, 'chrome', true)
-    }
-  }
-
-  // each side's bump stop, from the ceiling down to where the housing's top is at full bump
-  const full = axle.mount - axle.spring.length + axle.spring.travel + s.housing
-  for (const side of [-1, 1]) tube(`bump.${side < 0 ? 'L' : 'R'}`, chassis([0, s.ceiling, side * s.bump.across]), chassis([0, full, side * s.bump.across]), s.bump.radius, 'trim', true)
-
-  // each side's limit strap, `length` long from a tab `drop` under the ceiling to the housing's top, in
-  // `STRAP` pieces: straight once pulled tight, else folded back and forth, every other bend standing
-  // out from the line between its ends toward the axle (away from the car's middle) by as much as
-  // takes up the slack
-  const st = s.strap
-  for (const side of [-1, 1]) {
-    const top = chassis([t * st.along, s.ceiling - st.drop, side * st.across]), low = on([t * st.along, s.housing, side * st.across])
-    const chord = sub(low, top), u = norm(chord), m = scale(norm(sub(X, scale(u, dot(X, u)))), -t)
-    const piece = st.length / STRAP, step = length(chord) / STRAP, fold = Math.sqrt(Math.max(0, piece * piece - step * step))
-    const at = (k: number): Vec3 => add(top, add(scale(chord, k / STRAP), scale(m, k % 2 ? fold : 0)))
-    for (let k = 0; k < STRAP; k++) parts.push({ name: `strap${k}.${side < 0 ? 'L' : 'R'}`, shape: 'band', a: at(k), b: at(k + 1), r: st.width / 2, thick: st.thick, paint: 'hook', mount: k === 0 })
-  }
-
-  // the driveshaft from the transfer case's output to the pinion: a slip yoke, the shaft, a joint
-  const sf = s.shaft, from = mine.shaft, u = norm(sub(pinion, from))
-  tube('slip', from, add(from, scale(u, sf.slip[1])), sf.slip[0], 'arm', true)
-  tube('shaft', add(from, scale(u, sf.slip[1])), sub(pinion, scale(u, sf.joint[1])), sf.radius, 'arm')
-  tube('joint', sub(pinion, scale(u, sf.joint[1])), pinion, sf.joint[0], 'chrome')
-  return parts
-}
-
-// ---------------------------------------------------------------- independent suspension
-
-// A 3 × 3 turn, by rows.
-export type Turn = number[][]
-const mul = (A: Turn, B: Turn): Turn => A.map(r => [0, 1, 2].map(j => r[0] * B[0][j] + r[1] * B[1][j] + r[2] * B[2][j]))
-const apply = (A: Turn, v: Vec3): Vec3 => [dot(A[0] as Vec3, v), dot(A[1] as Vec3, v), dot(A[2] as Vec3, v)]
-const SAME: Turn = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-// The turn of `a` radians about the unit axis `u`.
-function about(u: Vec3, a: number): Turn {
-  const c = Math.cos(a), s = Math.sin(a), k = 1 - c, [x, y, z] = u
-  return [[c + x * x * k, x * y * k - z * s, x * z * k + y * s], [y * x * k + z * s, c + y * y * k, y * z * k - x * s], [z * x * k - y * s, z * y * k + x * s, c + z * z * k]]
-}
-// The least turn taking the unit `a` onto the unit `b`.
-function onto(a: Vec3, b: Vec3): Turn {
-  const axis = cross(a, b), s = length(axis)
-  return s < 1e-12 ? SAME : about(scale(axis, 1 / s), Math.atan2(s, dot(a, b)))
-}
-// `p` turned `a` radians about the line through `o` along the unit `u`.
-const swung = (p: Vec3, o: Vec3, u: Vec3, a: number): Vec3 => add(o, apply(about(u, a), sub(p, o)))
-// A turn as a quaternion [x, y, z, w].
-export function quatOf(R: Turn): Quat {
-  const t = R[0][0] + R[1][1] + R[2][2]
-  if (t > 0) { const s = Math.sqrt(t + 1) * 2; return [(R[2][1] - R[1][2]) / s, (R[0][2] - R[2][0]) / s, (R[1][0] - R[0][1]) / s, s / 4] }
-  if (R[0][0] > R[1][1] && R[0][0] > R[2][2]) { const s = Math.sqrt(1 + R[0][0] - R[1][1] - R[2][2]) * 2; return [s / 4, (R[0][1] + R[1][0]) / s, (R[0][2] + R[2][0]) / s, (R[2][1] - R[1][2]) / s] }
-  if (R[1][1] > R[2][2]) { const s = Math.sqrt(1 + R[1][1] - R[0][0] - R[2][2]) * 2; return [(R[0][1] + R[1][0]) / s, s / 4, (R[1][2] + R[2][1]) / s, (R[0][2] - R[2][0]) / s] }
-  const s = Math.sqrt(1 + R[2][2] - R[0][0] - R[1][1]) * 2
-  return [(R[0][2] + R[2][0]) / s, (R[1][2] + R[2][1]) / s, s / 4, (R[1][0] - R[0][1]) / s]
-}
-// How far a turn steers a wheel: its spin axis, the chassis's z turned, about the chassis's y.
-export const steerOf = (R: Turn) => Math.atan2(R[0][2], R[2][2])
-
-// The x near `x` where `f` is 0, by Newton's method, each step at most a quarter; throws naming `what`
-// when it finds none, as a corner whose numbers cannot reach where its wheel is.
-function root(f: (x: number) => number, x: number, what: string): number {
-  for (let k = 0; k < 60; k++) {
-    const fx = f(x)
-    if (Math.abs(fx) < 1e-11) return x
-    const d = (f(x + 1e-7) - fx) / 1e-7
-    if (!d) break
-    const step = Math.max(-0.25, Math.min(0.25, fx / d))
-    x -= step
-  }
-  if (Math.abs(f(x)) < 1e-7) return x
-  throw new Error(`box3dvehicle: ${what}`)
-}
-
-// One corner of an independent suspension as it stands: the turn `R` of its knuckle (the front's) or
-// trailing arm (the rear's) from rest, where any point of it is (`on`), where any point of the arm the
-// coilover and the anti-roll bar stand on is (`arm`), and its wheel's middle `W`.
-// `upper` places a point of a front corner's upper wishbone.
-type Corner3 = { R: Turn; on: (p: Vec3) => Vec3; arm: (p: Vec3) => Vec3; upper: (p: Vec3) => Vec3; W: Vec3 }
-
-// A front corner with its wheel's middle at height `y`, the rack moved `shift` along the chassis's z:
-// the lower wishbone swung so the wheel's middle is at `y`, the upper swung to meet the knuckle's top,
-// and the knuckle turned about its two ball joints so the tie rod keeps its length.
-function wishbonesAt(s: Wishbones, P: (p: Vec3) => Vec3, side: number, W0: Vec3, y: number, shift: number, name: string): Corner3 {
-  const L1 = P(s.lower.pivots[0]), uL = norm(sub(P(s.lower.pivots[1]), L1)), BL0 = P(s.lower.ball)
-  const U1 = P(s.upper.pivots[0]), uU = norm(sub(P(s.upper.pivots[1]), U1)), BU0 = P(s.upper.ball)
-  const K0 = sub(BU0, BL0), kl = length(K0), T0 = P(s.steer.arm), rack = s.steer.rack
-  const end = (d: number): Vec3 => [P([rack.along, 0, 0])[0], rack.y, side * rack.half + d]
-  const tie = length(sub(T0, end(0))), E = end(shift)
-  const at = (lower: number) => {
-    const BL = swung(BL0, L1, uL, lower)
-    const upper = root(a => length(sub(swung(BU0, U1, uU, a), BL)) - kl, lower, `${name}'s upper wishbone cannot reach its knuckle`)
-    const k = norm(sub(swung(BU0, U1, uU, upper), BL)), R1 = onto(norm(K0), k), T1 = apply(R1, sub(T0, BL0))
-    const turn = root(a => length(sub(add(BL, apply(about(k, a), T1)), E)) - tie, 0, `${name}'s tie rod cannot reach its steering arm`)
-    const R = mul(about(k, turn), R1)
-    return { R, on: (p: Vec3) => add(BL, apply(R, sub(p, BL0))), arm: (p: Vec3) => swung(p, L1, uL, lower), upper: (p: Vec3) => swung(p, U1, uU, upper) }
-  }
-  const lower = root(a => at(a).on(W0)[1] - y, 0, `${name}'s wishbones cannot hold its wheel at ${y.toFixed(3)}`)
-  const c = at(lower)
-  return { ...c, W: c.on(W0) }
-}
-
-// A rear corner with its wheel's middle at height `y`: the trailing arm turned about its pivot (any
-// way, the turn found as a turn vector by Newton's method) so both radius rods keep their lengths and
-// the wheel's middle is at `y`.
-function trailingAt(s: Trailing, P: (p: Vec3) => Vec3, W0: Vec3, y: number, name: string): Corner3 {
-  const F = P(s.pivot), rods = s.rods.map(r => ({ A: P(r.frame), Q: P(r.on), l: length(sub(P(r.on), P(r.frame))) }))
-  const turnOf = (r: Vec3): Turn => { const a = length(r); return a < 1e-15 ? SAME : about(scale(r, 1 / a), a) }
-  const misses = (r: Vec3) => {
-    const R = turnOf(r), on = (p: Vec3) => add(F, apply(R, sub(p, F)))
-    return [length(sub(on(rods[0].Q), rods[0].A)) - rods[0].l, length(sub(on(rods[1].Q), rods[1].A)) - rods[1].l, on(W0)[1] - y]
-  }
-  let r: Vec3 = [0, 0, 0]
-  for (let k = 0; k < 60; k++) {
-    const m = misses(r)
-    if (Math.max(...m.map(Math.abs)) < 1e-11) break
-    const J = [0, 1, 2].map(j => { const q: Vec3 = [...r]; q[j] += 1e-7; return misses(q).map((x, i) => (x - m[i]) / 1e-7) })
-    const step = solve([0, 1, 2].map(i => [J[0][i], J[1][i], J[2][i]]), m)
-    if (!step) throw new Error(`box3dvehicle: ${name}'s radius rods and trailing arm hold its wheel no way at all`)
-    r = sub(r, step as Vec3)
-  }
-  if (Math.max(...misses(r).map(Math.abs)) > 1e-7) throw new Error(`box3dvehicle: ${name}'s trailing arm cannot hold its wheel at ${y.toFixed(3)}`)
-  const R = turnOf(r), on = (p: Vec3) => add(F, apply(R, sub(p, F)))
-  return { R, on, arm: on, upper: on, W: on(W0) }
-}
-
-// The drawn wheels and parts of axle `i` of a car on independent suspension (`look.independent`), in
-// the chassis's frame, with its left wheel's middle at height `left[1]` and its right's at
-// `right[1]` (the physics' wheels, which slide straight up and down under the chassis on their
-// springs), steered `steerL` and `steerR` radians (positive left, about the chassis's y). Every arm is
-// rigid and turns about its pivots on the frame: each corner is found where its wheel's middle is at
-// its physics wheel's height (`wishbonesAt`, `trailingAt`), so the drawn wheel rides the arc its arms
-// give it, out or in and with the camber they give, and on a steered axle the rack is moved until
-// the two knuckles are steered, on average, as the physics' wheels are. `wheels` is each drawn
-// wheel's middle and its turn from rest (camber, toe and steer; its spin is the physics wheel's own);
-// `parts` always as many, in the same order, each with the `body` it moves with; `joints` the pairs of
-// bodies that touch where they are joined.
-export function independentParts(v: Vehicle, i: number, left: Vec3, right: Vec3, steerL: number, steerR: number) {
-  const ind = v.look.independent!, axle = v.axles[i], mine = ind.axles[i], t = axle.at >= 0 ? -1 : 1
-  const cs = corners(v).filter(c => c.axle === axle)
-  const P = (side: number) => (p: Vec3): Vec3 => [axle.at + t * p[0], p[1], side * p[2]]
-  const rest = (side: number): Vec3 => wheelAt(cs.find(c => c.side === side)!, axle.spring.sag)
-  const heights = [left[1], right[1]], n = (side: number) => (side < 0 ? 'L' : 'R')
-  const where = (side: number) => `world.box3dvehicle's axle ${i} ${side < 0 ? 'left' : 'right'}`
-  let shift = 0, at: Corner3[]
-  if ('wishbones' in mine) {
-    const s = mine.wishbones
-    const pose = (d: number) => [-1, 1].map((side, k) => wishbonesAt(s, P(side), side, rest(side), heights[k], d, where(side)))
-    // the rack moved until the knuckles steer, on average, as the physics' wheels do
-    if (axle.steered) shift = root(d => { const [l, r] = pose(d); return (steerOf(l.R) + steerOf(r.R)) / 2 - (steerL + steerR) / 2 }, 0, `axle ${i}'s rack cannot steer its wheels ${((steerL + steerR) / 2).toFixed(3)}`)
-    at = pose(shift)
-  } else {
-    const s = mine.trailing
-    at = [-1, 1].map((side, k) => trailingAt(s, P(side), rest(side), heights[k], where(side)))
-  }
-  const parts: Part[] = []
-  const joints: [string, string][] = []
-  const tube = (name: string, body: string, a: Vec3, b: Vec3, r: number, paint: keyof Paint, mount = false, r2?: number) => {
-    const p: Part = { name, body, shape: 'tube', a, b, r, paint, mount }
-    if (r2 !== undefined) p.r2 = r2
-    parts.push(p)
-  }
-  const ball = (name: string, body: string, a: Vec3, r: number, paint: keyof Paint) => parts.push({ name, body, shape: 'ball', a, b: a, r, paint })
-  const coil = (name: string, body: string, a: Vec3, b: Vec3, c: Coil) => parts.push({ name, body, shape: 'coil', a, b, r: c.radius, paint: 'spring', turns: c.turns, wire: c.wire })
-  const corner = 'wishbones' in mine ? mine.wishbones : mine.trailing
-  for (const [k, side] of [-1, 1].entries()) {
-    const c = at[k], N = n(side), Pt = P(side), knuckle = `knuckle.${N}`, out = apply(c.R, [0, 0, side])
-    const hubAt = (d: number) => sub(c.W, scale(out, d))
-    // the arms
-    if ('wishbones' in mine) {
-      const s = mine.wishbones, steer = s.steer
-      for (const [arm, w] of [['lower', s.lower], ['upper', s.upper]] as const) {
-        const body = `${arm}.${N}`, ballAt = c.on(Pt(w.ball)), place = arm === 'lower' ? c.arm : c.upper
-        const pivots = w.pivots.map(Pt), u = norm(sub(pivots[1], pivots[0]))
-        for (const [j, pv] of pivots.entries()) {
-          // a bent tube runs to its elbow, which turns with the wishbone, and on to the ball joint
-          const elbow = w.elbows ? place(Pt(w.elbows[j])) : ballAt
-          tube(`${arm}.tube${j}.${N}`, body, pv, elbow, w.radius, 'arm')
-          if (w.elbows) {
-            ball(`${arm}.elbow${j}.${N}`, body, elbow, w.radius, 'arm')
-            tube(`${arm}.bend${j}.${N}`, body, elbow, ballAt, w.radius, 'arm')
-          }
-          tube(`${arm}.bush${j}.${N}`, body, sub(pv, scale(u, w.bush[1] / 2)), add(pv, scale(u, w.bush[1] / 2)), w.bush[0], 'trim')
-        }
-        ball(`${arm}.ball.${N}`, body, ballAt, ind.ball, 'chrome')
-        joints.push([body, 'frame'], [body, knuckle])
-      }
-      const BL = c.on(Pt(s.lower.ball)), BU = c.on(Pt(s.upper.ball)), T = c.on(Pt(steer.arm))
-      tube(`knuckle.${N}`, knuckle, BL, BU, s.knuckle, 'arm')
-      // the spindle from the knuckle's middle out to the hub, and the steering arm from the knuckle to
-      // the tie rod's end, square off the line between the ball joints
-      const mid = scale(add(BL, BU), 0.5), kk = norm(sub(BU, BL))
-      tube(`spindle.${N}`, knuckle, mid, hubAt(s.hub[2]), s.knuckle, 'arm')
-      tube(`steerarm.${N}`, knuckle, add(BL, scale(kk, dot(sub(T, BL), kk))), T, steer.rod, 'arm')
-      // the tie rod from the rack's end, its boot from the housing's end over the rack's end
-      const rk = steer.rack, rx = Pt([rk.along, 0, 0])[0], E: Vec3 = [rx, rk.y, side * rk.half + shift]
-      tube(`tierod.${N}`, `tierod.${N}`, E, T, steer.rod, 'arm')
-      ball(`tierod.end.${N}`, `tierod.${N}`, T, steer.rod * 1.5, 'chrome')
-      // the boot, bellows from the housing's end to the tie rod's inner ball, squeezed and stretched as
-      // the rack moves
-      tube(`rack.boot.${N}`, 'rack', [rx, rk.y, side * rk.housing], E, rk.boot, 'trim', false, steer.rod * 1.2)
-      joints.push([`tierod.${N}`, knuckle], [`tierod.${N}`, 'rack'])
-    } else {
-      const s = mine.trailing, F = Pt(s.pivot), E = c.on(Pt(s.end)), u = norm(sub(E, F))
-      tube(`trailing.${N}`, knuckle, F, E, s.radius, 'arm')
-      tube(`trailing.bush.${N}`, knuckle, sub(F, scale([0, 0, 1], s.bush[1] / 2)), add(F, scale([0, 0, 1], s.bush[1] / 2)), s.bush[0], 'trim')
-      tube(`carrier.${N}`, knuckle, sub(E, scale(u, s.radius)), hubAt(s.hub[2]), s.carrier, 'arm')
-      joints.push([knuckle, 'frame'])
-      for (const [j, rod] of s.rods.entries()) {
-        const body = `rod${j}.${N}`, on = c.on(Pt(rod.on))
-        tube(`rod${j}.${N}`, body, Pt(rod.frame), on, s.rod, 'arm', true)
-        ball(`rod${j}.end.${N}`, body, on, ind.ball, 'chrome')
-        joints.push([body, 'frame'], [body, knuckle])
-      }
-    }
-    // the hub, the brake disc and its caliper on the disc's rim toward the car's middle and up
-    const hb = corner.hub, br = corner.brake
-    tube(`hub.${N}`, knuckle, hubAt(hb[2]), hubAt(hb[1]), hb[0], 'chrome')
-    tube(`disc.${N}`, knuckle, hubAt(br.at + br.thick / 2), hubAt(br.at - br.thick / 2), br.radius, 'chrome')
-    const rim = apply(c.R, norm([t, 1.2, 0]))
-    const cal = add(hubAt(br.at), scale(rim, br.radius * 0.85))
-    tube(`caliper.${N}`, knuckle, sub(cal, scale(out, br.caliper[1] / 2)), add(cal, scale(out, br.caliper[1] / 2)), br.caliper[0], 'hook')
-
-    // the coilover from its eye on the arm to its top on the frame
-    const sh = corner.shock, shock = `shock.${N}`, low = c.arm(Pt(sh.lower)), top = Pt(sh.top)
-    const down = norm(sub(low, top)), foot = add(top, scale(down, sh.body[1]))
-    tube(`shock.body.${N}`, shock, top, foot, sh.body[0], 'damper', true)
-    tube(`shock.shaft.${N}`, shock, low, sub(foot, scale(down, 0.02)), sh.shaft, 'chrome')
-    ball(`shock.eye.${N}`, shock, low, sh.eye, 'chrome')
-    // the springs: the main on its seat, the ring, the tender under the perch; squeezed together, each
-    // gives as much as its rate makes it, the tender until the ring stops it at `cross`; longer than both
-    // unloaded, they sit on the seat clear of the perch
-    const seat = sub(low, scale(down, sh.seat)), perch = add(top, scale(down, sh.perch))
-    const stack = length(sub(seat, perch)), free = sh.main.free + sh.ring[1] + sh.tender.free
-    const squeeze = Math.max(0, free - stack)
-    let tender = squeeze * sh.main.rate / (sh.main.rate + sh.tender.rate)
-    if (sh.tender.free - tender < sh.tender.cross) tender = sh.tender.free - sh.tender.cross
-    const main = sh.main.free - (squeeze - tender), up = scale(down, -1)
-    const ringAt = add(seat, scale(up, main)), tenderAt = add(ringAt, scale(up, sh.ring[1]))
-    tube(`shock.seat.${N}`, shock, seat, add(seat, scale(up, 0.012)), sh.main.radius + sh.main.wire, 'hook')
-    coil(`shock.main.${N}`, shock, seat, ringAt, sh.main)
-    tube(`shock.ring.${N}`, shock, ringAt, tenderAt, sh.ring[0], 'hook')
-    coil(`shock.tender.${N}`, shock, tenderAt, add(tenderAt, scale(up, sh.tender.free - tender)), sh.tender)
-    tube(`shock.perch.${N}`, shock, perch, add(perch, scale(down, 0.012)), sh.tender.radius + sh.tender.wire, 'hook')
-    // the reservoir beside the body, toward the car's middle
-    const along = sub([t, 0, 0], scale(down, dot([t, 0, 0], down))), aside = scale(norm(along), sh.reservoir.gap)
-    tube(`shock.reservoir.${N}`, shock, add(top, add(aside, scale(down, 0.03))), add(top, add(aside, scale(down, 0.03 + sh.reservoir.length))), sh.reservoir.radius, 'damper', true)
-    joints.push([shock, 'frame'], [shock, 'wishbones' in mine ? `lower.${N}` : knuckle])
-
-    // the anti-roll bar's lever turned about the bar until its end link keeps its length
-    const sw = corner.sway, lever = `lever.${N}`, link = `link.${N}`, barEnd = Pt([sw.bar[0], sw.bar[1], sw.half])
-    const tip0 = Pt([sw.bar[0] + sw.lever[0], sw.bar[1] + sw.lever[1], sw.half]), on0 = Pt(sw.on), on = c.arm(on0)
-    const reach = length(sub(tip0, on0))
-    const turn = root(a => length(sub(swung(tip0, barEnd, [0, 0, 1], a), on)) - reach, 0, `${where(side)}'s anti-roll bar's link cannot reach its arm`)
-    const tip = swung(tip0, barEnd, [0, 0, 1], turn)
-    tube(`lever.${N}`, lever, barEnd, tip, sw.radius, 'arm')
-    tube(`link.${N}`, link, tip, on, sw.link[0], 'arm')
-    ball(`link.top.${N}`, link, tip, sw.link[1], 'chrome')
-    ball(`link.foot.${N}`, link, on, sw.link[1], 'chrome')
-    joints.push([lever, 'sway'], [link, lever], [link, 'wishbones' in mine ? `lower.${N}` : knuckle])
-
-    // the half-shaft from the differential's output to the hub, a cup and a boot at each end
-    const hs = corner.shaft, shaft = `shaft.${N}`, from = Pt(hs.from), to = hubAt(hs.at), u = norm(sub(to, from))
-    const [cr, cl] = hs.cup, [br2, bl] = hs.boot
-    tube(`shaft.cup.in.${N}`, shaft, from, add(from, scale(u, cl)), cr, 'chrome', true)
-    tube(`shaft.boot.in.${N}`, shaft, add(from, scale(u, cl)), add(from, scale(u, cl + bl)), br2, 'trim', false, hs.radius)
-    tube(`shaft.${N}`, shaft, add(from, scale(u, cl + bl)), sub(to, scale(u, cl + bl)), hs.radius, 'chrome')
-    tube(`shaft.boot.out.${N}`, shaft, sub(to, scale(u, cl + bl)), sub(to, scale(u, cl)), hs.radius, 'trim', false, br2)
-    tube(`shaft.cup.out.${N}`, shaft, sub(to, scale(u, cl)), to, cr, 'chrome')
-    joints.push([shaft, 'frame'], [shaft, knuckle])
-  }
-  // the anti-roll bar across the frame, and the front's rack housing
-  const sw = corner.sway, L = P(-1), R = P(1)
-  tube('sway', 'sway', L([sw.bar[0], sw.bar[1], sw.half]), R([sw.bar[0], sw.bar[1], sw.half]), sw.radius, 'arm')
-  joints.push(['sway', 'frame'])
-  if ('wishbones' in mine) {
-    const rk = mine.wishbones.steer.rack
-    tube('rack', 'rack', L([rk.along, rk.y, rk.housing]), R([rk.along, rk.y, rk.housing]), rk.radius, 'arm')
-    joints.push(['rack', 'frame'])
-  }
-  return { parts, joints, wheels: at.map(c => ({ centre: c.W, turn: c.R })), shift }
-}
-
-// The chassis's inertia about its centre of mass, a uniform box's of the body's size: about x
-// (roll), y (yaw) and z (pitch).
+// The chassis's inertia about its centre of mass: the body's own `inertia` when it gives one (a bike's, with its
+// rider's weight, is not a box's), else a uniform box's of the body's size: about x (roll), y (yaw) and z (pitch).
 export function inertia(v: Vehicle): Vec3 {
+  if (v.body.inertia) return v.body.inertia
   const { length: l, height: h, width: wd, mass: m } = v.body
   return [(m * (h * h + wd * wd)) / 12, (m * (l * l + wd * wd)) / 12, (m * (l * l + h * h)) / 12]
 }
@@ -871,13 +416,14 @@ export function wheelInertia(wh: Wheel): Vec3 {
   return [side, side, (wh.mass * wh.radius * wh.radius) / 2]
 }
 
-// The mass a corner's two ends move with against each other along the chassis's up, as Box3D's
-// wheel joint reckons it for its spring: the chassis's and the wheel's masses, and each one's turning
-// about its centre of mass as the spring pushes it off-centre.
+// The mass a corner's two ends move with against each other along its axle's axis (the chassis's up, or a
+// raked axle's line), as Box3D's wheel joint reckons it for its spring: the chassis's and the wheel's masses,
+// and each one's turning about its centre of mass as the spring pushes it off-centre, the moment's arm the
+// point's offset crossed with the axis.
 export function reach(v: Vehicle, c: Corner): number {
-  const r = sub(c.mount, v.body.center), I = inertia(v), J = wheelInertia(c.axle.wheel)
-  const chassis = 1 / v.body.mass + (r[2] * r[2]) / I[0] + (r[0] * r[0]) / I[2]
-  const wheel = 1 / c.axle.wheel.mass + (c.hub[2] * c.hub[2]) / J[0]
+  const a = axisOf(c.axle), r = cross(sub(c.mount, v.body.center), a), h = cross(c.hub, a), I = inertia(v), J = wheelInertia(c.axle.wheel)
+  const chassis = 1 / v.body.mass + (r[0] * r[0]) / I[0] + (r[1] * r[1]) / I[1] + (r[2] * r[2]) / I[2]
+  const wheel = 1 / c.axle.wheel.mass + (h[0] * h[0]) / J[0] + (h[1] * h[1]) / J[1] + (h[2] * h[2]) / J[2]
   return 1 / (chassis + wheel)
 }
 
@@ -893,27 +439,35 @@ export function pull(w: W): number | undefined {
 // Each wheel's share of the chassis's weight, in newtons, standing still on flat ground: the shares
 // that hold the chassis up and level about its centre of mass, each as the spring's stiffness times
 // a height and a tilt along x and z that are the same for every wheel, which makes one answer for any
-// number of axles and is the lever rule for two.
+// number of axles and is the lever rule for two. A vehicle whose every wheel is on its middle line (a
+// two-wheeler's) has no tilt across to find: it is held up by the lever rule along x alone, and left to
+// its `balance` across.
 export function loads(v: Vehicle, g: number): number[] {
   const cs = corners(v), W = v.body.mass * g, [cx, , cz] = v.body.center
-  const M = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+  const across = cs.some(c => c.mount[2] !== 0), n = across ? 3 : 2
+  // The weight a wheel holds up stands on it where it rests, its middle's x (a raked axle's is not its mount's), and a spring on a raked axle
+  // carries the cosine of the rake of that: the rest is the joint's, across the axis.
+  const f = (c: Corner) => [1, wheelAt(c, c.axle.spring.sag)[0], c.mount[2]].slice(0, n)
+  const M = Array.from({ length: n }, () => new Array<number>(n).fill(0))
   for (const c of cs) {
-    const f = [1, c.mount[0], c.mount[2]], k = c.axle.spring.stiffness
-    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) M[i][j] += k * f[i] * f[j]
+    const row = f(c), k = c.axle.spring.stiffness
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) M[i][j] += k * row[i] * row[j]
   }
-  const abc = solve(M, [W, W * cx, W * cz])
-  if (!abc) throw new Error('box3dvehicle: the axles do not stand the chassis up: it needs wheels at two places along it and on both sides')
-  return cs.map(c => c.axle.spring.stiffness * (abc[0] + abc[1] * c.mount[0] + abc[2] * c.mount[2]))
+  const abc = solve(M, [W, W * cx, W * cz].slice(0, n))
+  if (!abc) throw new Error('box3dvehicle: the axles do not stand the chassis up: it needs wheels at two places along it and, but for a vehicle whose every wheel is on its middle line, on both sides')
+  return cs.map(c => c.axle.spring.stiffness * f(c).reduce((s, x, i) => s + abc[i] * x, 0) * (c.axle.rake ? math.cos(c.axle.rake) : 1))
 }
 
-// M x = b for a 3×3 M, or undefined when M has no inverse.
+// M x = b for a 2×2 or 3×3 M, or undefined when M has no inverse.
 function solve(M: number[][], b: number[]): number[] | undefined {
-  const det = (m: number[][]) =>
-    m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
+  const n = M.length
+  const det = (m: number[][]) => n === 2
+    ? m[0][0] * m[1][1] - m[0][1] * m[1][0]
+    : m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
   const d = det(M)
   const size = Math.max(...M.flat().map(Math.abs))
-  if (!(Math.abs(d) > 1e-12 * math.pow(size, 3))) return undefined
-  return [0, 1, 2].map(i => det(M.map((row, r) => row.map((x, k) => (k === i ? b[r] : x)))) / d)
+  if (!(Math.abs(d) > 1e-12 * math.pow(size, n))) return undefined
+  return Array.from({ length: n }, (_, i) => det(M.map((row, r) => row.map((x, k) => (k === i ? b[r] : x)))) / d)
 }
 
 // What an axle is on this car, standing still: each wheel's `load` (N) and the mass it carries
@@ -924,14 +478,14 @@ export type Ride = { load: number; carried: number; hz: number; bump: number; re
 export function ride(v: Vehicle, g: number): Ride[] {
   const all = loads(v, g)
   return v.axles.map((a, i) => {
-    const load = all[2 * i], carried = load / g, k = a.spring.stiffness
+    const load = all[v.axles.slice(0, i).reduce((n, x) => n + (x.one ? 1 : 2), 0)], carried = load / g, k = a.spring.stiffness
     const critical = 2 * Math.sqrt(k * carried)
     return {
       load, carried,
       hz: Math.sqrt(k / carried) / (2 * Math.PI),
       bump: a.damper.bump / critical,
       rebound: a.damper.rebound / critical,
-      clearance: a.wheel.radius + a.spring.length - a.spring.sag - a.mount - v.body.height / 2,
+      clearance: a.wheel.radius - wheelAt(corners(v).find(c => c.axle === a)!, a.spring.sag)[1] - v.body.height / 2,
     }
   })
 }
@@ -939,10 +493,21 @@ export function ride(v: Vehicle, g: number): Ride[] {
 // A quarter turn about z: a wheel joint frame's x, its axis, laid along the chassis's y.
 export const QUARTER: Quat = [0, 0, Math.SQRT1_2, Math.SQRT1_2]
 
+// A wheel joint's frame turned for an axle: the quarter turn, and a raked axle's `rake` more about z, so the
+// joint's axis, which the spring works along and the wheel steers about, runs up `axisOf` and the wheel still
+// spins about z.
+export function frameRot(a: Axle): Quat {
+  if (!a.rake) return QUARTER
+  const half = Math.PI / 4 + a.rake / 2
+  return [0, 0, math.sin(half), math.cos(half)]
+}
+
 // A corner's joint frame on the chassis, its origin on the axis where the wheel's inner face is when
 // the spring is pushed in `c`.
-export const frameA = (k: Corner, c: number) =>
-  ({ pos: [k.mount[0], k.mount[1] + c - k.axle.spring.length, k.mount[2]] as Vec3, rot: QUARTER })
+export function frameA(k: Corner, c: number) {
+  const a = axisOf(k.axle), d = c - k.axle.spring.length
+  return { pos: [k.mount[0] + a[0] * d, k.mount[1] + a[1] * d, k.mount[2]] as Vec3, rot: frameRot(k.axle) }
+}
 
 // ---------------------------------------------------------------- the rule
 
@@ -951,7 +516,7 @@ const still = (pos: Vec3, rot: Quat, vel: Vec3) => ({ pos, rot, vel, spin: [0, 0
 // How high a car's chassis origin stands over flat ground at rest: a wheel's radius, the spring's
 // length less its sag, less the mount's height, the highest of its axles'.
 export const standing = (v: Vehicle) =>
-  Math.max(...v.axles.map(a => a.wheel.radius + a.spring.length - a.spring.sag - a.mount))
+  Math.max(...corners(v).map(c => c.axle.wheel.radius - wheelAt(c, c.axle.spring.sag)[1]))
 
 function build(me: Row, v: Vehicle, w: W) {
   const fleet: Fleet = w.world.box3dvehicle
@@ -972,17 +537,106 @@ function build(me: Row, v: Vehicle, w: W) {
   delete me.data.initialVelocity
 }
 
+// The angle, radians, positive to the left, a steered corner's wheel is turned at `steer` (the row's, -1 to 1) before its
+// axle's end is told: the inside of the turn `angle` × steer, the outside that less the share `steering.ackermann` of what
+// puts it on a circle about the inside wheel's centre, which lies on the line through the axles that do not steer (the
+// wheelbase's middle `mid` when every axle steers) at the radius the inside wheel's turn makes.
+export function turned(v: Vehicle, c: Corner, steer: number, mid: number): number {
+  const turn = steer * v.steering.angle, size = Math.abs(turn), share = v.steering.ackermann ?? 0
+  // the wheel on the left (side -1) is the inside of a left turn (positive), the right one of a right turn
+  if (!share || size < 1e-9 || turn * c.side <= 0) return turn
+  const fixed = v.axles.filter(a => !a.steered)
+  const lever = Math.abs(c.axle.at - (fixed.length ? fixed.reduce((s, a) => s + a.at, 0) / fixed.length : mid))
+  const circle = math.atan(lever / (lever / math.tan(size) + c.axle.track))
+  return Math.sign(turn) * (size + share * (circle - size))
+}
+
 function drive(me: Row, v: Vehicle, w: W, dt: number) {
   const e = v.engine, steer: number = me.data.steer ?? 0
   const cs = corners(v), ats = v.axles.map(a => a.at), mid = (Math.max(...ats) + Math.min(...ats)) / 2
+  // A balanced vehicle's bars are turned by what the key asks for and the lean the chassis has now (`bars`).
+  const leaning = v.balance && posture(w.get(me.data.chassis)), g = v.balance && pulled(w)
   // An axle behind the wheelbase's middle steers the other way, so a rear-steered car turns left
   // on a positive steer as a front-steered one does, and one steered at both ends turns tighter.
   cs.forEach((c, i) => {
-    if (c.axle.steered) w.get(me.data.joints[i]).data.targetSteeringAngle = (c.axle.at < mid ? -1 : 1) * steer * v.steering.angle
+    if (!c.axle.steered) return
+    const angle = leaning ? bars(v, steer, leaning.lean, leaning.speed, g!) : turned(v, c, steer, mid)
+    w.get(me.data.joints[i]).data.targetSteeringAngle = (c.axle.at < mid ? -1 : 1) * angle
   })
   if ('curve' in e) petrol(me, e, cs, w, dt)
   else if ('power' in e) electric(me, e, cs, w)
   else direct(me, e, cs, w)
+}
+
+// ---------------------------------------------------------------- balance
+//
+// A vehicle that gives `balance` cannot stand on its wheels upright (a motorcycle's two are on its middle line) and is held up and leaned into
+// its turns by a roll torque on its chassis: a spring and damper (`balance.hertz`, `balance.dampingRatio`) on the angle its up leans from the
+// world's about its own heading laid flat, positive to the right, at most `balance.torque` N·m, aimed at the lean the steer key asks for. A
+// force on the chassis from outside, so the vehicle never truly falls: a turn too hard sheds speed, and a bad landing rolls it over and rights it.
+//
+// The steer key asks for one turn. A two-wheeler turns on the circle that gravity holds it on at the lean whose pull is v² tan δ / L: a front
+// wheel turned δ on a wheelbase L at speed v. So a key held at `steer` asks for the wheel's angle tan δ = steer · min(tan(`steering.angle`),
+// L g tan(`balance.lean`) / (v² + `balance.floor`²)), full lock at a walk and the most the lean can carry at speed, and for the lean that angle
+// needs, atan(v² tan δ / (L g)). The chassis is held at that lean, its target moved towards it at most `balance.rate` rad/s, as a rider leans a
+// bike over in a moment and not in a step (`aim` on the row); and the steered wheel is turned by two things: the angle asked for, as much as
+// `barsShare` says (all of it at a standstill, none at speed), and the angle the lean the chassis has now calls for, atan(L g tan(lean) /
+// (v² + floor²)), the rest. A vehicle at speed is therefore turned by its lean: it leans first and the turn follows, as a rider's does, and
+// once it has leaned the lean a turn needs, the roll torque is nothing. `balance.reference` m/s is the speed at which the bars' own share has
+// fallen to a quarter; `balance.floor` m/s is added to the speed where the lean is turned into steering, so a vehicle nearly still is not asked
+// to turn its bars right over. The row writes `lean` (rad, positive to the right) and `speed` (m/s along the chassis's heading).
+
+/** The lean of a chassis and where it points: its lean about its own heading laid flat, positive to the right, its roll rate, the heading and its
+ * speed along it. */
+export function posture(chassis: Row): { lean: number; rate: number; heading: Vec3; speed: number } {
+  const { rot, spin, vel } = chassis.data
+  const f = turn(rot, [1, 0, 0]), u = turn(rot, [0, 1, 0])
+  const flat = math.hypot(f[0], f[2]) || 1
+  const h: Vec3 = [f[0] / flat, 0, f[2] / flat]
+  // Up is the world's up turned about h by the lean: u = cos Y + sin (h × Y), and h × Y = (-h.z, 0, h.x).
+  const lean = math.atan2(-u[0] * h[2] + u[2] * h[0], u[1])
+  return { lean, rate: dot(spin, h), heading: h, speed: dot(vel, f) }
+}
+
+/** The distance between a balanced vehicle's two axles, m. */
+export function wheelbase(v: Vehicle): number {
+  const xs = corners(v).map(c => wheelAt(c, c.axle.spring.sag)[0])
+  return Math.max(...xs) - Math.min(...xs)
+}
+
+/** What the steer key asks for at `speed` in gravity `pull`: the steered wheel's angle `bars` and the `lean` that turn needs, rad, the lean
+ * negative to the left. */
+export function demand(v: Vehicle, steer: number, speed: number, pull: number): { bars: number; lean: number } {
+  const b = v.balance!, L = wheelbase(v)
+  const most = Math.min(math.tan(v.steering.angle), (L * pull * math.tan(b.lean)) / (speed * speed + b.floor * b.floor))
+  const tan = steer * most
+  return { bars: math.atan(tan), lean: -math.atan((speed * speed * tan) / (L * pull)) }
+}
+
+/** How much of the angle asked for the bars turn directly: 1 at a standstill, 1 / (1 + (speed / reference)²)² at speed, a quarter at `reference`. */
+export const barsShare = (v: Vehicle, speed: number) => 1 / (1 + (speed * speed) / (v.balance!.reference * v.balance!.reference)) ** 2
+
+/** The steered wheel's angle, rad, positive to the left, for the key `steer`, the chassis leaned `lean` and moving `speed` in gravity `pull`. */
+export function bars(v: Vehicle, steer: number, lean: number, speed: number, pull: number): number {
+  const b = v.balance!, share = barsShare(v, speed), asked = demand(v, steer, speed, pull).bars
+  const follow = -math.atan((wheelbase(v) * pull * math.tan(lean)) / (speed * speed + b.floor * b.floor))
+  return Math.max(-v.steering.angle, Math.min(v.steering.angle, share * asked + (1 - share) * follow))
+}
+
+// The roll torque for this step: the chassis held at the lean the key asks for, its target moved towards that lean at most `rate` rad/s, by a
+// spring and damper of `balance`. Written on the chassis row, where box3d holds it until it is written again.
+function balance(me: Row, v: Vehicle, w: W, dt: number) {
+  const b = v.balance!, chassis = w.get(me.data.chassis)
+  const { lean, rate, heading, speed } = posture(chassis)
+  const asked = demand(v, me.data.steer ?? 0, speed, pulled(w)).lean
+  const aim: number = me.data.aim ?? 0, step = b.rate * dt
+  me.data.aim = aim + Math.max(-step, Math.min(step, asked - aim))
+  const omega = 2 * Math.PI * b.hertz
+  const wanted = inertia(v)[0] * (omega * omega * (me.data.aim - lean) - 2 * b.dampingRatio * omega * rate)
+  const t = Math.max(-b.torque, Math.min(b.torque, wanted))
+  chassis.data.torque = [heading[0] * t, 0, heading[2] * t]
+  me.data.lean = lean
+  me.data.speed = speed
 }
 
 // The driven wheels' mean forward spin against the chassis, rad/s, and their corners' places.
@@ -1021,7 +675,7 @@ function electric(me: Row, e: Electric, cs: Corner[], w: W) {
   const aim = torque > 0 ? (-Math.sign(ratio) * (e.redline / RPM)) / Math.abs(ratio) : 0
   cs.forEach((c, i) => {
     const j = w.get(me.data.joints[i]).data
-    if (brake > 0) { j.spinSpeed = 0; j.maxSpinTorque = brake * e.brakeTorque }
+    if (brake > 0) { j.spinSpeed = 0; j.maxSpinTorque = brake * (c.axle.brakeTorque ?? e.brakeTorque) }
     else if (c.axle.driven && ratio !== 0) { j.spinSpeed = aim; j.maxSpinTorque = share }
     else { j.spinSpeed = 0; j.maxSpinTorque = 0 }
   })
@@ -1031,7 +685,7 @@ function direct(me: Row, e: Direct, cs: Corner[], w: W) {
   const throttle: number = me.data.throttle ?? 0, brake: number = me.data.brake ?? 0
   cs.forEach((c, i) => {
     const j = w.get(me.data.joints[i]).data
-    if (brake > 0) { j.spinSpeed = 0; j.maxSpinTorque = brake * e.brakeTorque }
+    if (brake > 0) { j.spinSpeed = 0; j.maxSpinTorque = brake * (c.axle.brakeTorque ?? e.brakeTorque) }
     else if (c.axle.driven && throttle !== 0) { j.spinSpeed = -throttle * e.spinSpeed; j.maxSpinTorque = e.spinTorque }
     else { j.spinSpeed = 0; j.maxSpinTorque = e.coastTorque }
   })
@@ -1091,7 +745,7 @@ function petrol(me: Row, e: Petrol, cs: Corner[], w: W, dt: number) {
   const aim = torque > 0 ? (-Math.sign(ratio) * (e.redline / RPM)) / Math.abs(ratio) : 0
   cs.forEach((c, i) => {
     const j = w.get(me.data.joints[i]).data
-    if (brake > 0) { j.spinSpeed = 0; j.maxSpinTorque = brake * e.brakeTorque }
+    if (brake > 0) { j.spinSpeed = 0; j.maxSpinTorque = brake * (c.axle.brakeTorque ?? e.brakeTorque) }
     else if (c.axle.driven && ratio !== 0) { j.spinSpeed = aim; j.maxSpinTorque = share }
     else { j.spinSpeed = 0; j.maxSpinTorque = 0 }
   })
@@ -1159,21 +813,28 @@ function chassisExtent(v: Vehicle): number {
 
 const push = (row: Row, p: Push) => { (row.data.pushes ??= []).push(p) }
 
+// How hard the scene's gravity pulls, m/s², or a throw naming what a scene that names no gravity lacks.
+function pulled(w: W): number {
+  const g = pull(w)
+  if (g === undefined) throw new Error('box3dvehicle: world.box3dvehicle.mods names no gravity, and a car\'s springs carry its weight in it: name the plugin its parts are bodies of, as { gravity: \'box3d\' }')
+  return g
+}
+
 // Each corner's suspension set for this step, its numbers written on the row; hands back what each
 // corner's spring, bump stop and anti-roll bar push with, N, the damper left out.
 function suspend(me: Row, v: Vehicle, w: W, dt: number): number[] {
   const body = w.get(me.data.chassis), c = body.data
-  const up = turn(c.rot, [0, 1, 0]), com = add(c.pos, turn(c.rot, v.body.center))
-  const g = pull(w)
-  if (g === undefined) throw new Error('box3dvehicle: world.box3dvehicle.mods names no gravity, and a car\'s springs carry its weight in it: name the plugin its parts are bodies of, as { gravity: \'box3d\' }')
-  const cs = corners(v), shares = loads(v, g)
+  const com = add(c.pos, turn(c.rot, v.body.center))
+  const cs = corners(v), shares = loads(v, pulled(w)), across = partners(cs)
   const at = cs.map((k, i) => {
     const wheel = w.get(me.data.wheels[i])
+    // the way this corner's spring works, its axle's axis in the world
+    const up = turn(c.rot, axisOf(k.axle))
     const mount = add(c.pos, turn(c.rot, k.mount)), hub = add(wheel.data.pos, turn(wheel.data.rot, k.hub))
     const vMount = add(c.vel, cross(c.spin, sub(mount, com)))
     const vHub = add(wheel.data.vel, cross(wheel.data.spin, sub(hub, wheel.data.pos)))
     return {
-      wheel, hub, mount,
+      wheel, hub, mount, up,
       grounded: (wheel.data.touching?.length ?? 0) > 0,
       compression: dot(sub(hub, mount), up) + k.axle.spring.length,
       speed: dot(sub(vHub, vMount), up),
@@ -1187,7 +848,7 @@ function suspend(me: Row, v: Vehicle, w: W, dt: number): number[] {
   const pressed: number[] = []
   const load = at.map((x, i) => {
     const k = cs[i], { spring, bumpStop, antiRoll, damper } = k.axle
-    const cNow = x.compression, other = at[i ^ 1].compression
+    const cNow = x.compression, other = at[across[i]].compression
     const pushed = shares[i] + spring.stiffness * (cNow - spring.sag)
     const into = cNow - (spring.travel - bumpStop.length)
     const f = Math.max(0, pushed) + (into > 0 ? bumpStop.stiffness * into * (1 + into / bumpStop.length) : 0) + antiRoll * (cNow - other)
@@ -1210,8 +871,8 @@ function suspend(me: Row, v: Vehicle, w: W, dt: number): number[] {
       j.lowerSuspensionLimit = 0
       j.upperSuspensionLimit = spring.travel
       const impulse = m * x.speed * (1 - math.exp((-rate * dt) / m))
-      push(body, { impulse: scale(up, impulse), point: x.mount })
-      push(x.wheel, { impulse: scale(up, -impulse), point: x.hub })
+      push(body, { impulse: scale(x.up, impulse), point: x.mount })
+      push(x.wheel, { impulse: scale(x.up, -impulse), point: x.hub })
     }
     return f + rate * x.speed
   })
@@ -1361,6 +1022,7 @@ export const box3dvehicle: Kind = {
     if (me.data.chassis === undefined) build(me, v, w)
     if (typeof me.data.pedal === 'number') press(me, v, w)
     drive(me, v, w, dt)
+    if (v.balance) balance(me, v, w, dt)
     const pressed = suspend(me, v, w, dt)
     grips(me, v, w)
     drags(me, v, w, dt, pressed)

@@ -116,6 +116,25 @@ test('a page that enters the entry scene of a game showing a loading screen draw
   expect(built.get('fresh/index.html')).not.toContain('loader-cover')
 })
 
+test('each mod that hands a worker its own file as the task to import is a file of the bundle', async () => {
+  const mods = ['plugins/terrain3d/terrain3d.lod3d.ts', 'plugins/terrain3d/terrain3d.gpgpu3d.ts', 'plugins/terrain3d/terrain3d.grass3d.ts', 'plugins/shapes3d/shapes3d.lod3d.ts']
+  writeFileSync(path.join(root, 'games/fresh/mods.html'), `<!doctype html>
+<html><body>
+<script type="module">
+${mods.map((m, i) => `  import * as m${i} from '#${m}'`).join('\n')}
+  globalThis.mods = [${mods.map((_, i) => `m${i}`).join(', ')}]
+</script>
+</body></html>
+`)
+  const it = bundler({ root, page: 'games/fresh/mods.html', url: r => `/${r}`, out: '/b/' })
+  try {
+    const built = await it.build()
+    expect([...built.files.keys()]).toEqual(expect.arrayContaining(mods.map(m => m.replace(/\.ts$/, '.js'))))
+  } finally {
+    await it.dispose()
+  }
+})
+
 test('built again, the bundle holds a look written since', async () => {
   writeFileSync(path.join(root, 'games/fresh/spark.client.ts'), 'export function setup() {}\nexport function tick() {}\nexport function remove() {}\n')
   const { list } = await run(await b.build(), 'two')

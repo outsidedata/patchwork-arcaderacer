@@ -1041,9 +1041,11 @@ export function start({ port, root, packs: packsGiven, library, effects: effects
   //             effects file itself (whose `files` particle3d reads from beside it), and
   //             `lights3d` when the scene lists lights3d, which draws an effect's `lamp`, and
   //             `dither3d` when the scene lists dither3d, so the stage draws the frame as the game does.
-  //   plugins   the plugins the stage lists, in the scene's order: particle3d, lights3d and dither3d
-  //             when the scene lists them, render3d.
+  //   plugins   the plugins the stage lists, in the scene's order: particle3d, lights3d, dither3d and
+  //             skydome3d when the scene lists them, render3d.
   //   render3d  the scene's render3d prefab, so the tone, the exposure and the bloom are the game's.
+  //   sky       the scene's skydome3d row's prefab, when the scene lists skydome3d (`world.skydome3d`
+  //             is then in `world`): the sky the stage draws, its time of day the page's to turn.
   //   dt        the scene's step, which particle3d moves every effect by.
   //   thrown    the thrown source's numbers, the stage file's `thrown` (`particles.stage.json`,
   //             `thrown.ts`): the body box3d throws across the stage for an effect to ride.
@@ -1059,7 +1061,7 @@ export function start({ port, root, packs: packsGiven, library, effects: effects
   //             played by the stage's particle3d from the effects file being tuned.
   type Ui3d = { scene: string; file: string; looks: Json; world: Json }
   function particlesSummary(game: string) {
-    const files = new Map<string, { file: string; key: string; scenes: string[]; effects: Json; world: Json; plugins: string[]; render3d: Json; dt: number; thrown: Json; listed: Listed[]; ui3d: Ui3d[] }>()
+    const files = new Map<string, { file: string; key: string; scenes: string[]; effects: Json; world: Json; plugins: string[]; render3d: Json; sky?: Json; dt: number; thrown: Json; listed: Listed[]; ui3d: Ui3d[] }>()
     // A scene's looks file, when it lists ui3d and names one.
     const looksOf = (s: Loaded, lists: string[], w: Json): Ui3d | undefined => {
       if (!lists.includes('ui3d') || typeof w.ui3d?.looks !== 'string') return undefined
@@ -1092,12 +1094,12 @@ export function start({ port, root, packs: packsGiven, library, effects: effects
       const full = inside(root, file)
       if (!full || !full.startsWith(gamesDir + path.sep) || !fs.existsSync(full)) throw new Error(`${s.name}'s effects file ${file} is not a file of games/`)
       const sheets = Object.fromEntries(Object.entries((w.loader.assets ?? {}) as Record<string, Json>).filter(([k, e]) => e.type === 'sheet' || k === key))
-      const plugins = lists.filter(p => p === 'particle3d' || p === 'instances3d' || p === 'lights3d' || p === 'dither3d' || p === 'render3d')
+      const plugins = lists.filter(p => p === 'particle3d' || p === 'instances3d' || p === 'lights3d' || p === 'dither3d' || p === 'skydome3d' || p === 'render3d')
       const effects = read(full)
       files.set(file, {
         file, key, scenes: [s.name], effects, listed: listedOf(full, effects),
-        world: { particle3d: w.particle3d, loader: { ...w.loader, assets: sheets }, ...(plugins.includes('instances3d') ? { instances3d: w.instances3d } : {}), ...(plugins.includes('lights3d') ? { lights3d: w.lights3d } : {}), ...(plugins.includes('dither3d') ? { dither3d: w.dither3d } : {}), ...(w.shipped ? { shipped: w.shipped } : {}) },
-        plugins, render3d: s.scene.prefabs?.render3d ?? {}, dt: s.scene.prefabs?.engine?.dt ?? 1 / 60,
+        world: { particle3d: w.particle3d, loader: { ...w.loader, assets: sheets }, ...(plugins.includes('instances3d') ? { instances3d: w.instances3d } : {}), ...(plugins.includes('lights3d') ? { lights3d: w.lights3d } : {}), ...(plugins.includes('dither3d') ? { dither3d: w.dither3d } : {}), ...(plugins.includes('skydome3d') ? { skydome3d: w.skydome3d } : {}), ...(w.shipped ? { shipped: w.shipped } : {}) },
+        plugins, render3d: s.scene.prefabs?.render3d ?? {}, ...(plugins.includes('skydome3d') ? { sky: s.scene.prefabs?.skydome3d } : {}), dt: s.scene.prefabs?.engine?.dt ?? 1 / 60,
         thrown: read(STAGE).thrown,
         ui3d: ui3d ? [ui3d] : [],
       })
@@ -1233,6 +1235,7 @@ export function start({ port, root, packs: packsGiven, library, effects: effects
         },
         plugins: named ? named.f.plugins : stage.plugins,
         render3d: named ? named.f.render3d : stage.render3d,
+        sky: named ? named.f.sky : stage.sky,
         dt: named ? named.f.dt : stage.dt,
         thrown: stage.thrown,
         ui3d: named ? named.f.ui3d : [],
