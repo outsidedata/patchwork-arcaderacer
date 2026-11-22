@@ -592,10 +592,10 @@
               "at": [640, 650],
               "every": 4,
               "text": [
-                { "text": "Turn and tap the brake or handbrake to start a drift.", "picture": "ar1" },
-                { "text": "A drift that touches no wall or car earns boost.", "picture": "ar2" },
-                { "text": "Touching a wall or a car spoils the drift's boost.", "picture": "ar3" },
-                { "text": "Keep a drift clear of walls and cars and the boost is yours.", "picture": "ar4" }
+                { "text": "Turn and tap the brake or handbrake to start a drift.", "picture": "ar4" },
+                { "text": "A drift that touches no wall or car earns boost.", "picture": "ar3" },
+                { "text": "Touching a wall or a car spoils the drift's boost.", "picture": "ar1" },
+                { "text": "Keep a drift clear of walls and cars and the boost is yours.", "picture": "ar2" }
               ]
             },
             "shaders": { "style": "tagline", "at": [640, 650], "text": "Compiling shaders" },
