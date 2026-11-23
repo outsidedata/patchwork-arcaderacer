@@ -1,7 +1,7 @@
 // arcaderacer's bake, `yarn bake arcaderacer` (core's `scripts/bake.ts`): every glb the scene's
 // catalogue names that a Blender script beside it makes, written where the catalogue reads it. Each glb
 // is exported plain by its script and packed by gltfpack (meshopt geometry, WebP textures).
-//   trees/trees.glb                    grown by the library's `trees/trees.py` (Blender's Sapling Tree
+//   trees/trees.glb                    grown by the library's `lod/trees/trees.py` (Blender's Sapling Tree
 //                                      Gen) from `trees/trees.trees.json`: the forest's fir and cedar
 //                                      (the library's spruce and spruce-mid) and Tokyo's zelkova, near,
 //                                      mid and far, each a metre tall, their leaves and bark the species'
@@ -76,9 +76,9 @@ export default async (tools: Tools) => {
     flipbooks(script('fx/effects.json')).then(() => made(script('fx/smoke.png'))),
     glb('trees/trees.glb', async raw => {
       // the spec's leaf and bark sets downloaded into the library first, then the trees grown from it
-      const { leafSets, barkSets } = await import(pathToFileURL(path.join(library, 'trees', 'trees.mjs')).href)
+      const { leafSets, barkSets } = await import(pathToFileURL(path.join(library, 'lod', 'trees', 'trees.mjs')).href)
       for (const zip of [...leafSets(script('trees/trees.trees.json')), ...barkSets(script('trees/trees.trees.json'))] as string[]) await texture(zip)
-      await blender(['--factory-startup', '--python-exit-code', '1', '--python', path.join(library, 'trees', 'trees.py'), '--', script('trees/trees.trees.json'), raw])
+      await blender(['--factory-startup', '--python-exit-code', '1', '--python', path.join(library, 'lod', 'trees', 'trees.py'), '--', script('trees/trees.trees.json'), raw])
     }),
     glb('paris/haussmann.glb', haussmann('high')),
     glb('paris/haussmann_medium.glb', haussmann('medium')),

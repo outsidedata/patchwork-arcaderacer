@@ -1,7 +1,7 @@
 {
  "jeep_tj": {
   "body": [
-   {"kind": "modern/vehicles/jeep_tj/jeep", "name": "jeep", "Paint": "red", "Rim": "steel", "Steer": 0, "Doors": "on", "Hood": false, "Windshield": "up", "Tailgate": false, "Lit": false, "Driving": false, "Corners": false, "Steering": false},
+   {"kind": "modern/vehicles/jeep_tj/jeep", "name": "jeep", "Paint": "red", "Rim": "steel", "Steer": 0, "Doors": "on", "Hood": false, "Windshield": "up", "Tailgate": false, "Lit": false, "Reversing": false, "Driving": false, "Corners": false, "Steering": false, "FrontSag": 0.1, "FrontTravel": 0.175, "RearSag": 0.1, "RearTravel": 0.175, "Lock": 28.6479},
    {"kind": "modern/vehicles/jeep_tj/interior/steering", "name": "steer", "place": [-0.36, -0.138], "elevation": 1.182, "degrees": 90, "roll": 23}
   ],
   "wheels": {
