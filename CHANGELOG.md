@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-23-0300dfe
+
+- yarn bake — bakes feather pictures and reads textures and garments from the library's current layout.
+- loader — the loading bar names the file still coming down.
+- audiodaw — music plays in Firefox.
+
 ## 2026-11-22-471eaf5
 
 - audiodaw — clips can loop for any length, and a song can be played as launchable scenes and slots, like Ableton's Session View.

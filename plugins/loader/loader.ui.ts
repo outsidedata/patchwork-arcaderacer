@@ -131,7 +131,7 @@ export const behaviors = (): Behaviors => {
       if (s.gone) return
       // the frame after one that drew every picture, the cover over it comes off
       if (s.drawn) uncover()
-      const { done, of } = loader.preloads()
+      const { done, of, file } = loader.preloads()
       const files = of ? done / of : 1
       const pending = loader.shaders()
       s.peak = Math.max(s.peak, pending)
@@ -188,6 +188,11 @@ export const behaviors = (): Behaviors => {
         bar.position.set(b.at[0], b.at[1])
         bar.set(k, b.fill as any)
         shown.push(bar)
+        // the name of the file coming down, in the middle of the bar
+        const name = ui.show(panel, 'file', () => new PIXI.Text({ text: '', style: { fontFamily: 'Arial, sans-serif', fontSize: Math.max(10, b.size[1]), fill: 0xffffff, stroke: { color: 0, width: 3 } }, anchor: 0.5 }))
+        name.text = file
+        name.position.set(b.at[0] + b.size[0] / 2, b.at[1] + b.size[1] / 2)
+        shown.push(name)
       }
 
       if (compiling && look.shaders) {

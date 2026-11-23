@@ -60,6 +60,7 @@
 
 import type { Plugins } from '#engine/browser.ts'
 import * as Tone from 'tone'
+import { AudioContext as StandardAudioContext } from 'standardized-audio-context'
 import { DRUM_KIT, fromOf, launchOf, lengthOn, passesOn, playedOf, round, slotOf, sounds, spanOf, type Bus, type Chain, type Clip, type Device, type Effect, type Instrument, type KitOptions, type Lane, type Note, type Pad, type Pattern, type Project, type Knob, type Range, type AutomationNote, type AutomationPattern, level, valueAt } from './audiodaw.sim'
 
 // What every Tone instrument and effect has: a setting, an input, an output.
@@ -1510,6 +1511,8 @@ export type Timing = { lookAhead: number; latencyHint: number }
 
 export function audiodaw() {
   let timed: Timing | undefined
+  // The browser's own context under the one the plugin made last: the buffer is read off it.
+  let browsers: AudioContext | undefined
   let playing: Song | undefined
   // The song last loaded, as last edited, and its knobs' ranges: what `retime` makes again.
   let last: { project: Project; ranges: Ranges | undefined } | undefined
@@ -1519,10 +1522,15 @@ export function audiodaw() {
     return playing
   }
   // A context of Tone's on `t`, made the one Tone plays through; the one it replaces handed back.
-  // Tone takes a buffer only by name; the browser's AudioContext takes it in seconds.
+  // Tone takes a buffer only by name; an AudioContext takes it in seconds. It is the one Tone itself
+  // makes, standardized-audio-context's: Firefox's own has no `positionX` on its listener, and Tone's
+  // Listener throws "param must be an AudioParam" on it. It reports no `outputLatency`; the browser's
+  // context it wraps, held in its `_nativeAudioContext` (the version is pinned in package.json), does.
   const contextOn = (t: Timing) => {
     const was = Tone.getContext()
-    Tone.setContext(new Tone.Context({ context: new AudioContext({ latencyHint: t.latencyHint }), lookAhead: t.lookAhead }))
+    const context = new StandardAudioContext({ latencyHint: t.latencyHint })
+    browsers = (context as unknown as { _nativeAudioContext: AudioContext })._nativeAudioContext
+    Tone.setContext(new Tone.Context({ context: context as unknown as AudioContext, lookAhead: t.lookAhead }))
     timed = t
     return was
   }
@@ -1545,7 +1553,7 @@ export function audiodaw() {
     // What the context holds, and the buffer the browser gave for the hint.
     get timing(): Timing & { buffer: number } {
       const c = Tone.getContext()
-      const raw = c.rawContext as AudioContext
+      const raw = browsers ?? (c.rawContext as AudioContext)
       return { lookAhead: c.lookAhead, latencyHint: timed?.latencyHint ?? 0, buffer: (raw.baseLatency ?? 0) + (raw.outputLatency ?? 0) }
     },
     // A song made and its notes and automation scheduled; `ranges` gives each automated knob's travel.

@@ -1,4 +1,4 @@
-// A library for the tests of `cc0.ts` and `bake.ts`: a `cc0-textures/cc0-textures.mjs` of the real one's
+// A library for the tests of `cc0.ts` and `bake.ts`: a `scripts/cc0-textures/cc0-textures.mjs` of the real one's
 // shape (`read`, `resolve`, `download`), whose `download` copies a set from `fixtures/<zip>/` instead of
 // fetching it and logs each call to `downloads.log`, and a list of sets in `textures/cc0-textures.json`.
 import fs from 'node:fs'
@@ -22,9 +22,9 @@ export const download = async (directory, zip, { library }) => {
 
 // A library at `library`, its list empty.
 export const fakeLibrary = (library: string) => {
-  fs.mkdirSync(path.join(library, 'cc0-textures'), { recursive: true })
+  fs.mkdirSync(path.join(library, 'scripts', 'cc0-textures'), { recursive: true })
   fs.mkdirSync(path.join(library, 'textures'), { recursive: true })
-  fs.writeFileSync(path.join(library, 'cc0-textures', 'cc0-textures.mjs'), MODULE)
+  fs.writeFileSync(path.join(library, 'scripts', 'cc0-textures', 'cc0-textures.mjs'), MODULE)
   fs.writeFileSync(path.join(library, 'textures', 'cc0-textures.json'), '{}')
 }
 

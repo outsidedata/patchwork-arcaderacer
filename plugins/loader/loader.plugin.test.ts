@@ -224,7 +224,7 @@ test('every entry starts on the first tick unasked unless it says preload: false
   run(me, { wire: wireOf({ unsaid: { type: 'json', url: file('unsaid.json', '{"a":1}') }, held: { type: 'json', url: file('held.json', '{"b":2}'), preload: false } }) } as any)
   await vi.waitFor(() => expect(me.ready('unsaid')).toBe(true))
   for (let f = 0; f < 5; f++) await frame()
-  expect([me.preloads(), me.ready('held'), me.progress().started]).toEqual([{ done: 1, of: 1 }, false, 1])
+  expect([me.preloads(), me.ready('held'), me.progress().started]).toEqual([{ done: 1, of: 1, file: '' }, false, 1])
 })
 
 test('every failure\'s message starts with loader, its name and a colon', async () => {

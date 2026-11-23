@@ -134,6 +134,8 @@ const linear = (hex: string) => [1, 3, 5].map(i => {
 // The shared GLSL chunks every scene's shader may read (`pro-ng/material/looks/shared/`); a look that names
 // another (its `shared`: `ruin`, `heat`) has that one read too.
 const SHARED = ['noise', 'layout', 'random']
+// the picture sets the library grows itself (pro-ng/pictures.mjs) rather than cuts from cc0-textures
+const GROWN = ['feathers', 'feather-atlas']
 
 // The looks tool: the library's pro-ng composes the materials' looks, the pictures are cut, the JSON
 // written. `texture` and `webp` are the bake's own tools.
@@ -162,6 +164,17 @@ async function composeLooks(library: string, t: Pick<Tools, 'texture' | 'webp' |
   const cut: Looks['pictures'] = []
   const dirs = new Map<string, string>()
   for (const p of scene.pictures as { set: string; file: string; colour: boolean }[]) {
+    // a feather's picture (`feathers`, `feather-atlas`) is grown by the library's pro-ng/pictures.mjs, not cut from a
+    // cc0-textures set: copied as it is grown (a normal atlas kept lossless, a colour stored times its alpha)
+    if (GROWN.includes(p.set)) {
+      const { picture } = await import(pathToFileURL(path.join(library, 'pro-ng', 'pictures.mjs')).href) as { picture: (p: string) => string | null }
+      const grown = picture(`${p.set}/${p.file}`)
+      if (!grown) throw new Error(`the looks read ${p.set}/${p.file}, which the library's pro-ng/feathers/ has no file to grow it from`)
+      fs.mkdirSync(pictures, { recursive: true })
+      fs.copyFileSync(grown, path.join(pictures, p.file))
+      cut.push({ asset: p.file.replace(/\.[^.]+$/, ''), file: p.file, set: p.set, source: p.file, colour: p.colour })
+      continue
+    }
     if (!dirs.has(p.set)) {
       const maps = await t.texture(p.set)
       const first = Object.values(maps)[0]

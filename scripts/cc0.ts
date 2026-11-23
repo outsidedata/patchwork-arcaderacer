@@ -11,7 +11,7 @@
 // The game commits them, as it does every file its bake writes, so it boots with no bake; `yarn health`
 // names a game whose maps are not all there.
 //
-// The sets are the library's: its `cc0-textures/cc0-textures.mjs` resolves a name against its list and
+// The sets are the library's: its `scripts/cc0-textures/cc0-textures.mjs` resolves a name against its list and
 // downloads a set from cc0-textures.com into `textures/cc0-textures/<zip>/`, once, where git ignores
 // it. This file loads that module from the library, so core and the library share one download.
 // Which file of a set is which map is read off the vendors' names for them: ambientCG's `_Color`,
@@ -28,7 +28,7 @@ export type Config = { folder: string, sizes: number[], sets: Record<string, { s
 
 const MAPS: Map[] = ['color', 'normal', 'roughness']
 
-// The library's cc0-textures module (`cc0-textures.mjs` in the library).
+// The library's cc0-textures module (`scripts/cc0-textures/cc0-textures.mjs` in the library).
 type Library = {
   read: (library: string) => Record<string, { zip: string, tags: string[], maps: string[] }>
   resolve: (directory: Record<string, unknown>, name: string) => string
@@ -36,8 +36,8 @@ type Library = {
 }
 
 const load = async (library: string): Promise<Library> => {
-  const file = path.join(library, 'cc0-textures', 'cc0-textures.mjs')
-  if (!fs.existsSync(file)) throw new Error(`the library at ${library} has no cc0-textures/cc0-textures.mjs`)
+  const file = path.join(library, 'scripts', 'cc0-textures', 'cc0-textures.mjs')
+  if (!fs.existsSync(file)) throw new Error(`the library at ${library} has no scripts/cc0-textures/cc0-textures.mjs`)
   return await import(pathToFileURL(file).href) as Library
 }
 

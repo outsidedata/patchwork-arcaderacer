@@ -144,10 +144,10 @@ describe('cut', () => {
   })
 
   it('says where the library is when it has no cc0-textures module', async () => {
-    fs.rmSync(path.join(library, 'cc0-textures'), { recursive: true })
+    fs.rmSync(path.join(library, 'scripts', 'cc0-textures'), { recursive: true })
     set('Rock007_4K-JPG', ROCK)
     game(rock)
-    await expect(cut(root, 'demo', tools())).rejects.toThrow(`the library at ${library} has no cc0-textures/cc0-textures.mjs`)
+    await expect(cut(root, 'demo', tools())).rejects.toThrow(`the library at ${library} has no scripts/cc0-textures/cc0-textures.mjs`)
   })
 })
 

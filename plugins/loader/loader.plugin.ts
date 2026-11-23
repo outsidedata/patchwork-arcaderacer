@@ -850,9 +850,12 @@ export function loader() {
     },
     // Of the catalogue's entries the first tick starts, every `preload` and every font, how many there
     // are and how many have landed or failed: what a loading screen waits on.
-    preloads(): { done: number; of: number } {
+    // `file` is the name of a file still coming down, '' once none is.
+    preloads(): { done: number; of: number; file: string } {
       const first = Object.entries(catalogue()).filter(([, it]) => preloads(it) || it.type === 'font')
-      return { done: first.filter(([name]) => made.has(name) || failed.has(name)).length, of: first.length }
+      const coming = first.find(([name]) => !made.has(name) && !failed.has(name))
+      const file = coming ? coming[1].url.split('/').pop()! : ''
+      return { done: first.filter(([name]) => made.has(name) || failed.has(name)).length, of: first.length, file }
     },
     close() {
       for (const frames of cutOf.values()) for (const t of frames.values()) t.destroy()

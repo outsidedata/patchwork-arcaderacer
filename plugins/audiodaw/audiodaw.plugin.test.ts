@@ -733,8 +733,9 @@ describe('audiodaw timing', () => {
       expect(Tone.getContext()).not.toBe(first)
       expect(daw.timing).toMatchObject({ lookAhead: 0.3, latencyHint: 0.2 })
       // The buffer is what the browser reports for the new context, whatever it rounded the hint to.
-      const raw = Tone.getContext().rawContext as unknown as AudioContext
-      expect(daw.timing.buffer).toBe(raw.baseLatency + raw.outputLatency)
+      const raw = (Tone.getContext().rawContext as unknown as { _nativeAudioContext: AudioContext })._nativeAudioContext
+      expect(raw).toBeInstanceOf(web.AudioContext)
+      expect(daw.timing.buffer).toBe((raw.baseLatency ?? 0) + (raw.outputLatency ?? 0))
       expect((daw.optionsOf(0) as { envelope: { attack: number } }).envelope.attack).toBe(0.5)
       await closing
       expect((first.rawContext as unknown as AudioContext).state).toBe('closed')

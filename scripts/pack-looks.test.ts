@@ -2,7 +2,7 @@
 // sampler declared in place of 1100 uniforms, each copy reading its own texel, and the table holding
 // every value; a file read any other way, or naming a setting it does not hand back, throws naming it.
 import { expect, test } from 'vitest'
-import { pack, packLooks, type Uniforms } from './pack-looks.ts'
+import { fold, pack, packLooks, type Uniforms } from './pack-looks.ts'
 
 const uniforms: Uniforms = {}
 let fragmentPars = ''
@@ -34,7 +34,8 @@ test('a hundred materials of eleven settings each read from one sampler, and the
     const f = packed.calls[call]!.fragmentPars
     expect(f.match(/^uniform .*$/gm)).toEqual(['uniform highp sampler2D lookSettings;'])
     expect(f).not.toMatch(/\bL\d+_/)
-    expect(f).toContain('  p_k3 = texelFetch(lookSettings, ivec2(3, 57), 0).rgb;\n  p_k4 = texelFetch(lookSettings, ivec2(4, 57), 0).r;')
+    expect(f.match(/^void look_\d+\(.*$/gm)).toEqual(['void look_0(inout Look k, int lookRow) {'])
+    expect(f).toContain('  p_k3 = texelFetch(lookSettings, ivec2(3, lookRow), 0).rgb;\n  p_k4 = texelFetch(lookSettings, ivec2(4, lookRow), 0).r;')
   }
   expect(packed.calls.relief).toBeNull()
 })
@@ -45,6 +46,32 @@ test('a look\'s vertex code reads its settings from the same table: its declarat
   expect(v.match(/^uniform .*$/gm)).toEqual(['uniform highp sampler2D lookSettings;'])
   expect(v).not.toMatch(/\bL\d+_/)
   expect(v).toContain('  p_k4 = texelFetch(lookSettings, ivec2(4, 57), 0).r;\n  p_k3 = texelFetch(lookSettings, ivec2(3, 57), 0).rgb;')
+})
+
+test('the materials of one look fold into one function a look, each called with its own row; a look that differs but for its row stays its own', () => {
+  const text = [
+    'float p_a;',
+    'void look_0(inout Look k) {\n  p_a = texelFetch(lookSettings, ivec2(0, 0), 0).r;\n  k.rough = p_a;\n}',
+    'void look_1(inout Look k) {\n  p_a = texelFetch(lookSettings, ivec2(0, 1), 0).r;\n  k.metal = p_a;\n}',
+    'void look_2(inout Look k) {\n  p_a = texelFetch(lookSettings, ivec2(0, 2), 0).r;\n  k.rough = p_a;\n}',
+    'void look_3(inout Look k) {\n  p_a = texelFetch(lookSettings, ivec2(0, 3), 0).r;\n  k.metal = p_a;\n}',
+    'float lookShadow_0(vec3 Lview) {\n  return texelFetch(lookSettings, ivec2(1, 0), 0).r * Lview.y;\n}',
+    'float lookShadow_2(vec3 Lview) {\n  return texelFetch(lookSettings, ivec2(1, 2), 0).r * Lview.y;\n}',
+    'Look lookRun(int id) {\n  Look k = lookStart();\n  switch (id) {\n    case 0: look_0(k); break;\n    case 1: look_1(k); break;\n    case 2: look_2(k); break;\n    case 3: look_3(k); break;\n  }\n  return k;\n}',
+    'float lookShadow(int id, vec3 Lview) {\n  switch (id) {\n    case 0: return lookShadow_0(Lview);\n    case 2: return lookShadow_2(vec3(Lview.x, max(Lview.y, 0.0), Lview.z));\n  }\n  return 1.0;\n}',
+    '',
+  ].join('\n')
+  expect(fold('solid', text)).toBe([
+    'float p_a;',
+    'void look_0(inout Look k, int lookRow) {\n  p_a = texelFetch(lookSettings, ivec2(0, lookRow), 0).r;\n  k.rough = p_a;\n}',
+    'void look_1(inout Look k, int lookRow) {\n  p_a = texelFetch(lookSettings, ivec2(0, lookRow), 0).r;\n  k.metal = p_a;\n}',
+    'float lookShadow_0(vec3 Lview, int lookRow) {\n  return texelFetch(lookSettings, ivec2(1, lookRow), 0).r * Lview.y;\n}',
+    'Look lookRun(int id) {\n  Look k = lookStart();\n  switch (id) {\n    case 0: look_0(k, 0); break;\n    case 1: look_1(k, 1); break;\n    case 2: look_0(k, 2); break;\n    case 3: look_1(k, 3); break;\n  }\n  return k;\n}',
+    'float lookShadow(int id, vec3 Lview) {\n  switch (id) {\n    case 0: return lookShadow_0(Lview, 0);\n    case 2: return lookShadow_0(vec3(Lview.x, max(Lview.y, 0.0), Lview.z), 2);\n  }\n  return 1.0;\n}',
+    '',
+  ].join('\n'))
+  expect(fold('solid', 'float kn(vec2 p) { return p.x; }\n')).toBe('float kn(vec2 p) { return p.x; }\n')
+  expect(() => fold('all', `int lookRow;\n${text}`)).toThrow('the all call names lookRow already, which folding its looks would declare')
 })
 
 test('a setting read other than by its copy, and one the file does not hand back, each throw naming it and the call', () => {

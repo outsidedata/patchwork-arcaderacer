@@ -6,13 +6,13 @@
 // `garment(spec, with)` is the tool. `spec` is
 //   body     the game's baked body, a glb with one skin (anim's export, say): the garment is draped on it
 //            as it stands at rest in that file, T-posed, which the shop asks of a figure
-//   figure   the name the shop keeps that body under as a figure (`garment/figures/<figure>/` in the
+//   figure   the name the shop keeps that body under as a figure (`Trades/garment/figures/<figure>/` in the
 //            library), made again from the body on every bake
-//   kit      a kit of the shop (`garment/store/kits/<kit>/`), `config` one of its configs, and `garment`
+//   kit      a kit of the shop (`Trades/garment/store/kits/<kit>/`), `config` one of its configs, and `garment`
 //            the name of the one of the piece's garments to write (a kit of one garment names it as the
 //            kit does: the skirt kit's is `skirt`)
 //   out      the glb to write; the sidecar is written beside it, `<out less .glb>.garment.json`
-// It runs the library's `garment/game/drape.mjs` on the body (by the draper `GARMENT_DRAPER` names in the
+// It runs the library's `Trades/garment/game/drape.mjs` on the body (by the draper `GARMENT_DRAPER` names in the
 // shell or the root's `.env`, a machine with a GPU, else here, where a drape takes minutes), and writes:
 //   the glb      a mesh for each piece of the garment's pattern, named for the piece, its points where the
 //                drape left them on the body, in the body's model's own frame, metres; a vertex's uv where
@@ -46,7 +46,7 @@ export type GarmentWith = {
   pack: (raw: string, out: string) => Promise<string>
   node: (args: string[]) => Promise<string>
 }
-// The shop's `drape.json` (`garment/game/drape.mjs` in the library).
+// The shop's `drape.json` (`Trades/garment/game/drape.mjs` in the library).
 type Draped = { figure: string; kit: string; config: string; garments: { name: string; kind: string; obj: string; parts: string; record: Record<string, unknown> }[] }
 
 const CM = 0.01
@@ -76,8 +76,8 @@ const median = (values: number[]) => {
 
 export async function garment(spec: GarmentSpec, t: GarmentWith): Promise<Garment> {
   if (!spec.out.endsWith('.glb')) throw new Error(`the garment's out is ${spec.out}, and it is the glb to write`)
-  const script = path.join(t.library, 'garment', 'game', 'drape.mjs')
-  if (!fs.existsSync(script)) throw new Error(`the library at ${t.library} has no garment/game/drape.mjs`)
+  const script = path.join(t.library, 'Trades', 'garment', 'game', 'drape.mjs')
+  if (!fs.existsSync(script)) throw new Error(`the library at ${t.library} has no Trades/garment/game/drape.mjs`)
   const b = await body(spec.body)
   const figure = t.scratch(`${spec.figure}.obj`)
   fs.mkdirSync(path.dirname(figure), { recursive: true })

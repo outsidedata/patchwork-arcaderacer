@@ -118,7 +118,8 @@ test('while the art comes down the screen covers the canvas, shows its picture o
   frame(0)
   // Nothing has landed: the picture is not drawn yet, the bar is empty.
   let shown = on(U)
-  expect([...shown.keys()]).toEqual(['cover', 'picture 0', 'bar', 'line'])
+  expect([...shown.keys()]).toEqual(['cover', 'picture 0', 'bar', 'file', 'line'])
+  expect((shown.get('file') as PIXI.Text).text).toBe('splash.png')
   expect(shown.get('picture 0')!.visible).toBe(false)
   expect(filled(shown.get('bar')!)).toBe(0)
   expect(U.modal()).toBe('loading')
@@ -131,7 +132,8 @@ test('while the art comes down the screen covers the canvas, shows its picture o
   await landed(L, frame, 2)
   frame(0.5)
   shown = on(U)
-  expect(L.preloads()).toEqual({ done: 2, of: 3 })
+  expect(L.preloads()).toEqual({ done: 2, of: 3, file: 'giant.glb' })
+  expect((shown.get('file') as PIXI.Text).text).toBe('giant.glb')
   const sprite = shown.get('picture 0') as PIXI.Sprite
   expect([sprite.visible, sprite.texture, sprite.x, sprite.y, sprite.width, sprite.height]).toEqual([true, splash, 10, 5, 180, 60])
   expect(filled(shown.get('bar')!)).toBe(Math.round(160 * 2 / 3))
@@ -156,7 +158,7 @@ test('a line that gives a picture shows it at the panel\'s corner at the size it
   const sprite = on(U).get('line picture') as PIXI.Sprite
   expect([sprite.visible, sprite.texture, sprite.x, sprite.y, sprite.width, sprite.height]).toEqual([true, splash, 0, 0, 4, 4])
   // The bar and the words are drawn over it, though it landed after them.
-  expect([...on(U).keys()]).toEqual(['cover', 'line picture', 'bar', 'line'])
+  expect([...on(U).keys()]).toEqual(['cover', 'line picture', 'bar', 'file', 'line'])
   frame(2.1)
   expect(sprite.visible).toBe(false)
   frame(4.2)
@@ -171,7 +173,7 @@ test('once everything the first tick started is in, the screen fades over its fa
   frame(10)
   await letGo(L, frame)
   frame(10)
-  expect(L.preloads()).toEqual({ done: 3, of: 3 })
+  expect(L.preloads()).toEqual({ done: 3, of: 3, file: '' })
   expect(filled(on(U).get('bar')!)).toBe(160)
   for (const c of on(U).values()) expect(c.alpha).toBe(1)
   frame(10.25)

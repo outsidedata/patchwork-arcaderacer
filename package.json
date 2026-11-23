@@ -38,6 +38,7 @@
     "fflate": "^0.8.3",
     "fzstd": "^0.1.1",
     "pixi.js": "^8.21.0",
+    "standardized-audio-context": "25.3.77",
     "three": "https://github.com/outsidedata/three.js/releases/download/r186-1f7e7c5/three-0.186.1.tgz",
     "tone": "15",
     "ws": "^8.18.0"
